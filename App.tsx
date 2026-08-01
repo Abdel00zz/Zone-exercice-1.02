@@ -110,7 +110,7 @@ const App: React.FC = () => {
   const [selectedWorksheetId, setSelectedWorksheetId] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(true);
 
   React.useEffect(() => {
     const storedWorksheets = window.localStorage.getItem('worksheets');
@@ -295,7 +295,7 @@ const App: React.FC = () => {
             onToggleCollapse={setIsHeaderCollapsed}
             onOpenSettings={() => setIsSettingsModalOpen(true)}
           />
-          <main className={`max-w-4xl mx-auto px-4 py-8 ${isHeaderCollapsed ? 'mt-12' : 'mt-20 sm:mt-22'} transition-all duration-300 print:mt-0 print:max-w-none print:p-0 print:py-0`}>
+          <main className={`max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-4 landscape:px-2 sm:landscape:px-4 py-8 landscape:py-4 ${isHeaderCollapsed ? 'mt-10 sm:mt-12' : 'mt-16 sm:mt-20'} transition-all duration-300 print:mt-0 print:max-w-none print:p-0 print:py-0`}>
             <div className="space-y-8 print:space-y-6">
               <div className="title-and-first-exercise-container space-y-6 print:space-y-4">
                 <div className="flex flex-wrap items-start justify-between text-xs font-semibold uppercase tracking-wider text-slate-500 print:text-[9pt] print:text-black">

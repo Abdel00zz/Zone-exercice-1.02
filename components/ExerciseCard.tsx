@@ -57,7 +57,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
         display: 'flex', 
         flexDirection: 'column', 
         gap: level > 0 ? '0.75rem' : '1.5rem',
-        paddingLeft: level > 0 ? '1rem' : '0',
+        paddingLeft: level > 0 ? '0.75rem' : '0',
       }}
     >
       {questions.map((q, index) => {
@@ -256,7 +256,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   return (
-    <div className={`exercise-card bg-white text-black p-5 md:p-8 lg:p-10 rounded-2xl shadow-sm mb-10 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border border-slate-200 print:border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
+    <div className={`exercise-card bg-white text-black p-4 sm:p-6 lg:p-10 landscape:px-4 landscape:py-5 sm:landscape:px-6 rounded-2xl shadow-sm mb-10 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border border-slate-200 print:border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
       <h2 className="exercise-title text-xl font-bold font-display text-slate-900 print:text-black flex flex-col print:block items-start gap-3 mb-8 print:mb-5 pt-2">
         <span 
           className="exercise-badge font-bold uppercase tracking-widest shadow-none print:mb-3 print:inline-block"

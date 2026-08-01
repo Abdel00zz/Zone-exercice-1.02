@@ -42,7 +42,7 @@ const WorksheetHeader: React.FC<WorksheetHeaderProps> = ({
 
   return (
     <header className="fixed top-2.5 left-0 right-0 z-50 no-print print:hidden px-3 sm:px-6 transition-all duration-300 pointer-events-none">
-      <div className={`max-w-5xl mx-auto flex ${isCollapsed ? 'justify-start' : 'justify-center'}`}>
+      <div className={`max-w-5xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto flex ${isCollapsed ? 'justify-start' : 'justify-center'}`}>
         {isCollapsed ? (
           /* Reduced / Collapsed Mode: 50% transparent trigger button with Menu icon */
           <button
