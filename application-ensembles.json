@@ -1,0 +1,377 @@
+{
+  "header": {
+    "title": "Les Applications",
+    "subtitle": "Théorie des Ensembles - Analyse"
+  },
+  "sections": [
+    {
+      "title": "Généralités sur les applications",
+      "subsections": [
+        {
+          "title": "Définition et Vocabulaire",
+          "elements": [
+            {
+              "type": "p",
+              "content": "Une **application** est une règle qui associe à chaque élément d'un ensemble de départ **___un et un seul___** élément d'un ensemble d'arrivée. C'est la notion la plus fondamentale pour décrire les relations entre ensembles."
+            },
+            {
+              "type": "definition-box",
+              "preamble": "Soient $E$ et $F$ deux ensembles non vides.\nOn appelle **application** de $E$ vers $F$ toute relation $f$ qui à **chaque** élément $x \\in E$ associe un **unique** élément $y \\in F$.\nOn note :\n$$f : E \\rightarrow F$$\n$$x \\mapsto y = f(x)$$",
+              "listType": "bullet",
+              "content": [
+                "$E$ est l'**___ensemble de départ___**.",
+                "$F$ est l'**___ensemble d'arrivée___** (ou **codomaine**).",
+                "$y=f(x)$ est l'**___image___** de $x$ par $f$.",
+                "$x$ est un **___antécédent___** de $y$ par $f$."
+              ]
+            },
+            {
+              "type": "remark-box",
+              "content": "?> **Fonction vs. Application**\nEn mathématiques, on distingue parfois une **fonction** d'une **application**. Une fonction $f$ de $E$ vers $F$ peut n'être définie que sur une partie de $E$, appelée **domaine de définition**. Une **application** est une fonction dont le domaine de définition est ___l'ensemble de départ $E$ tout entier___.\nDans ce cours, nous ne traiterons que des applications."
+            },
+            {
+              "type": "remark-box",
+              "preamble": "Pour qu'une relation soit une application, deux conditions sont **obligatoires** :",
+              "listType": "bullet",
+              "content": [
+                "**Existence** : Tout élément de l'ensemble de départ doit avoir ___une image___.",
+                "**Unicité** : Chaque élément de l'ensemble de départ ne doit avoir qu'___une seule___ image."
+              ]
+            },
+            {
+              "type": "example-box",
+              "listType": "bullet",
+              "content": [
+                "$f : \\mathbb{R} \\rightarrow \\mathbb{R}$ avec $f(x)=x^2$ est une application.",
+                "$g : \\mathbb{N} \\rightarrow \\mathbb{N}$ avec $g(n)=n-1$ n'est **___pas___** une application, car $n=0$ (qui appartient à $\\mathbb{N}$) n'a pas d'image dans $\\mathbb{N}$ ($g(0)=-1 \\notin \\mathbb{N}$).",
+                "La relation $h$ de $\\mathbb{R}$ vers $\\mathbb{R}$ définie par $h(x) = y$ si $x=y^2$ n'est pas une application, car $x=4$ a ___deux images___ : $y=2$ et $y=-2$."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Égalité et Graphe d'une application",
+          "elements": [
+            {
+              "type": "definition-box",
+              "preamble": "Soient $f: E \\rightarrow F$ et $g: E' \\rightarrow F'$ deux applications.",
+              "content": "On dit que $f$ et $g$ sont **égales**, et on note $f=g$, si elles ont le ___même ensemble de départ___ ($E=E'$), le ___même ensemble d'arrivée___ ($F=F'$), et si pour tout $x \\in E$, on a ___$f(x) = g(x)$___."
+            },
+            {
+              "type": "definition-box",
+              "preamble": "Le **graphe** d'une application $f: E \\rightarrow F$ est le sous-ensemble du produit cartésien $E \\times F$ défini par :",
+              "content": "$$\\Gamma_f = \\{(x, f(x)) \\mid x \\in E\\}$$"
+            },
+            {
+              "type": "example-box",
+              "content": "Soient $f: \\mathbb{R} \\rightarrow \\mathbb{R}, f(x)=|x|$ et $g: \\mathbb{R} \\rightarrow \\mathbb{R}, g(x)=\\sqrt{x^2}$.\nLes applications $f$ et $g$ sont ___égales___ car elles ont mêmes ensembles de départ et d'arrivée, et pour tout $x \\in \\mathbb{R}$, $|x| = \\sqrt{x^2}$."
+            }
+          ]
+        },
+        {
+          "title": "Image directe et image réciproque",
+          "elements": [
+            {
+              "type": "definition-box",
+              "preamble": "Soit $f : E \\rightarrow F$ une application, $A \\subset E$ et $B \\subset F$.",
+              "listType": "bullet",
+              "content": [
+                "**Image directe** : L'image directe de $A$ par $f$, notée ___$f(A)$___, est l'ensemble des images des éléments de $A$. Un élément $y$ appartient à $f(A)$ si et seulement s'il existe un $x \\in A$ tel que ___$y=f(x)$___. Formellement :\n$$y \\in f(A) \\iff \\exists x \\in A, \\; y = f(x)$$",
+                "**Image réciproque** : L'image réciproque de $B$ par $f$, notée ___$f^{-1}(B)$___, est l'ensemble des antécédents des éléments de $B$. Un élément $x$ appartient à $f^{-1}(B)$ si et seulement si son image $f(x)$ appartient à $B$. C'est-à-dire ___$f(x) \\in B$___. Formellement :\n$$x \\in f^{-1}(B) \\iff f(x) \\in B$$"
+              ]
+            },
+            {
+              "type": "remark-box",
+              "content": "!> **Attention :** La notation $f^{-1}(B)$ est juste une notation pour un ensemble. Elle ne signifie **___pas___** que l'application $f$ est bijective ou admet une application réciproque. L'image réciproque existe pour **___toute___** application."
+            },
+            {
+              "type": "practice-box",
+              "statement": "Soit l'application $f : \\mathbb{R} \\rightarrow \\mathbb{R}$ définie par $f(x) = x^2$.",
+              "content": [
+                "Déterminer $f(\\{-2, 0, 2\\})$",
+                "Déterminer $f([-3, 3])$",
+                "Déterminer $f^{-1}(\\{4, 9\\})$",
+                "Déterminer $f^{-1}([-1, 25])$"
+              ]
+            },
+            {
+              "type": "proposition-box",
+              "preamble": "Soit $f : E \\rightarrow F$ une application, $A_1, A_2 \\subset E$ et $B_1, B_2 \\subset F$.",
+              "listType": "bullet",
+              "content": [
+                "**Union (image directe) :** L'image d'une union est l'union des images : ___$f(A_1 \\cup A_2) = f(A_1) \\cup f(A_2)$___.",
+                "**Intersection (image directe) :** L'image d'une intersection est **incluse** dans l'intersection des images : ___$f(A_1 \\cap A_2) \\subset f(A_1) \\cap f(A_2)$___.",
+                "**Union (image réciproque) :** ___$f^{-1}(B_1 \\cup B_2) = f^{-1}(B_1) \\cup f^{-1}(B_2)$___.",
+                "**Intersection (image réciproque) :** ___$f^{-1}(B_1 \\cap B_2) = f^{-1}(B_1) \\cap f^{-1}(B_2)$___."
+              ]
+            },
+            {
+              "type": "explain-box",
+              "statement": "En utilisant la fonction $f(x)=x^2$, trouvez un exemple de deux ensembles $A_1$ et $A_2$ pour lesquels l'inclusion $f(A_1 \\cap A_2) \\subset f(A_1) \\cap f(A_2)$ est stricte (c'est-à-dire qu'il n'y a pas égalité)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Propriétés des applications",
+      "subsections": [
+        {
+          "title": "Injection",
+          "elements": [
+            {
+              "type": "definition-box",
+              "preamble": "Une application $f: E \\rightarrow F$ est dite **injective** si tout élément de l'ensemble d'arrivée $F$ admet **___au plus un___** antécédent dans $E$.",
+              "content": "Formellement : $$\\forall x_1, x_2 \\in E, \\quad f(x_1) = f(x_2) \\implies x_1 = x_2$$"
+            },
+            {
+              "type": "remark-box",
+              "preamble": "**Méthode : Prouver l'injectivité**",
+              "listType": "bullet",
+              "content": [
+                "On prend deux éléments quelconques $x_1, x_2$ dans l'ensemble de départ $E$.",
+                "On suppose que ___$f(x_1) = f(x_2)$___.",
+                "Par le calcul, on cherche à montrer que cette égalité implique nécessairement que ___$x_1 = x_2$___.",
+                "!> Alternativement, pour prouver la non-injectivité, il suffit de trouver un **___contre-exemple___** : deux éléments $x_1 \\neq x_2$ tels que $f(x_1)=f(x_2)$."
+              ]
+            },
+            {
+              "type": "example-box",
+              "listType": "bullet",
+              "content": [
+                "$f: \\mathbb{R} \\rightarrow \\mathbb{R}, f(x)=2x+3$ est ___injective___. En effet, si $f(x_1) = f(x_2)$, alors $2x_1+3 = 2x_2+3$, ce qui donne $2x_1 = 2x_2$ et donc $x_1=x_2$.",
+                "$g: \\mathbb{R} \\rightarrow \\mathbb{R}, g(x)=x^2$ n'est **___pas injective___** car on peut trouver un contre-exemple : $g(-2) = 4$ et $g(2)=4$, mais ___$-2 \\neq 2$___.",
+                "$h: [0, +\\infty[ \\rightarrow \\mathbb{R}, h(x)=x^2$ est ___injective___."
+              ]
+            },
+            {
+              "type": "remark-box",
+              "content": "**Interprétation Graphique** : Une fonction $f: \\mathbb{R} \\rightarrow \\mathbb{R}$ est injective si et seulement si toute droite **horizontale** coupe son graphe en ___au plus un point___."
+            },
+            {
+              "type": "explain-box",
+              "statement": "Dans la vie de tous les jours, le numéro de sécurité sociale est une application qui associe à chaque citoyen un numéro unique. Est-ce une application injective ? Justifiez votre réponse et proposez un autre exemple d'application injective du quotidien (par exemple, un numéro de série)."
+            }
+          ]
+        },
+        {
+          "title": "Surjection",
+          "elements": [
+            {
+              "type": "definition-box",
+              "preamble": "Une application $f: E \\rightarrow F$ est dite **surjective** si tout élément de l'ensemble d'arrivée $F$ admet **___au moins un___** antécédent dans $E$.",
+              "content": "Formellement : $$\\forall y \\in F, \\exists x \\in E, \\; f(x) = y$$\nUne autre façon de le dire est que l'image directe de l'ensemble de départ est égale à l'ensemble d'arrivée : ___$f(E) = F$___."
+            },
+            {
+              "type": "remark-box",
+              "preamble": "**Méthode : Prouver la surjectivité**",
+              "listType": "bullet",
+              "content": [
+                "On prend un élément **___quelconque___** $y$ dans l'ensemble d'___arrivée F___.",
+                "On cherche à résoudre l'équation $y = f(x)$ pour trouver une expression de $x$ en fonction de $y$.",
+                "On doit vérifier que la solution $x$ trouvée appartient bien à l'ensemble de ___départ E___ pour le $y$ choisi."
+              ]
+            },
+            {
+              "type": "example-box",
+              "listType": "bullet",
+              "content": [
+                "$f: \\mathbb{R} \\rightarrow \\mathbb{R}, f(x)=x^2$ n'est ___pas surjective___. En effet, si on choisit $y=-1 \\in \\mathbb{R}$, l'équation $x^2 = -1$ n'a ___aucune solution___ dans $\\mathbb{R}$.",
+                "$g: \\mathbb{R} \\rightarrow [0, +\\infty[, g(x)=x^2$ est ___surjective___. En effet, pour tout $y \\in [0, +\\infty[$, l'équation $y=x^2$ a au moins une solution $x=\\sqrt{y}$, qui est bien dans $\\mathbb{R}$."
+              ]
+            },
+            {
+              "type": "remark-box",
+              "content": "**Interprétation Graphique** : Une fonction $f: \\mathbb{R} \\rightarrow \\mathbb{R}$ est surjective si et seulement si toute droite **horizontale** coupe son graphe en ___au moins un point___."
+            },
+            {
+              "type": "explain-box",
+              "statement": "Considérons l'application qui, à chaque élève d'une classe, associe son mois de naissance. L'ensemble de départ est l'ensemble des élèves, l'ensemble d'arrivée est l'ensemble des 12 mois de l'année. Cette application est-elle surjective ? Est-elle injective ? Expliquez pourquoi."
+            }
+          ]
+        },
+        {
+          "title": "Bijection",
+          "elements": [
+            {
+              "type": "definition-box",
+              "preamble": "Une application $f: E \\rightarrow F$ est dite **bijective** si elle est à la fois **___injective et surjective___**.\nCela signifie que tout élément de $F$ admet **___un et un seul___** antécédent par $f$.",
+              "content": "$$\\forall y \\in F, \\exists ! x \\in E, \\; f(x) = y$$"
+            },
+            {
+              "type": "example-box",
+              "listType": "bullet",
+              "content": [
+                "La fonction $f: \\mathbb{R} \\rightarrow \\mathbb{R}, f(x)=x^3$ est ___bijective___.",
+                "La fonction $g: \\mathbb{R} \\rightarrow \\mathbb{R}, g(x)=\\cos(x)$ n'est ___ni injective, ni surjective___ (car $\\cos(0)=\\cos(2\\pi)$ et $y=2$ n'a pas d'antécédent)."
+              ]
+            },
+            {
+              "type": "remark-box",
+              "content": "?> **Comment rendre une fonction bijective ?**\nSouvent, une fonction n'est pas bijective sur ses ensembles de départ et d'arrivée initiaux. On peut cependant la rendre bijective en **___restreignant___** ces ensembles.\nPar exemple, $f: \\mathbb{R} \\rightarrow \\mathbb{R}$ avec $f(x)=x^2$ n'est ni injective, ni surjective.\n- Pour la rendre **injective**, on peut restreindre son ensemble de départ à ___$[0, +\\infty[$___.\n- Pour la rendre **surjective**, on peut restreindre son ensemble d'arrivée à ___$[0, +\\infty[$___.\nAinsi, la nouvelle application $g: [0, +\\infty[ \\rightarrow [0, +\\infty[$ définie par $g(x)=x^2$ est, elle, ___bijective___."
+            },
+            {
+              "type": "practice-box",
+              "statement": "Considérons la fonction cosinus. Proposez une restriction de son ensemble de départ et de son ensemble d'arrivée pour qu'elle devienne bijective. (Cette restriction est la base de la définition de la fonction Arccosinus)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Opérations sur les applications",
+      "subsections": [
+        {
+          "title": "Restriction et Prolongement",
+          "elements": [
+            {
+              "type": "definition-box",
+              "preamble": "Soit $f: E \\rightarrow F$ une application et $A$ une partie de $E$ ($A \\subset E$).\nLa **restriction** de $f$ à $A$, notée $f_{|A}$, est l'application de $A$ vers $F$ définie par :",
+              "content": "$$\\forall x \\in A, \\quad f_{|A}(x) = f(x)$$"
+            },
+            {
+              "type": "example-box",
+              "content": "Soit $f: \\mathbb{R} \\rightarrow \\mathbb{R}$ avec $f(x)=|x|$. La restriction de $f$ à $\\mathbb{R}^+$ est l'application $f_{|\\mathbb{R}^+}: \\mathbb{R}^+ \\rightarrow \\mathbb{R}$ définie par $f_{|\\mathbb{R}^+}(x) = ___x___$."
+            },
+            {
+              "type": "definition-box",
+              "preamble": "Soit $f: A \\rightarrow F$ une application et $E$ un ensemble tel que $A \\subset E$.\nUn **prolongement** de $f$ à $E$ est une application $g: E \\rightarrow F$ telle que la restriction de $g$ à $A$ est égale à $f$. C'est-à-dire :",
+              "content": "$$\\forall x \\in A, \\quad g(x) = f(x)$$"
+            },
+            {
+              "type": "remark-box",
+              "content": "!> Contrairement à la restriction qui est unique, un prolongement n'est en général **___pas unique___**. Il existe de nombreuses manières d'étendre une fonction."
+            },
+            {
+              "type": "practice-box",
+              "statement": "Considérons la fonction $f: \\mathbb{R} \\rightarrow \\mathbb{R}$ définie par $f(x) = x^2-4x+3$.",
+              "content": [
+                "Montrez que $f$ n'est pas injective sur $\\mathbb{R}$.",
+                "Déterminez le sommet de la parabole représentative de $f$.",
+                "Déduisez-en un intervalle $I$ de la forme $[a, +\\infty[$ sur lequel la restriction $f_{|I}$ est injective."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Composition",
+          "elements": [
+            {
+              "type": "definition-box",
+              "preamble": "Soient $f : E \\rightarrow F$ et $g : F \\rightarrow G$ deux applications. L'application **composée** $g \\circ f$ (lire 'g rond f') est l'application de $E$ dans $G$ définie par :",
+              "content": "$$\\forall x \\in E, \\quad (g \\circ f)(x) = ___g(f(x))___$$"
+            },
+            {
+              "type": "remark-box",
+              "content": "!> Pour pouvoir calculer $g \\circ f$, l'ensemble d'arrivée de $f$ doit être inclus dans l'ensemble de départ de $g$. De plus, la composition n'est **___pas commutative___** : en général, ___$g \\circ f \\neq f \\circ g$___."
+            },
+            {
+              "type": "practice-box",
+              "statement": "On considère $f: \\mathbb{R} \\rightarrow \\mathbb{R}, f(x)=x^2$ et $g: \\mathbb{R} \\rightarrow \\mathbb{R}, g(x)=x+1$.",
+              "content": [
+                "Déterminer l'expression de $(f \\circ g)(x)$.",
+                "Déterminer l'expression de $(g \\circ f)(x)$."
+              ]
+            },
+            {
+              "type": "theorem-box",
+              "preamble": "Soient $f:E \\rightarrow F$ et $g:F \\rightarrow G$ deux applications.",
+              "listType": "bullet",
+              "content": [
+                "Si $f$ et $g$ sont injectives, alors $g \\circ f$ est ___injective___.",
+                "Si $f$ et $g$ sont surjectives, alors $g \\circ f$ est ___surjective___.",
+                "Si $f$ et $g$ sont bijectives, alors $g \\circ f$ est ___bijective___.",
+                "Si $g \\circ f$ est **injective**, alors $f$ est ___injective___.",
+                "Si $g \\circ f$ est **surjective**, alors $g$ est ___surjective___."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Application Réciproque",
+          "elements": [
+            {
+              "type": "p",
+              "content": "Seulement les applications **___bijectives___** admettent une application réciproque."
+            },
+            {
+              "type": "definition-box",
+              "preamble": "Si $f: E \\rightarrow F$ est une application **bijective**, on peut définir son **application réciproque**. C'est l'application $f^{-1} : F \\rightarrow E$ qui à tout élément $y$ de $F$ associe son unique antécédent $x$ dans $E$ par $f$.\nOn a l'équivalence fondamentale :",
+              "content": "$$y = f(x) \\iff x = f^{-1}(y)$$"
+            },
+            {
+              "type": "remark-box",
+              "preamble": "**Méthode : Trouver $f^{-1}$**",
+              "listType": "bullet",
+              "content": [
+                "On s'assure d'abord que $f$ est bien ___bijective___ de $E$ vers $F$.",
+                "On pose l'équation $y = f(x)$, avec $y \\in F$ et $x \\in E$.",
+                "On ___isole $x$___ pour l'exprimer en fonction de $y$.",
+                "L'expression trouvée est ___$f^{-1}(y)$___."
+              ]
+            },
+            {
+              "type": "property-box",
+              "preamble": "Soient $f:E \\rightarrow F$ et $g:F \\rightarrow G$ des bijections.",
+              "listType": "bullet",
+              "content": [
+                "$f^{-1} \\circ f = Id_E$ et $f \\circ f^{-1} = Id_F$.",
+                "$(f^{-1})^{-1} = f$.",
+                "___$(g \\circ f)^{-1} = f^{-1} \\circ g^{-1}$___.",
+                "!> Attention à l'inversion de l'ordre dans la composition !"
+              ]
+            },
+            {
+              "type": "explain-box",
+              "statement": "?> **L'analogie des chaussettes et des chaussures**\nLa propriété $(g \\circ f)^{-1} = f^{-1} \\circ g^{-1}$ peut sembler étrange à cause de l'inversion de l'ordre. \nPensez à l'action de mettre vos chaussettes ($f$) puis vos chaussures ($g$). L'action combinée est $g \\circ f$. \nPour annuler cette action (faire l'inverse), dans quel ordre devez-vous procéder ? Expliquez comment cette analogie illustre la formule mathématique."
+            },
+            {
+              "type": "remark-box",
+              "content": "**Interprétation Graphique** : Dans un repère orthonormé, le graphe de $f^{-1}$ est le ___symétrique___ du graphe de $f$ par rapport à la droite d'équation ___$y=x$___."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Bilan et Synthèse",
+      "subsections": [
+        {
+          "title": "Tableau Récapitulatif",
+          "elements": [
+            {
+              "type": "table",
+              "content": "| Propriété | En français (pour tout $y \\in F$...) | Définition Formelle | Interprétation Graphique (droite horizontale) |\\n|---|---|---|---|\\n| **Injective** | ... a **___au plus un___** antécédent. | $f(x_1) = f(x_2) \\implies x_1 = x_2$ | Coupe le graphe en **0 ou 1** point. |\\n| **Surjective** | ... a **___au moins un___** antécédent. | $\\forall y \\in F, \\exists x \\in E, f(x)=y$ | Coupe le graphe en **au moins 1** point. |\\n| **Bijective** | ... a **___un et un seul___** antécédent. | $\\forall y \\in F, \\exists ! x \\in E, f(x)=y$ | Coupe le graphe en **exactement 1** point. |"
+            }
+          ]
+        },
+        {
+          "title": "Exercices de Synthèse",
+          "elements": [
+            {
+              "type": "practice-box",
+              "statement": "Soit l'application $f$ définie de $[1, +\\infty[$ dans $[0, +\\infty[$ par $f(x) = x^2 - 2x + 1$.",
+              "content": [
+                "Montrez que $f(x)$ peut s'écrire sous une forme plus simple.",
+                "En utilisant cette nouvelle forme, montrez que $f$ est bijective.",
+                "Déterminez l'expression de son application réciproque $f^{-1}(y)$."
+              ],
+              "placeholder": "Écrivez votre raisonnement complet ici..."
+            },
+            {
+              "type": "practice-box",
+              "statement": "Soient $f: \\mathbb{R} \\rightarrow \\mathbb{R}, f(x)=3x-2$ et $g: \\mathbb{R} \\rightarrow \\mathbb{R}, g(x)=-x+5$. Ce sont deux bijections.",
+              "content": [
+                "Déterminez $f^{-1}(y)$ et $g^{-1}(y)$.",
+                "Calculez $(g \\circ f)(x)$.",
+                "Calculez $(g \\circ f)^{-1}(y)$ directement.",
+                "Calculez $(f^{-1} \\circ g^{-1})(y)$ et vérifiez que vous retrouvez le même résultat qu'à la question précédente."
+              ],
+              "placeholder": "Détaillez vos calculs ici..."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
