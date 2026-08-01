@@ -246,6 +246,16 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     };
   };
 
+  const isStylusEraser = (e: React.PointerEvent | PointerEvent) => {
+    if (e.pointerType === 'pen') {
+      const ne = (e as any).nativeEvent || e;
+      const buttons = e.buttons ?? ne.buttons ?? 0;
+      const button = e.button ?? ne.button ?? -1;
+      return (buttons & 2) !== 0 || (buttons & 4) !== 0 || (buttons & 32) !== 0 || button === 2 || Boolean((ne as any).barrelButton);
+    }
+    return false;
+  };
+
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (palmRejection && e.pointerType === 'touch') return;
     setOpenMenu(null);
@@ -254,8 +264,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     
     const coords = getCoordinates(e);
     if (!coords) return;
+
+    const stylusEraser = isStylusEraser(e);
+    const activeTool = stylusEraser ? 'eraser' : tool;
     
-    if (tool === 'pointer') {
+    if (activeTool === 'pointer') {
        if (selectedStrokeIndexes.size === 1) {
          const idx = Array.from(selectedStrokeIndexes)[0];
          const stroke = strokesRef.current[idx];
@@ -312,7 +325,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     
     isDrawing.current = true;
     
-    if (tool === 'eraser' && eraserType === 'stroke') {
+    if (activeTool === 'eraser' && eraserType === 'stroke') {
       let erasedAny = false;
       strokesRef.current = strokesRef.current.filter(s => {
         if (strokeIntersectsPoint(s, coords.x, coords.y, eraserWidth / 2)) {
@@ -325,7 +338,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         setSelectedStrokeIndexes(new Set());
         redrawAll();
       }
-    } else if (tool === 'lasso') {
+    } else if (activeTool === 'lasso') {
       if (selectedStrokeIndexes.size > 0) {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         selectedStrokeIndexes.forEach(idx => {
@@ -359,13 +372,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     } else {
       currentStrokeRef.current = {
         points: [coords],
-        color: tool === 'highlighter' ? highlighterColor : color,
-        width: tool === 'highlighter' ? highlighterWidth : tool === 'eraser' ? eraserWidth : lineWidth,
-        isEraser: tool === 'eraser',
-        isHighlighter: tool === 'highlighter',
-        shapeType: tool === 'shape' ? shapeType : undefined,
-        penType: tool === 'pen' ? penType : undefined,
-        highlighterType: tool === 'highlighter' ? highlighterType : undefined
+        color: activeTool === 'highlighter' ? highlighterColor : color,
+        width: activeTool === 'highlighter' ? highlighterWidth : activeTool === 'eraser' ? eraserWidth : lineWidth,
+        isEraser: activeTool === 'eraser',
+        isHighlighter: activeTool === 'highlighter',
+        shapeType: activeTool === 'shape' ? shapeType : undefined,
+        penType: activeTool === 'pen' ? penType : undefined,
+        highlighterType: activeTool === 'highlighter' ? highlighterType : undefined
       };
       redrawAll();
     }
@@ -381,7 +394,10 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     events.forEach((event: PointerEvent) => {
         const coords = getCoordinates(event);
         if (coords) {
-            if (tool === 'pointer' && activeImageIndexRef.current !== null && dragStartRef.current) {
+            const stylusEraser = isStylusEraser(event);
+            const activeTool = stylusEraser ? 'eraser' : tool;
+
+            if (activeTool === 'pointer' && activeImageIndexRef.current !== null && dragStartRef.current) {
                 const idx = activeImageIndexRef.current;
                 const stroke = strokesRef.current[idx];
                 const dx = coords.x - dragStartRef.current.x;
@@ -422,25 +438,41 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                       stroke.points[1].y = p1.y + newW * aspect;
                    }
                 }
-            } else if (tool === 'pointer') {
+            } else if (activeTool === 'pointer') {
                 if (dragModeRef.current === 'select' && selectionBoxRef.current && dragStartRef.current) {
                     selectionBoxRef.current.w = coords.x - dragStartRef.current.x;
                     selectionBoxRef.current.h = coords.y - dragStartRef.current.y;
                 }
                 return;
-            } else if (tool === 'eraser' && eraserType === 'stroke') {
-              let erasedAny = false;
-              strokesRef.current = strokesRef.current.filter(s => {
-                if (strokeIntersectsPoint(s, coords.x, coords.y, eraserWidth / 2)) {
-                  erasedAny = true;
-                  return false;
+            } else if (activeTool === 'eraser') {
+              if (eraserType === 'stroke') {
+                let erasedAny = false;
+                strokesRef.current = strokesRef.current.filter(s => {
+                  if (strokeIntersectsPoint(s, coords.x, coords.y, eraserWidth / 2)) {
+                    erasedAny = true;
+                    return false;
+                  }
+                  return true;
+                });
+                if (erasedAny) {
+                  setSelectedStrokeIndexes(new Set());
                 }
-                return true;
-              });
-              if (erasedAny) {
-                setSelectedStrokeIndexes(new Set());
+              } else {
+                // Pixel eraser via stylus button or tool
+                if (currentStrokeRef.current) {
+                  currentStrokeRef.current.isEraser = true;
+                  currentStrokeRef.current.width = eraserWidth;
+                  currentStrokeRef.current.points.push(coords);
+                } else {
+                  currentStrokeRef.current = {
+                    points: [coords],
+                    color: '',
+                    width: eraserWidth,
+                    isEraser: true
+                  };
+                }
               }
-            } else if (tool === 'lasso') {
+            } else if (activeTool === 'lasso') {
               if (isDraggingSelectionRef.current && dragStartRef.current) {
                 const dx = coords.x - dragStartRef.current.x;
                 const dy = coords.y - dragStartRef.current.y;
@@ -459,10 +491,21 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                 lassoPathRef.current.push(coords);
               }
             } else if (currentStrokeRef.current) {
-              if (tool === 'shape') {
+              if (activeTool === 'shape') {
                 currentStrokeRef.current.points = [currentStrokeRef.current.points[0], coords];
               } else {
-                currentStrokeRef.current.points.push(coords);
+                // Add point with smoothing for stylus/touch writing quality
+                const pts = currentStrokeRef.current.points;
+                const last = pts[pts.length - 1];
+                const dist = Math.hypot(coords.x - last.x, coords.y - last.y);
+                if (dist > 0.3) {
+                  const smoothed = {
+                    x: last.x * 0.15 + coords.x * 0.85,
+                    y: last.y * 0.15 + coords.y * 0.85,
+                    pressure: coords.pressure
+                  };
+                  pts.push(smoothed);
+                }
               }
             }
         }
@@ -651,6 +694,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
           onPointerOut={handlePointerUp}
+          onContextMenu={(e) => e.preventDefault()}
           className={`absolute top-0 left-0 w-full h-full ${
             tool === 'pointer' ? 'cursor-default' : 
             tool === 'eraser' ? 'cursor-cell' : 

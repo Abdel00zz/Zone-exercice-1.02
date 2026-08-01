@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Eraser, Undo2, Redo2, Trash2, Hand, PenTool, MousePointer2, 
   Image as ImageIcon, Lasso, CircleDashed, Highlighter, Square, 
@@ -6,6 +6,68 @@ import {
   Triangle, ChevronDown, Check, Palette, Type, Pen, Pencil, Heart, MoreVertical
 } from 'lucide-react';
 import { ToolType, PenType, HighlighterType, EraserType, ShapeType } from './types';
+
+interface LongPressButtonProps {
+  onClick: () => void;
+  onLongPress: () => void;
+  className?: string;
+  title?: string;
+  children: React.ReactNode;
+}
+
+const LongPressButton: React.FC<LongPressButtonProps> = ({
+  onClick,
+  onLongPress,
+  className = '',
+  title = '',
+  children
+}) => {
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressRef = useRef(false);
+
+  const startPress = () => {
+    isLongPressRef.current = false;
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    timerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+        try { window.navigator.vibrate(30); } catch (_) {}
+      }
+      onLongPress();
+    }, 500);
+  };
+
+  const endPress = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (!isLongPressRef.current) {
+      onClick();
+    }
+  };
+
+  const cancelPress = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  return (
+    <button
+      onPointerDown={startPress}
+      onPointerUp={endPress}
+      onPointerCancel={cancelPress}
+      onPointerLeave={cancelPress}
+      className={className}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+};
 
 interface ToolbarProps {
   tool: ToolType;
@@ -86,14 +148,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         
         {/* Pen Tool */}
         <div className="relative flex flex-col items-center justify-center">
-          <button 
+          <LongPressButton 
             onClick={() => { setTool('pen'); setOpenMenu(null); }}
-            onDoubleClick={() => setOpenMenu(openMenu === 'pen' ? null : 'pen')} 
+            onLongPress={() => setOpenMenu(openMenu === 'pen' ? null : 'pen')} 
             className={`p-1.5 transition flex flex-col items-center justify-center rounded-md ${tool === 'pen' ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`} 
-            title="Stylo (Double-clic pour options)"
+            title="Stylo (Appui long 0.5s pour options)"
           >
             <PenTool size={20} strokeWidth={tool === 'pen' ? 2.5 : 1.5} />
-          </button>
+          </LongPressButton>
           {tool === 'pen' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-slate-900" />}
           
           {openMenu === 'pen' && (
@@ -127,14 +189,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
         {/* Highlighter Tool */}
         <div className="relative flex flex-col items-center justify-center">
-          <button 
+          <LongPressButton 
             onClick={() => { setTool('highlighter'); setOpenMenu(null); }}
-            onDoubleClick={() => setOpenMenu(openMenu === 'highlighter' ? null : 'highlighter')} 
+            onLongPress={() => setOpenMenu(openMenu === 'highlighter' ? null : 'highlighter')} 
             className={`p-1.5 transition flex flex-col items-center justify-center rounded-md ${tool === 'highlighter' ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`} 
-            title="Surligneur (Double-clic pour options)"
+            title="Surligneur (Appui long 0.5s pour options)"
           >
             <Highlighter size={20} strokeWidth={tool === 'highlighter' ? 2.5 : 1.5} />
-          </button>
+          </LongPressButton>
           {tool === 'highlighter' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-slate-900" />}
 
           {openMenu === 'highlighter' && (
@@ -165,14 +227,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
         {/* Eraser Tool */}
         <div className="relative flex flex-col items-center justify-center">
-          <button 
+          <LongPressButton 
             onClick={() => { setTool('eraser'); setOpenMenu(null); }}
-            onDoubleClick={() => setOpenMenu(openMenu === 'eraser' ? null : 'eraser')} 
+            onLongPress={() => setOpenMenu(openMenu === 'eraser' ? null : 'eraser')} 
             className={`p-1.5 transition flex flex-col items-center justify-center rounded-md ${tool === 'eraser' ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`} 
-            title="Gomme (Double-clic pour options)"
+            title="Gomme (Appui long 0.5s pour options)"
           >
             <Eraser size={20} strokeWidth={tool === 'eraser' ? 2.5 : 1.5} />
-          </button>
+          </LongPressButton>
           {tool === 'eraser' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-slate-900" />}
 
           {openMenu === 'eraser' && (
@@ -198,11 +260,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
         {/* Shape Tool */}
         <div className="relative flex flex-col items-center justify-center">
-          <button 
+          <LongPressButton 
             onClick={() => { setTool('shape'); setOpenMenu(null); }}
-            onDoubleClick={() => setOpenMenu(openMenu === 'shape' ? null : 'shape')} 
+            onLongPress={() => setOpenMenu(openMenu === 'shape' ? null : 'shape')} 
             className={`p-1.5 transition flex flex-col items-center justify-center rounded-md ${tool === 'shape' ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`} 
-            title="Formes (Double-clic pour options)"
+            title="Formes (Appui long 0.5s pour options)"
           >
             {shapeType === 'line' && <Minus size={20} strokeWidth={tool === 'shape' ? 2.5 : 1.5} className="rotate-45" />}
             {shapeType === 'arrow' && <ArrowRight size={20} strokeWidth={tool === 'shape' ? 2.5 : 1.5} className="-rotate-45" />}
@@ -210,7 +272,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             {shapeType === 'rectangle' && <Square size={20} strokeWidth={tool === 'shape' ? 2.5 : 1.5} />}
             {shapeType === 'circle' && <Circle size={20} strokeWidth={tool === 'shape' ? 2.5 : 1.5} />}
             {shapeType === 'triangle' && <Triangle size={20} strokeWidth={tool === 'shape' ? 2.5 : 1.5} />}
-          </button>
+          </LongPressButton>
           {tool === 'shape' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-slate-900" />}
 
           {openMenu === 'shape' && (
@@ -282,14 +344,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         {/* Background Style & Color Selector */}
         {(onStyleChange || onColorChange) && (
           <div className="relative flex flex-col items-center justify-center">
-            <button
-              onClick={() => { setOpenMenu(null); }}
-              onDoubleClick={() => setOpenMenu(openMenu === 'palette' ? null : 'palette')}
+            <LongPressButton
+              onClick={() => { setOpenMenu(openMenu === 'palette' ? null : 'palette'); }}
+              onLongPress={() => setOpenMenu(openMenu === 'palette' ? null : 'palette')}
               className={`p-1.5 transition flex flex-col items-center justify-center rounded-md ${openMenu === 'palette' ? 'bg-slate-200 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-              title="Style & Couleur du fond (Double-clic pour options)"
+              title="Style & Couleur du fond (Appui long 0.5s pour options)"
             >
               <Palette size={20} strokeWidth={1.5} />
-            </button>
+            </LongPressButton>
 
             {openMenu === 'palette' && (
               <div className="absolute top-full mt-2 right-0 w-[280px] bg-[#F4F5F8] rounded-xl shadow-xl border border-slate-200 z-50 animate-in fade-in duration-150 p-4 flex flex-col gap-3">

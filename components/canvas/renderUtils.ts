@@ -160,8 +160,11 @@ export const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke, isSele
      let dynamicWidth = stroke.width;
      if (!stroke.isHighlighter && !stroke.isEraser) {
         if (stroke.penType === 'fine') {
-           dynamicWidth = stroke.width * 0.35;
-           ctx.globalAlpha = 0.5;
+           // Ballpoint Pen (Stylo à bille): Crisp, smooth, high-quality ink line
+           dynamicWidth = stroke.width * 0.8;
+           ctx.globalAlpha = 0.95;
+           ctx.lineCap = 'round';
+           ctx.lineJoin = 'round';
         } else if (stroke.penType === 'marker') {
            dynamicWidth = stroke.width;
         }
