@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { Worksheet, WorksheetContent } from '../types';
-import { GripVertical, Trash2, X, UploadCloud, ImageOff, Info, Image, LayoutTemplate, ListOrdered } from 'lucide-react';
+import { GripVertical, Trash2, X, UploadCloud, ImageOff, Info, Image, LayoutTemplate, ListOrdered, Palette } from 'lucide-react';
 
 const CLASS_OPTIONS = [
 	'Tronc Commun Scientifique',
@@ -420,6 +420,79 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 										<span className="text-xs text-slate-500">Affiche l'énoncé de la question centré sur une page séparée si elle contient des sous-questions.</span>
 									</div>
 								</label>
+							</div>
+						</section>
+
+						{/* Style & Fond des Zones de Réponse */}
+						<section className="space-y-4">
+							<div className="flex items-start gap-3">
+								<div className="p-2 bg-amber-50 text-amber-600 rounded-lg shrink-0">
+									<Palette className="h-5 w-5" />
+								</div>
+								<div>
+									<h3 className="text-lg font-semibold text-gray-900">Style & Fond des Zones de Réponse</h3>
+									<p className="text-sm text-slate-500">Personnalisez le quadrillage, la couleur de fond et la hauteur par défaut des canevas de réponse.</p>
+								</div>
+							</div>
+
+							<div className="ml-0 md:ml-12 grid gap-6 md:grid-cols-2">
+								<div>
+									<label htmlFor="answer-space-style" className="block text-sm font-medium text-gray-900 mb-2">Style de lignes / quadrillage</label>
+									<select
+										id="answer-space-style"
+										value={editableContent.settings?.answerSpaceStyle || 'slate'}
+										onChange={(e) => setEditableContent(prev => ({
+											...prev,
+											settings: { ...prev.settings, answerSpaceStyle: e.target.value as any }
+										}))}
+										className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition shadow-sm"
+									>
+										<option value="slate">Ardoise (Lignes horizontales)</option>
+										<option value="seyes">Grands Carreaux (Seyes)</option>
+										<option value="grid">Quadrillage (Grid)</option>
+										<option value="dotted">Pointillés (Dotted)</option>
+										<option value="blank">Vierge (Sans lignes)</option>
+									</select>
+								</div>
+
+								<div>
+									<label htmlFor="answer-space-color" className="block text-sm font-medium text-gray-900 mb-2">Couleur de fond du canevas</label>
+									<select
+										id="answer-space-color"
+										value={editableContent.settings?.answerSpaceColor || ''}
+										onChange={(e) => setEditableContent(prev => ({
+											...prev,
+											settings: { ...prev.settings, answerSpaceColor: e.target.value as any }
+										}))}
+										className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition shadow-sm"
+									>
+										<option value="">Couleur par défaut du style</option>
+										<option value="black">Noir Sombre (#0F172A)</option>
+										<option value="green">Vert Ardoise (#14532D)</option>
+										<option value="blue">Bleu Nuit (#1E3A8A)</option>
+										<option value="white">Blanc Pur (#FFFFFF)</option>
+										<option value="cream">Crème Doux (#FEF3C7)</option>
+									</select>
+								</div>
+
+								<div className="md:col-span-2">
+									<label htmlFor="answer-space-height" className="block text-sm font-medium text-gray-900 mb-2">
+										Hauteur minimale des zones de réponse : <span className="font-bold text-blue-600">{editableContent.settings?.answerSpaceMinHeight || 120} px</span>
+									</label>
+									<input
+										id="answer-space-height"
+										type="range"
+										min="60"
+										max="600"
+										step="20"
+										value={editableContent.settings?.answerSpaceMinHeight || 120}
+										onChange={(e) => setEditableContent(prev => ({
+											...prev,
+											settings: { ...prev.settings, answerSpaceMinHeight: parseInt(e.target.value, 10) }
+										}))}
+										className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+									/>
+								</div>
 							</div>
 						</section>
 

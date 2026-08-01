@@ -10,8 +10,8 @@ import { ToolType, PenType, HighlighterType, EraserType, ShapeType } from './typ
 interface ToolbarProps {
   tool: ToolType;
   setTool: (tool: ToolType) => void;
-  openMenu: 'pen' | 'highlighter' | 'eraser' | 'shape' | 'more' | null;
-  setOpenMenu: (menu: 'pen' | 'highlighter' | 'eraser' | 'shape' | 'more' | null) => void;
+  openMenu: 'pen' | 'highlighter' | 'eraser' | 'shape' | 'more' | 'palette' | null;
+  setOpenMenu: (menu: 'pen' | 'highlighter' | 'eraser' | 'shape' | 'more' | 'palette' | null) => void;
   
   penType: PenType;
   setPenType: (type: PenType) => void;
@@ -274,6 +274,70 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <Trash2 size={18} />
             </button>
         </div>
+
+        {/* Background Style & Color Selector */}
+        {(onStyleChange || onColorChange) && (
+          <div className="relative flex flex-col items-center justify-center">
+            <button
+              onClick={() => toggleMenu('palette')}
+              className={`p-1.5 transition flex flex-col items-center justify-center rounded-md ${openMenu === 'palette' ? 'bg-slate-200 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+              title="Style & Couleur du fond"
+            >
+              <Palette size={20} strokeWidth={1.5} />
+            </button>
+
+            {openMenu === 'palette' && (
+              <div className="absolute top-full mt-2 right-0 w-[280px] bg-[#F4F5F8] rounded-xl shadow-xl border border-slate-200 z-50 animate-in fade-in duration-150 p-4 flex flex-col gap-3">
+                {onStyleChange && (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1.5">Style de fond</label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[
+                        { id: 'slate', name: 'Ardoise' },
+                        { id: 'seyes', name: 'Seyes' },
+                        { id: 'grid', name: 'Carreaux' },
+                        { id: 'dotted', name: 'Pointillés' },
+                        { id: 'blank', name: 'Vierge' }
+                      ].map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => { onStyleChange(s.id as any); setOpenMenu(null); }}
+                          className={`px-2.5 py-1.5 text-xs rounded-lg border text-left transition font-medium ${styleName === s.id ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}`}
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {onColorChange && (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1.5">Couleur du fond</label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[
+                        { id: '', name: 'Défaut' },
+                        { id: 'black', name: 'Noir' },
+                        { id: 'green', name: 'Vert' },
+                        { id: 'blue', name: 'Bleu' },
+                        { id: 'white', name: 'Blanc' },
+                        { id: 'cream', name: 'Crème' }
+                      ].map((c) => (
+                        <button
+                          key={c.id || 'default'}
+                          onClick={() => { onColorChange(c.id as any); setOpenMenu(null); }}
+                          className={`px-2 py-1.5 text-xs rounded-lg border text-center transition font-medium ${colorName === c.id ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}`}
+                        >
+                          {c.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Menu "...": Palm Rejection & Image Import */}
         <div className="relative flex flex-col items-center justify-center">
