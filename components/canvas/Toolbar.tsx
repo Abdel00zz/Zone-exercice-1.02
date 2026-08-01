@@ -87,9 +87,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         {/* Pen Tool */}
         <div className="relative flex flex-col items-center justify-center">
           <button 
-            onClick={() => toggleMenu('pen')} 
+            onClick={() => { setTool('pen'); setOpenMenu(null); }}
+            onDoubleClick={() => setOpenMenu(openMenu === 'pen' ? null : 'pen')} 
             className={`p-1.5 transition flex flex-col items-center justify-center rounded-md ${tool === 'pen' ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`} 
-            title="Stylo"
+            title="Stylo (Double-clic pour options)"
           >
             <PenTool size={20} strokeWidth={tool === 'pen' ? 2.5 : 1.5} />
           </button>
@@ -127,9 +128,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         {/* Highlighter Tool */}
         <div className="relative flex flex-col items-center justify-center">
           <button 
-            onClick={() => toggleMenu('highlighter')} 
+            onClick={() => { setTool('highlighter'); setOpenMenu(null); }}
+            onDoubleClick={() => setOpenMenu(openMenu === 'highlighter' ? null : 'highlighter')} 
             className={`p-1.5 transition flex flex-col items-center justify-center rounded-md ${tool === 'highlighter' ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`} 
-            title="Surligneur"
+            title="Surligneur (Double-clic pour options)"
           >
             <Highlighter size={20} strokeWidth={tool === 'highlighter' ? 2.5 : 1.5} />
           </button>
@@ -164,9 +166,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         {/* Eraser Tool */}
         <div className="relative flex flex-col items-center justify-center">
           <button 
-            onClick={() => toggleMenu('eraser')} 
+            onClick={() => { setTool('eraser'); setOpenMenu(null); }}
+            onDoubleClick={() => setOpenMenu(openMenu === 'eraser' ? null : 'eraser')} 
             className={`p-1.5 transition flex flex-col items-center justify-center rounded-md ${tool === 'eraser' ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`} 
-            title="Gomme"
+            title="Gomme (Double-clic pour options)"
           >
             <Eraser size={20} strokeWidth={tool === 'eraser' ? 2.5 : 1.5} />
           </button>
@@ -196,9 +199,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         {/* Shape Tool */}
         <div className="relative flex flex-col items-center justify-center">
           <button 
-            onClick={() => toggleMenu('shape')} 
+            onClick={() => { setTool('shape'); setOpenMenu(null); }}
+            onDoubleClick={() => setOpenMenu(openMenu === 'shape' ? null : 'shape')} 
             className={`p-1.5 transition flex flex-col items-center justify-center rounded-md ${tool === 'shape' ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`} 
-            title="Formes"
+            title="Formes (Double-clic pour options)"
           >
             {shapeType === 'line' && <Minus size={20} strokeWidth={tool === 'shape' ? 2.5 : 1.5} className="rotate-45" />}
             {shapeType === 'arrow' && <ArrowRight size={20} strokeWidth={tool === 'shape' ? 2.5 : 1.5} className="-rotate-45" />}
@@ -279,9 +283,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         {(onStyleChange || onColorChange) && (
           <div className="relative flex flex-col items-center justify-center">
             <button
-              onClick={() => toggleMenu('palette')}
+              onClick={() => { setOpenMenu(null); }}
+              onDoubleClick={() => setOpenMenu(openMenu === 'palette' ? null : 'palette')}
               className={`p-1.5 transition flex flex-col items-center justify-center rounded-md ${openMenu === 'palette' ? 'bg-slate-200 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-              title="Style & Couleur du fond"
+              title="Style & Couleur du fond (Double-clic pour options)"
             >
               <Palette size={20} strokeWidth={1.5} />
             </button>
