@@ -157,31 +157,20 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       if (!canvas || !container) return;
 
       const rect = container.getBoundingClientRect();
-      
-      if (dimensionsRef.current.width === 0) {
-        canvas.width = rect.width;
-        canvas.height = Math.max(rect.height, 500);
-        dimensionsRef.current = { width: rect.width, height: canvas.height };
+      const targetWidth = Math.round(rect.width);
+      const targetHeight = Math.round(rect.height);
+
+      if (targetWidth === 0 || targetHeight === 0) return;
+
+      if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        dimensionsRef.current = { width: targetWidth, height: targetHeight };
         redrawAll();
-        return;
-      }
-      
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = dimensionsRef.current.width;
-      tempCanvas.height = dimensionsRef.current.height;
-      const tCtx = tempCanvas.getContext('2d');
-      if (tCtx) tCtx.drawImage(canvas, 0, 0);
-      
-      canvas.width = rect.width;
-      canvas.height = Math.max(rect.height, dimensionsRef.current.height);
-      dimensionsRef.current = { width: canvas.width, height: canvas.height };
-      
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-         ctx.drawImage(tempCanvas, 0, 0);
-         redrawAll();
       }
     };
+
+    resizeCanvas();
 
     const resizeObserver = new ResizeObserver(() => {
       resizeCanvas();
@@ -192,7 +181,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     }
     
     return () => resizeObserver.disconnect();
-  }, [redrawAll]);
+  }, [redrawAll, height]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -247,11 +236,23 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   };
 
   const isStylusEraser = (e: React.PointerEvent | PointerEvent) => {
+    if (!e) return false;
+    if (e.pointerType === 'eraser') return true;
     if (e.pointerType === 'pen') {
       const ne = (e as any).nativeEvent || e;
       const buttons = e.buttons ?? ne.buttons ?? 0;
       const button = e.button ?? ne.button ?? -1;
-      return (buttons & 2) !== 0 || (buttons & 4) !== 0 || (buttons & 32) !== 0 || button === 2 || Boolean((ne as any).barrelButton);
+      return (
+        (buttons & 2) !== 0 ||
+        (buttons & 4) !== 0 ||
+        (buttons & 32) !== 0 ||
+        button === 2 ||
+        button === 5 ||
+        Boolean((ne as any).barrelButton) ||
+        Boolean((e as any).barrelButton) ||
+        Boolean((ne as any).eraser) ||
+        Boolean((e as any).eraser)
+      );
     }
     return false;
   };
@@ -456,6 +457,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                 });
                 if (erasedAny) {
                   setSelectedStrokeIndexes(new Set());
+                  redrawAll();
                 }
               } else {
                 // Pixel eraser via stylus button or tool
@@ -471,6 +473,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                     isEraser: true
                   };
                 }
+                redrawAll();
               }
             } else if (activeTool === 'lasso') {
               if (isDraggingSelectionRef.current && dragStartRef.current) {
@@ -662,8 +665,47 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedStrokeIndexes, tool]);
 
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [floatingState, setFloatingState] = useState<{ isFloating: boolean; left: number; width: number }>({
+    isFloating: false,
+    left: 0,
+    width: 0,
+  });
+
+  useEffect(() => {
+    const handleScrollAndResize = () => {
+      if (!wrapperRef.current) return;
+      const rect = wrapperRef.current.getBoundingClientRect();
+      const headerOffset = 52;
+      const minCanvasVisible = 120;
+
+      const topPassedHeader = rect.top < headerOffset;
+      const bottomStillVisible = rect.bottom > (headerOffset + minCanvasVisible);
+
+      if (topPassedHeader && bottomStillVisible) {
+        setFloatingState({
+          isFloating: true,
+          left: rect.left,
+          width: rect.width,
+        });
+      } else {
+        setFloatingState(prev => prev.isFloating ? { isFloating: false, left: 0, width: 0 } : prev);
+      }
+    };
+
+    window.addEventListener('scroll', handleScrollAndResize, { passive: true });
+    window.addEventListener('resize', handleScrollAndResize, { passive: true });
+    handleScrollAndResize();
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollAndResize);
+      window.removeEventListener('resize', handleScrollAndResize);
+    };
+  }, []);
+
   return (
-    <div className="absolute inset-0 z-10 flex flex-col pointer-events-none group/canvas">
+    <div ref={wrapperRef} className="absolute inset-0 z-10 flex flex-col pointer-events-none group/canvas">
+      {floatingState.isFloating && <div className="w-full h-[40px] shrink-0 pointer-events-none" />}
       <Toolbar 
         tool={tool} setTool={setTool} openMenu={openMenu} setOpenMenu={setOpenMenu}
         penType={penType} setPenType={setPenType}
@@ -681,6 +723,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         onAddImage={onAddImage} fileInputRef={fileInputRef} handleImageUpload={handleImageUpload}
         styleName={styleName} colorName={colorName}
         onStyleChange={onStyleChange} onColorChange={onColorChange}
+        isFloating={floatingState.isFloating}
+        floatingLeft={floatingState.left}
+        floatingWidth={floatingState.width}
       />
       <div 
         ref={containerRef}

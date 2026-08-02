@@ -171,8 +171,8 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
               </div>
             </div>
             
-            {/* Rendu de l'image si la question a des sous-questions (pas de zone de réponse) */}
-            {hasSubquestions && q.image && q.image.src && (
+            {/* Rendu de l'image de la question (positionnée au-dessous de la question) */}
+            {q.image && q.image.src && (
               <div className={`mt-3 mb-2 flex ${
                 isPresentationSlide ? 'justify-center my-8' :
                 q.image.placement === 'center' ? 'justify-center' : 
@@ -230,7 +230,6 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                  onHeightChange={(newHeight) => onQuestionUpdate(exerciseId, currentPath, { answerHeight: newHeight })}
                  onStyleChange={(newStyle) => onQuestionUpdate(exerciseId, currentPath, { answerStyle: newStyle })}
                  onColorChange={(newColor) => onQuestionUpdate(exerciseId, currentPath, { answerColor: newColor })}
-                 image={q.image}
                  onAddImage={() => setActiveImageModal(index)}
                />
             ) : null}
@@ -296,8 +295,8 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
         </div>
       )}
 
-      {/* Rendu de l'image si l'exercice a des questions (pas de zone de réponse globale) */}
-      {exercise.questions && exercise.questions.length > 0 && exercise.image && exercise.image.src && (
+      {/* Rendu de l'image de l'exercice (sous l'énoncé, hors du canva) */}
+      {exercise.image && exercise.image.src && (
         <div className={`mt-3 mb-6 flex ${
           exercise.image.placement === 'center' ? 'justify-center' : 
           exercise.image.placement === 'right' ? 'justify-end' : 'justify-start'
@@ -331,7 +330,6 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
             onHeightChange={(newHeight) => onExerciseUpdate(exercise.id, { statementAnswerHeight: newHeight })}
             onStyleChange={(newStyle) => onExerciseUpdate(exercise.id, { statementAnswerStyle: newStyle })}
             onColorChange={(newColor) => onExerciseUpdate(exercise.id, { statementAnswerColor: newColor })}
-            image={exercise.image}
             onAddImage={() => setIsImageModalOpen(true)}
           />
       )}

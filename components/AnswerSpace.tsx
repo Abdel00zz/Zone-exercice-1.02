@@ -343,36 +343,6 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({ height = 120, styleName = 'sl
           </div>
         </div>
 
-        {/* Image Injectée */}
-        {image && image.src && (
-          <div 
-            className={`absolute z-10 p-2 ${
-              image.placement === 'center' ? 'left-1/2 -translate-x-1/2' : 
-              image.placement === 'right' ? 'right-2' : 'left-2'
-            }`}
-            style={{ top: '8px' }}
-          >
-            <div className="flex flex-col items-center gap-1 bg-white/80 p-1 border border-slate-200 shadow-sm print:bg-white print:border-none print:shadow-none print:p-0">
-              <img 
-                src={image.src} 
-                alt={image.caption || "Image de l'exercice"} 
-                style={{ 
-                  width: image.width ? `${image.width}px` : 'auto',
-                  height: image.height ? `${image.height}px` : 'auto',
-                  maxWidth: '100%',
-                  objectFit: 'contain'
-                }}
-                className="print:max-w-full"
-              />
-              {image.caption && (
-                <span className="text-xs text-slate-600 font-medium italic print:text-black mt-1">
-                  {image.caption}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
         <DrawingCanvas 
           height={height} 
           onAddImage={onAddImage} 
