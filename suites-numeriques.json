@@ -1,0 +1,175 @@
+{
+  "chapter": "Les Suites Numériques",
+  "exercises": [
+    {
+      "id": "exo_suite_recurrence_1",
+      "title": "Étude d'une suite arithmético-géométrique",
+      "statement": "Soit la suite $(u_n)_{n \\in \\mathbb{N}}$ définie par $u_0 = 2$ et pour tout $n \\in \\mathbb{N}$ par la relation de récurrence : $$ u_{n+1} = \\frac{1}{2}u_n + 3 $$",
+      "questions": [
+        {
+          "text": "Calculer les termes $u_1$, $u_2$ et $u_3$.",
+          "answer": "u_1 = 4, \\quad u_2 = 5, \\quad u_3 = 5{,}5",
+          "solution": "\\begin{block}{Calcul des premiers termes}\n\\begin{itemize}\n  \\item $u_1 = \\frac{1}{2} u_0 + 3 = \\frac{1}{2}(2) + 3 = 1 + 3 = 4$\n  \\item $u_2 = \\frac{1}{2} u_1 + 3 = \\frac{1}{2}(4) + 3 = 2 + 3 = 5$\n  \\item $u_3 = \\frac{1}{2} u_2 + 3 = \\frac{1}{2}(5) + 3 = 2{,}5 + 3 = 5{,}5 = \\frac{11}{2}$\n\\end{itemize}\n\\end{block}"
+        },
+        {
+          "text": "Démontrer par récurrence que pour tout $n \\in \\mathbb{N}$, on a $u_n < 6$.",
+          "answer": "\\forall n \\in \\mathbb{N}, \\, u_n < 6",
+          "solution": "\\begin{block}{Démonstration par récurrence}\n\\textbf{Initialisation :} Pour $n=0$, $u_0 = 2 < 6$. La propriété est vraie au rang $0$.\n\\\\[0.5em]\n\\textbf{Hérédité :} Soit $n \\in \\mathbb{N}$. Supposons que $u_n < 6$.\n\nAlors : \n$$ \\frac{1}{2} u_n < 3 \\implies \\frac{1}{2} u_n + 3 < 6 \\implies u_{n+1} < 6 $$\nLa propriété est donc héréditaire.\n\\\\[0.5em]\n\\textbf{Conclusion :} Par le principe de récurrence, pour tout $n \\in \\mathbb{N}$, $u_n < 6$.\n\\end{block}"
+        },
+        {
+          "text": "Étudier le sens de variation de la suite $(u_n)$.",
+          "answer": "La suite $(u_n)$ est strictement croissante.",
+          "solution": "\\begin{block}{Sens de variation}\nÉtudions le signe de $u_{n+1} - u_n$ :\n$$ u_{n+1} - u_n = \\left(\\frac{1}{2}u_n + 3\\right) - u_n = 3 - \\frac{1}{2}u_n = \\frac{6 - u_n}{2} $$\nD'après la question précédente, $u_n < 6$ pour tout $n$, donc $6 - u_n > 0$.\n\nAinsi, $u_{n+1} - u_n > 0$, ce qui prouve que la suite $(u_n)$ est \\textbf{strictement croissante}.\n\\end{block}"
+        },
+        {
+          "text": "On considère la suite auxiliaire $(v_n)_{n \\in \\mathbb{N}}$ définie pour tout $n \\in \\mathbb{N}$ par $v_n = u_n - 6$.",
+          "subquestions": [
+            {
+              "text": "Démontrer que $(v_n)$ est une suite géométrique dont on déterminera la raison $q$ et le premier terme $v_0$.",
+              "answer": "v_n \\text{ est géométrique de raison } q = \\frac{1}{2} \\text{ et premier terme } v_0 = -4",
+              "solution": "\\begin{block}{Nature de la suite $(v_n)$}\nPour tout $n \\in \\mathbb{N}$ :\n$$ v_{n+1} = u_{n+1} - 6 = \\left(\\frac{1}{2}u_n + 3\\right) - 6 = \\frac{1}{2}u_n - 3 = \\frac{1}{2}(u_n - 6) = \\frac{1}{2} v_n $$\nDonc $(v_n)$ est une suite géométrique de raison $q = \\frac{1}{2}$.\n\nSon premier terme est $v_0 = u_0 - 6 = 2 - 6 = -4$.\n\\end{block}"
+            },
+            {
+              "text": "Exprimer $v_n$ en fonction de $n$, puis en déduire l'expression de $u_n$ en fonction de $n$.",
+              "answer": "v_n = -4 \\left(\\frac{1}{2}\\right)^n, \\quad u_n = 6 - 4 \\left(\\frac{1}{2}\\right)^n",
+              "solution": "\\begin{block}{Expressions explicites}\nComme $(v_n)$ est géométrique :\n$$ v_n = v_0 \\times q^n = -4 \\times \\left(\\frac{1}{2}\\right)^n $$\nPuisque $v_n = u_n - 6$, on en déduit $u_n = v_n + 6$, soit :\n$$ u_n = 6 - 4 \\left(\\frac{1}{2}\\right)^n $$\n\\end{block}"
+            },
+            {
+              "text": "Déterminer la limite de la suite $(u_n)$ lorsque $n$ tend vers $+\\infty$.",
+              "answer": "\\lim_{n \\to +\\infty} u_n = 6",
+              "solution": "\\begin{block}{Calcul de la limite}\nComme $-1 < \\frac{1}{2} < 1$, on a $\\lim_{n \\to +\\infty} \\left(\\frac{1}{2}\\right)^n = 0$.\n\nPar conséquent :\n$$ \\lim_{n \\to +\\infty} u_n = \\lim_{n \\to +\\infty} \\left(6 - 4 \\left(\\frac{1}{2}\\right)^n\\right) = 6 - 0 = 6 $$\n\\end{block}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "exo_modelisation_population",
+      "title": "Modélisation de population et évolution annuelle",
+      "statement": "En 2025, une réserve naturelle compte $1000$ individus d'une espèce protégée. Chaque année, la population diminue de $10\\%$ en raison des aléas climatiques, mais les responsables réintroduisent $150$ nouveaux individus à la fin de chaque année.",
+      "questions": [
+        {
+          "text": "On note $u_n$ le nombre d'individus présents lors de l'année $2025 + n$. Justifier que pour tout $n \\in \\mathbb{N}$ : $$ u_{n+1} = 0{,}9 u_n + 150 $$",
+          "answer": "u_{n+1} = (1 - 0{,}10) u_n + 150 = 0{,}9 u_n + 150",
+          "solution": "\\begin{block}{Justification de la récurrence}\nDiminuer de $10\\%$ revient à multiplier par $1 - 0{,}10 = 0{,}9$.\n\nAprès la diminution, la population est $0{,}9 u_n$.\nEn ajoutant les $150$ individus réintroduits, on obtient bien :\n$$ u_{n+1} = 0{,}9 u_n + 150 $$\navec le terme initial $u_0 = 1000$.\n\\end{block}"
+        },
+        {
+          "text": "Soit la suite $(w_n)_{n \\in \\mathbb{N}}$ définie par $w_n = u_n - 1500$.",
+          "subquestions": [
+            {
+              "text": "Démontrer que $(w_n)$ est une suite géométrique de raison $0{,}9$.",
+              "answer": "w_{n+1} = 0{,}9 w_n \\quad \\text{avec } w_0 = -500",
+              "solution": "\\begin{block}{Suite auxiliaire géométrique}\nPour tout $n \\in \\mathbb{N}$ :\n$$ w_{n+1} = u_{n+1} - 1500 = (0{,}9 u_n + 150) - 1500 = 0{,}9 u_n - 1350 $$\nEn factorisant par $0{,}9$ :\n$$ w_{n+1} = 0{,}9 (u_n - 1500) = 0{,}9 w_n $$\n$(w_n)$ est donc une suite géométrique de raison $q = 0{,}9$ et de premier terme $w_0 = 1000 - 1500 = -500$.\n\\end{block}"
+            },
+            {
+              "text": "Exprimer $w_n$ puis $u_n$ en fonction de $n$.",
+              "answer": "w_n = -500 \\times (0{,}9)^n, \\quad u_n = 1500 - 500 \\times (0{,}9)^n",
+              "solution": "\\begin{block}{Expressions explicites}\nComme $(w_n)$ est géométrique :\n$$ w_n = -500 \\times (0{,}9)^n $$\nD'où $u_n = w_n + 1500$ :\n$$ u_n = 1500 - 500 \\times (0{,}9)^n $$\n\\end{block}"
+            }
+          ]
+        },
+        {
+          "text": "La population va-t-elle se stabiliser à long terme ? Déterminer $\\lim_{n \\to +\\infty} u_n$ et interpréter le résultat.",
+          "answer": "\\lim_{n \\to +\\infty} u_n = 1500",
+          "solution": "\\begin{block}{Limite et interprétation}\nComme $-1 < 0{,}9 < 1$, $\\lim_{n \\to +\\infty} (0{,}9)^n = 0$.\n\nPar conséquent :\n$$ \\lim_{n \\to +\\infty} u_n = 1500 - 500 \\times 0 = 1500 $$\n\\textbf{Interprétation :} À long terme, la population d'individus dans la réserve naturelle va se stabiliser à $1500$ individus.\n\\end{block}"
+        }
+      ]
+    },
+    {
+      "id": "exo_theoreme_gendarmes",
+      "title": "Encadrement et théorème des gendarmes",
+      "statement": "On considère la suite $(u_n)_{n \\ge 1}$ définie pour tout entier $n \\ge 1$ par : $$ u_n = \\sum_{k=1}^{n} \\frac{n}{n^2 + k} = \\frac{n}{n^2 + 1} + \\frac{n}{n^2 + 2} + \\dots + \\frac{n}{n^2 + n} $$",
+      "questions": [
+        {
+          "text": "Pour tout entier $k$ tel que $1 \\le k \\le n$, comparer $n^2 + 1$, $n^2 + k$ et $n^2 + n$.",
+          "answer": "n^2 + 1 \\le n^2 + k \\le n^2 + n",
+          "solution": "\\begin{block}{Inégalités élémentaires}\nPour tout $1 \\le k \\le n$ :\n$$ 1 \\le k \\le n \\implies n^2 + 1 \\le n^2 + k \\le n^2 + n $$\n\\end{block}"
+        },
+        {
+          "text": "En déduire que pour tout entier $n \\ge 1$ : $$ \\frac{n^2}{n^2 + n} \\le u_n \\le \\frac{n^2}{n^2 + 1} $$",
+          "answer": "\\frac{n^2}{n^2 + n} \\le u_n \\le \\frac{n^2}{n^2 + 1}",
+          "solution": "\\begin{block}{Encadrement de $u_n$}\nEn passant à l'inverse (car tous les termes sont strictement positifs) :\n$$ \\frac{1}{n^2 + n} \\le \\frac{1}{n^2 + k} \\le \\frac{1}{n^2 + 1} $$\nEn multipliant par $n > 0$ :\n$$ \\frac{n}{n^2 + n} \\le \\frac{n}{n^2 + k} \\le \\frac{n}{n^2 + 1} $$\nEn sommant ces $n$ inégalités pour $k$ allant de $1$ à $n$ :\n$$ n \\times \\frac{n}{n^2 + n} \\le \\sum_{k=1}^n \\frac{n}{n^2 + k} \\le n \\times \\frac{n}{n^2 + 1} $$\nD'où :\n$$ \\frac{n^2}{n^2 + n} \\le u_n \\le \\frac{n^2}{n^2 + 1} $$\n\\end{block}"
+        },
+        {
+          "text": "Déterminer $\\lim_{n \\to +\\infty} \\frac{n^2}{n^2 + n}$ et $\\lim_{n \\to +\\infty} \\frac{n^2}{n^2 + 1}$.",
+          "answer": "\\lim_{n \\to +\\infty} \\frac{n^2}{n^2 + n} = 1 \\quad \\text{et} \\quad \\lim_{n \\to +\\infty} \\frac{n^2}{n^2 + 1} = 1",
+          "solution": "\\begin{block}{Limites des bornes}\n\\begin{itemize}\n  \\item $\\lim_{n \\to +\\infty} \\frac{n^2}{n^2 + n} = \\lim_{n \\to +\\infty} \\frac{n^2}{n^2(1 + 1/n)} = \\lim_{n \\to +\\infty} \\frac{1}{1 + 1/n} = 1$\n  \\item $\\lim_{n \\to +\\infty} \\frac{n^2}{n^2 + 1} = \\lim_{n \\to +\\infty} \\frac{n^2}{n^2(1 + 1/n^2)} = \\lim_{n \\to +\\infty} \\frac{1}{1 + 1/n^2} = 1$\n\\end{itemize}\n\\end{block}"
+        },
+        {
+          "text": "En déduire la limite de la suite $(u_n)$ lorsque $n$ tend vers $+\\infty$.",
+          "answer": "\\lim_{n \\to +\\infty} u_n = 1",
+          "solution": "\\begin{block}{Théorème des gendarmes}\nLes deux suites encadrantes convergent vers la même limite $1$.\n\nD'après le \\textbf{théorème des gendarmes (ou théorème d'encadrement)}, la suite $(u_n)$ converge également et :\n$$ \\lim_{n \\to +\\infty} u_n = 1 $$\n\\end{block}"
+        }
+      ]
+    },
+    {
+      "id": "exo_suite_radicale",
+      "title": "Étude d'une suite récurrente avec racine carrée",
+      "statement": "Soit la suite $(u_n)_{n \\in \\mathbb{N}}$ définie par $u_0 = 0$ et pour tout $n \\in \\mathbb{N}$ par : $$ u_{n+1} = \\sqrt{2 + u_n} $$",
+      "questions": [
+        {
+          "text": "Montrer par récurrence que pour tout $n \\in \\mathbb{N}$, $0 \\le u_n \\le 2$.",
+          "answer": "\\forall n \\in \\mathbb{N}, \\, 0 \\le u_n \\le 2",
+          "solution": "\\begin{block}{Bornitude par récurrence}\n\\textbf{Initialisation :} Pour $n=0$, $u_0 = 0$, donc $0 \\le u_0 \\le 2$ est vrai.\n\\\\[0.5em]\n\\textbf{Hérédité :} Soit $n \\in \\mathbb{N}$, supposons $0 \\le u_n \\le 2$.\n$$ 2 \\le 2 + u_n \\le 4 \\implies \\sqrt{2} \\le \\sqrt{2 + u_n} \\le \\sqrt{4} \\implies 0 \\le u_{n+1} \\le 2 $$\nLa propriété est donc transmise au rang $n+1$.\n\\\\[0.5em]\n\\textbf{Conclusion :} Pour tout $n \\in \\mathbb{N}$, $0 \\le u_n \\le 2$.\n\\end{block}"
+        },
+        {
+          "text": "Démontrer que la suite $(u_n)$ est strictly croissante.",
+          "answer": "u_{n+1} - u_n \\ge 0 \\implies (u_n) \\text{ est croissante}",
+          "solution": "\\begin{block}{Monotonie}\nÉtudions le signe de $u_{n+1} - u_n = \\sqrt{2 + u_n} - u_n$.\nEn multipliant par la quantité conjuguée :\n$$ u_{n+1} - u_n = \\frac{(\\sqrt{2+u_n} - u_n)(\\sqrt{2+u_n} + u_n)}{\\sqrt{2+u_n} + u_n} = \\frac{2 + u_n - u_n^2}{\\sqrt{2+u_n} + u_n} = \\frac{(2 - u_n)(1 + u_n)}{\\sqrt{2+u_n} + u_n} $$\nComme $0 \\le u_n \\le 2$, on a $2 - u_n \\ge 0$, $1 + u_n > 0$ et le dénominateur est strictement positif.\nDonc $u_{n+1} - u_n \\ge 0$, la suite $(u_n)$ est \\textbf{croissante}.\n\\end{block}"
+        },
+        {
+          "text": "Justifier que la suite $(u_n)$ est convergente.",
+          "answer": "(u_n) \\text{ est croissante et majorée par } 2, \\text{ donc elle converge.}",
+          "solution": "\\begin{block}{Convergence}\nLa suite $(u_n)$ est croissante et majorée par $2$.\n\nD'après le \\textbf{théorème de la convergence monotone}, la suite $(u_n)$ est convergente vers une limite réelle $\\ell \\in [0, 2]$.\n\\end{block}"
+        },
+        {
+          "text": "Soit $\\ell$ la limite de la suite $(u_n)$. Résoudre l'équation $\\ell = \\sqrt{2 + \\ell}$ et en déduire la valeur exacte de $\\ell$.",
+          "answer": "\\ell = 2",
+          "solution": "\\begin{block}{Calcul de la limite $\\ell$}\nPar continuité de la fonction $f(x) = \\sqrt{2+x}$ sur $[0,2]$, la limite $\\ell$ vérifie $\\ell = f(\\ell)$ :\n$$ \\ell = \\sqrt{2 + \\ell} $$\nEn élevant au carré (avec $\\ell \\ge 0$) :\n$$ \\ell^2 = 2 + \\ell \\iff \\ell^2 - \\ell - 2 = 0 \\iff (\\ell - 2)(\\ell + 1) = 0 $$\nLes solutions réelles sont $\\ell = 2$ et $\\ell = -1$.\n\nComme $u_n \\ge 0$ pour tout $n$, $\\ell \\ge 0$, donc la seule valeur possible est $\\mathbf{\\ell = 2}$.\n\\end{block}"
+        }
+      ]
+    },
+    {
+      "id": "exo_suites_adjacentes",
+      "title": "Suites adjacentes et convergence",
+      "statement": "On considère deux suites $(a_n)_{n \\in \\mathbb{N}}$ et $(b_n)_{n \\in \\mathbb{N}}$ définies par $a_0 = 1$, $b_0 = 8$ et pour tout $n \\in \\mathbb{N}$ : $$ a_{n+1} = \\frac{a_n + 2b_n}{3} \\quad \\text{et} \\quad b_{n+1} = \\frac{a_n + 3b_n}{4} $$",
+      "questions": [
+        {
+          "text": "Soit la suite $(d_n)$ définie par $d_n = b_n - a_n$ pour tout $n \\in \\mathbb{N}$.",
+          "subquestions": [
+            {
+              "text": "Exprimer $d_{n+1}$ en fonction de $d_n$.",
+              "answer": "d_{n+1} = \\frac{1}{12} d_n",
+              "solution": "\\begin{block}{Relation de récurrence pour $d_n$}\n$$ d_{n+1} = b_{n+1} - a_{n+1} = \\frac{a_n + 3b_n}{4} - \\frac{a_n + 2b_n}{3} $$\nRéduisons au même dénominateur $12$ :\n$$ d_{n+1} = \\frac{3(a_n + 3b_n) - 4(a_n + 2b_n)}{12} = \\frac{3a_n + 9b_n - 4a_n - 8b_n}{12} = \\frac{b_n - a_n}{12} = \\frac{1}{12} d_n $$\n\\end{block}"
+            },
+            {
+              "text": "En déduire que $(d_n)$ est une suite géométrique dont on donnera la raison et le premier terme.",
+              "answer": "d_n = 7 \\left(\\frac{1}{12}\\right)^n",
+              "solution": "\\begin{block}{Suite géométrique $d_n$}\nLa suite $(d_n)$ est géométrique de raison $q = \\frac{1}{12}$.\nSon premier terme est $d_0 = b_0 - a_0 = 8 - 1 = 7$.\n\nAinsi, pour tout $n \\in \\mathbb{N}$ :\n$$ d_n = 7 \\left(\\frac{1}{12}\\right)^n $$\n\\end{block}"
+            },
+            {
+              "text": "Déterminer la limite de $(d_n)$ quand $n \\to +\\infty$.",
+              "answer": "\\lim_{n \\to +\\infty} d_n = 0",
+              "solution": "\\begin{block}{Limite de $d_n$}\nComme $-1 < \\frac{1}{12} < 1$, $\\lim_{n \\to +\\infty} \\left(\\frac{1}{12}\\right)^n = 0$.\nDonc :\n$$ \\lim_{n \\to +\\infty} d_n = 0 $$\n\\end{block}"
+            }
+          ]
+        },
+        {
+          "text": "Déterminer le sens de variation de la suite $(a_n)$ et de la suite $(b_n)$.",
+          "answer": "(a_n) \\text{ est croissante et } (b_n) \\text{ est décroissante}",
+          "solution": "\\begin{block}{Sens de variation de $(a_n)$ et $(b_n)$}\n\\begin{itemize}\n  \\item $a_{n+1} - a_n = \\frac{a_n + 2b_n}{3} - a_n = \\frac{2(b_n - a_n)}{3} = \\frac{2}{3} d_n > 0$, donc $(a_n)$ est \\textbf{croissante}.\n  \\item $b_{n+1} - b_n = \\frac{a_n + 3b_n}{4} - b_n = \\frac{a_n - b_n}{4} = -\\frac{1}{4} d_n < 0$, donc $(b_n)$ est \\textbf{décroissante}.\n\\end{itemize}\n\\end{block}"
+        },
+        {
+          "text": "Démontrer que les suites $(a_n)$ et $(b_n)$ sont adjacentes. Que peut-on en conclure ?",
+          "answer": "(a_n) \\text{ et } (b_n) \\text{ sont adjacentes et convergent vers une même limite } \\ell",
+          "solution": "\\begin{block}{Suites adjacentes}\nLes suites $(a_n)$ et $(b_n)$ vérifient :\n1. $(a_n)$ est croissante ;\n2. $(b_n)$ est décroissante ;\n3. $\\lim_{n \\to +\\infty} (b_n - a_n) = \\lim_{n \\to +\\infty} d_n = 0$.\n\nPar définition, les suites $(a_n)$ et $(b_n)$ sont \\textbf{adjacentes}. Elles convergent donc toutes les deux vers une \\textbf{même limite réelle} $\\ell$.\n\\end{block}"
+        },
+        {
+          "text": "On pose $s_n = 3a_n + 8b_n$ pour tout $n \\in \\mathbb{N}$. Montrer que $(s_n)$ est une suite constante et déterminer la limite commune de $(a_n)$ et $(b_n)$.",
+          "answer": "s_n = 67 \\quad \\text{et la limite commune est } \\ell = \\frac{67}{11}",
+          "solution": "\\begin{block}{Invariante $s_n$ et limite commune}\nCalculons $s_{n+1}$ :\n$$ s_{n+1} = 3 a_{n+1} + 8 b_{n+1} = 3 \\left(\\frac{a_n + 2b_n}{3}\\right) + 8 \\left(\\frac{a_n + 3b_n}{4}\\right) = (a_n + 2b_n) + (2a_n + 6b_n) = 3a_n + 8b_n = s_n $$\nLa suite $(s_n)$ est constante, égale à $s_0 = 3a_0 + 8b_0 = 3(1) + 8(8) = 67$.\n\nEn passant à la limite quand $n \\to +\\infty$ :\n$$ \\lim_{n \\to +\\infty} s_n = 3\\ell + 8\\ell = 11\\ell = 67 \\implies \\mathbf{\\ell = \\frac{67}{11}} $$\n\\end{block}"
+        }
+      ]
+    }
+  ]
+}

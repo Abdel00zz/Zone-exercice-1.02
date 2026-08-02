@@ -1,0 +1,86 @@
+{
+  "chapter": "Algèbre — exercices à affichage progressif",
+  "version": "1.0",
+  "settings": {
+    "showCanvas": true,
+    "showSolutions": true,
+    "presentationMode": true,
+    "oneQuestionPerPage": false,
+    "answerSpaceMinHeight": 140,
+    "answerSpaceStyle": "grid",
+    "answerSpaceColor": "white",
+    "className": "Tronc commun",
+    "schoolYear": "2026-2027"
+  },
+  "exercises": [
+    {
+      "id": "alg_identites_remarquables",
+      "title": "Identités remarquables",
+      "statement": "On rappelle les identités fondamentales.\\pause \\begin{itemize}[<+->]\\item $(a+b)^2=a^2+2ab+b^2$\\item $(a-b)^2=a^2-2ab+b^2$\\item $(a-b)(a+b)=a^2-b^2$\\end{itemize}",
+      "solution": "\\onslide<2->{On identifie d'abord les termes $a$ et $b$.} \\onslide<3->{On applique ensuite l'identité adaptée.}",
+      "questions": [
+        {
+          "text": "Développer et réduire : $A=(x+3)^2$.\\pause Puis calculer $A$ pour $x=2$.",
+          "solution": "\\uncover<2->{On utilise $(a+b)^2=a^2+2ab+b^2$.} \\only<3->{Ainsi, $A=x^2+6x+9$ et $A(2)=25$.}",
+          "answerHeight": 150
+        },
+        {
+          "text": "Factoriser : $B=9x^2-25$. \\alert<2>{Quelle identité remarquable reconnaît-on ?}",
+          "solution": "\\visible<2->{Il s'agit d'une différence de deux carrés :} \\onslide<3->{$B=(3x-5)(3x+5)$.}",
+          "answerHeight": 150
+        }
+      ]
+    },
+    {
+      "id": "alg_equations_premier_degre",
+      "title": "Équations du premier degré",
+      "statement": "Résoudre chaque équation dans $\\mathbb{R}$ en justifiant les transformations.",
+      "questions": [
+        {
+          "text": "\\begin{itemize}[<+->]\\item Résoudre $3x-7=11$.\\item Vérifier la solution obtenue.\\item Représenter la solution sur une droite graduée.\\end{itemize}",
+          "solution": "\\only<1>{On isole le terme contenant $x$.}\\only<2>{On obtient $3x=18$.}\\only<3->{$x=6$ et $3\\times6-7=11$.}",
+          "answerHeight": 180
+        },
+        {
+          "text": "Résoudre $\\frac{2x-1}{3}=x+4$.\\pause Préciser s'il existe une, aucune ou une infinité de solutions.",
+          "solution": "\\onslide<2->{$2x-1=3x+12$.} \\onslide<3->{$-x=13$, donc \\alert<3>{$x=-13$}.}",
+          "answerHeight": 180
+        }
+      ]
+    },
+    {
+      "id": "alg_systemes",
+      "title": "Systèmes de deux équations",
+      "statement": "On considère le système $S : \\begin{cases}2x+y=7\\\\x-y=2\\end{cases}$.\\pause Résoudre $S$ par substitution puis contrôler le résultat.",
+      "questions": [
+        {
+          "text": "Exprimer $y$ en fonction de $x$. \\uncover<2->{Remplacer ensuite $y$ dans la première équation.}",
+          "solution": "\\onslide<2->{$y=x-2$.} \\onslide<3->{$2x+(x-2)=7$, donc $3x=9$.}",
+          "answerHeight": 150
+        },
+        {
+          "text": "\\only<1>{Déterminer $x$.}\\only<2>{Déterminer ensuite $y$.}\\only<3->{Donner le couple solution et vérifier les deux équations.}",
+          "solution": "\\visible<2->{$x=3$ et $y=1$.} \\alert<3>{Le couple solution est $(3,1)$.}",
+          "answerHeight": 160
+        }
+      ]
+    },
+    {
+      "id": "alg_polynomes",
+      "title": "Polynômes et factorisation",
+      "statement": "Soit $P(x)=x^3-4x$. \\pause On cherche ses racines et son signe.",
+      "questions": [
+        {
+          "text": "\\begin{itemize}[<+->]\\item Mettre $x$ en facteur.\\item Factoriser complètement $P(x)$.\\item Résoudre $P(x)=0$.\\end{itemize}",
+          "solution": "\\onslide<2->{$P(x)=x(x^2-4)$.} \\onslide<3->{$P(x)=x(x-2)(x+2)$.} \\onslide<4->{Les racines sont $-2$, $0$ et $2$.}",
+          "answerHeight": 200
+        },
+        {
+          "text": "Dresser le tableau de signes de $P$. \\invisible<2>{Commencer par ordonner les racines.} \\visible<2->{Étudier le signe sur les quatre intervalles obtenus.}",
+          "solution": "\\only<2>{Les changements de signe se produisent en $-2$, $0$ et $2$.} \\only<3->{Le signe alterne : $-$, $+$, $-$, $+$.}",
+          "answerHeight": 220
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,384 @@
+/**
+ * styles/print.css
+ * High-Resolution A4 Print — badges match screen exactly
+ */
+
+@media print {
+
+  /* ── Resolution & color fidelity ── */
+  :root {
+    color-scheme: light;
+    --print-font-size: 10.5pt;
+    --print-line-height: 1.5;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 20mm 14mm 15mm 14mm;
+  }
+
+  @page :first {
+    margin-top: 20mm;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    padding-top: 10mm !important; /* Prevent horizontal cut-off at the top */
+    background: white !important;
+    color: #000 !important;
+    font-size: var(--print-font-size);
+    line-height: var(--print-line-height);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: subpixel-antialiased;
+    font-feature-settings: "kern" 1, "liga" 1;
+    image-rendering: high-quality;
+  }
+
+  /* ── Hide UI elements ── */
+  .no-print,
+  header,
+  button,
+  .cursor-row-resize,
+  [role="button"],
+  [role="slider"],
+  .fixed,
+  ::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* ── Layout ── */
+  main.container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .space-y-10 > * + * { margin-top: 6mm !important; }
+  .space-y-8 > * + * { margin-top: 4mm !important; }
+
+  /* ── Typography — pure black ── */
+  h1, h2, h3, h4, h5, h6, p, span, div, li, strong, em,
+  .prose, .prose * {
+    color: #000 !important;
+    background-color: transparent !important;
+  }
+
+  h1 {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    margin-bottom: 5mm !important;
+    font-size: 20pt !important;
+    letter-spacing: -0.01em;
+  }
+
+  /* ══════════════════════════════════════════════
+     EXERCISE BADGE — CHIC STYLE
+  ══════════════════════════════════════════════ */
+  .exercise-badge {
+    background-color: #fff !important;
+    color: #000 !important;
+    border: 1pt solid #000 !important;
+    padding: 1.5mm 4mm !important;
+    border-radius: 4pt !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 9pt !important;
+    letter-spacing: 0.1em !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
+  }
+
+  /* TITRE EXERCICE */
+  .exercise-title {
+    margin-bottom: 5mm !important;
+    font-size: 14pt !important;
+    line-height: 1.2 !important;
+    display: block !important;
+    padding-bottom: 0 !important;
+    border: none !important;
+  }
+  
+  .exercise-title > span:last-child {
+    font-size: 16pt !important;
+    display: block !important;
+    margin-top: 2mm !important;
+  }
+
+  /* ══════════════════════════════════════════════
+     QUESTION BADGES — CHIC & PRO STYLE
+  ══════════════════════════════════════════════ */
+  .question-number-badge {
+    font-family: 'Space Grotesk', sans-serif !important;
+    display: inline-flex !important;
+    align-items: baseline !important;
+    justify-content: center !important;
+    margin-top: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Level 0: Elegant Text */
+  .question-badge-level-0 {
+    background-color: transparent !important;
+    color: #000 !important;
+    border: none !important;
+    width: auto !important;
+    height: auto !important;
+    line-height: 1.2 !important;
+    text-align: right !important;
+    font-size: 11pt !important;
+    font-weight: 600 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    padding: 0 !important;
+    margin-top: 0 !important;
+  }
+  
+  .question-badge-level-0::after {
+    content: "" !important;
+  }
+
+  /* Level 1: Elegant Text */
+  .question-badge-level-1 {
+    background-color: transparent !important;
+    color: #000 !important;
+    border: none !important;
+    width: auto !important;
+    height: auto !important;
+    line-height: 1.2 !important;
+    text-align: right !important;
+    font-size: 10pt !important;
+    font-style: normal !important;
+    font-weight: 500 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    justify-content: flex-end !important;
+    padding: 0 !important;
+    margin-top: 0 !important;
+  }
+  
+  .question-badge-level-1::after {
+    content: "" !important; /* Managed by JS text content */
+  }
+
+  /* ══════════════════════════════════════════════
+     QUESTION ROWS — GRID LAYOUT
+  ══════════════════════════════════════════════ */
+  .question-row {
+    display: grid !important;
+    grid-template-columns: min-content 1fr !important;
+    gap: 4mm !important;
+    align-items: baseline !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* ── Question content ── */
+  .question-content {
+    min-width: 0 !important;
+    overflow-wrap: break-word !important;
+    font-size: var(--print-font-size) !important;
+    line-height: var(--print-line-height) !important;
+    padding-top: 0 !important;
+  }
+
+  /* ── Question list spacing ── */
+  .question-list-main {
+    gap: 4mm !important;
+    padding-left: 0 !important;
+  }
+
+  .question-list-sub {
+    gap: 2mm !important;
+    padding-left: 8mm !important;
+    margin-top: 0 !important;
+  }
+
+  .subquestions-container {
+    margin-top: 2mm !important;
+  }
+
+  /* ══════════════════════════════════════════════
+     MATHJAX SVG
+  ══════════════════════════════════════════════ */
+  mjx-container[jax="SVG"] * {
+    stroke: #000 !important;
+    fill: #000 !important;
+  }
+
+  mjx-container[display="true"] {
+    display: block !important;
+    margin: 2mm 0 !important;
+    text-align: center !important;
+  }
+
+  .question-content mjx-container[jax="SVG"] {
+    max-width: 100% !important;
+  }
+
+  .question-content mjx-container[display="true"] {
+    display: block !important;
+    margin: 1.5mm auto !important;
+    max-width: 100% !important;
+    overflow-x: visible !important;
+  }
+
+  .question-content mjx-container[display="true"] svg {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* ══════════════════════════════════════════════
+     EXERCISE CARDS — page breaks
+  ══════════════════════════════════════════════ */
+  .exercise-card {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    margin-bottom: 6mm !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  .exercise-card .exercise-title {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .exercise-statement {
+    page-break-inside: auto !important; /* Allow statement to break across pages */
+    break-inside: auto !important;
+    page-break-after: auto !important; /* Don't force avoid after, let it flow naturally */
+    break-after: auto !important;
+    margin-bottom: 3mm !important;
+    font-size: var(--print-font-size) !important;
+  }
+
+  .question-block {
+    page-break-inside: auto !important; /* Allow long blocks to break */
+    break-inside: auto !important;
+    margin-bottom: 2mm !important;
+  }
+
+  .question-block .answer-space {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+
+  .exercise-statement + .answer-space {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+
+  .exercise-statement + .exercise-questions-wrapper {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+
+  .exercise-questions-wrapper {
+    margin-top: 3mm !important;
+  }
+
+  .exercise-questions-wrapper > .question-list-main > .question-block:first-child {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+
+  /* ── Title + first exercise grouping ── */
+  .title-and-first-exercise-container {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .title-and-first-exercise-container > div:first-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .title-and-first-exercise-container .text-center {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* ══════════════════════════════════════════════
+     ANSWER SPACES
+  ══════════════════════════════════════════════ */
+  .answer-space {
+    margin-top: 3mm !important;
+    margin-bottom: 2mm !important;
+    page-break-inside: auto !important; /* Allow long answer spaces to break across pages */
+    break-inside: auto !important;
+    width: 100% !important;
+  }
+
+  .answer-space > div {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    border: 0.75pt solid #000 !important;
+    border-radius: 2pt !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    overflow: hidden !important;
+    display: block !important;
+  }
+
+  .answer-space svg.print\:hidden {
+    display: none !important;
+  }
+
+  .answer-space svg.hidden.print\:block,
+  .answer-space svg.hidden {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .answer-space svg {
+    display: block !important;
+    overflow: hidden !important;
+    opacity: 1 !important;
+    shape-rendering: crispEdges !important;
+  }
+
+  .answer-space svg line {
+    stroke-width: 0.35pt !important;
+  }
+
+  /* ── SVG general ── */
+  svg {
+    display: block !important;
+    overflow: visible !important;
+    max-width: 100% !important;
+    shape-rendering: geometricPrecision !important;
+    image-rendering: optimizeQuality !important;
+  }
+
+  img {
+    image-rendering: high-quality;
+    -ms-interpolation-mode: bicubic;
+  }
+
+  /* ── Orphans / widows ── */
+  p, li { orphans: 3; widows: 3; }
+
+  .exercise-card:last-of-type {
+    page-break-after: auto !important;
+  }
+
+  /* ── Prose reset ── */
+  .prose {
+    font-size: var(--print-font-size) !important;
+    line-height: var(--print-line-height) !important;
+  }
+
+  .prose p {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+}

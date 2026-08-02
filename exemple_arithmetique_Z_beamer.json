@@ -1,0 +1,133 @@
+{
+  "chapter": "Arithmétique dans ℤ — parcours guidé",
+  "version": "2.0",
+  "settings": {
+    "showCanvas": true,
+    "showSolutions": false,
+    "presentationMode": true,
+    "oneQuestionPerPage": false,
+    "answerSpaceMinHeight": 240,
+    "answerSpaceStyle": "grid",
+    "answerSpaceColor": "white",
+    "className": "Tronc commun scientifique",
+    "schoolYear": "2026-2027"
+  },
+  "exercises": [
+    {
+      "id": "z_divisibilite",
+      "title": "Divisibilité et division euclidienne",
+      "statement": "Dans $\\mathbb{Z}$, on écrit $a=bq+r$ avec $0\\le r<|b|$.\\pause Utiliser cette écriture pour justifier chaque réponse.",
+      "questions": [
+        {
+          "text": "Effectuer la division euclidienne de $437$ par $12$, puis vérifier l'égalité obtenue.",
+          "answerHeight": 260,
+          "guidance": {
+            "recall": "\\textbf{Division euclidienne} : chercher $a=bq+r$ avec $0\\le r<|b|$.",
+            "hints": [
+              "\\textbf{Multiple} : repère le plus grand multiple de $12$ qui ne dépasse pas $437$.",
+              "\\textbf{Reste} : calcule-le par soustraction et vérifie qu'il appartient à $[0,12[$."
+            ]
+          }
+        },
+        {
+          "text": "Déterminer si $7$ divise $357$.\\pause Donner une justification sans calculatrice.",
+          "answerHeight": 240,
+          "guidance": {
+            "recall": "\\textbf{Divisibilité} : $b\\mid a$ signifie que $a=bk$ pour un entier $k$.",
+            "hints": [
+              "\\textbf{Recherche} : compare $357$ à des multiples de $7$ proches.",
+              "\\textbf{Critère} : la conclusion dépend uniquement du reste de la division par $7$."
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "z_pgcd_euclide",
+      "title": "PGCD et algorithme d'Euclide",
+      "statement": "Calculer un PGCD par divisions successives.\\pause \\begin{itemize}[<+->]\\item Diviser le plus grand entier par le plus petit.\\item Recommencer avec le diviseur et le reste.\\item S'arrêter lorsque le reste vaut zéro.\\end{itemize}",
+      "questions": [
+        {
+          "text": "Calculer $\\operatorname{PGCD}(252,105)$ par l'algorithme d'Euclide.",
+          "answerHeight": 300,
+          "guidance": {
+            "recall": "\\textbf{Euclide} remplace $(a,b)$ par $(b,r)$, où $r$ est le reste.",
+            "hints": [
+              "\\textbf{Départ} : divise $252$ par $105$.",
+              "\\textbf{Arrêt} : recommence avec le diviseur et le reste ; le dernier reste non nul est le PGCD."
+            ]
+          }
+        },
+        {
+          "text": "Les entiers $221$ et $65$ sont-ils premiers entre eux ?",
+          "answerHeight": 270,
+          "guidance": {
+            "recall": "\\textbf{Premiers entre eux} signifie que le PGCD vaut $1$.",
+            "hints": [
+              "\\textbf{Calcul} : applique Euclide à $221$ et $65$.",
+              "\\textbf{Conclusion} : compare le dernier reste non nul à $1$."
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "z_bezout_gauss",
+      "title": "Bézout et lemme de Gauss",
+      "statement": "On relie PGCD, combinaisons linéaires et divisibilité.\\pause \\alert<2>{Toujours identifier d'abord les hypothèses du théorème.}",
+      "questions": [
+        {
+          "text": "Trouver des entiers $u$ et $v$ tels que $35u+22v=1$.",
+          "answerHeight": 310,
+          "guidance": {
+            "recall": "\\textbf{Bézout} relie le PGCD à une combinaison $au+bv$.",
+            "hints": [
+              "\\textbf{Descente} : effectue Euclide avec $35$ et $22$.",
+              "\\textbf{Remontée} : remplace chaque reste jusqu'à exprimer $1$ avec $35$ et $22$."
+            ]
+          }
+        },
+        {
+          "text": "Sachant que $\\operatorname{PGCD}(15,8)=1$ et que $15\\mid8n$, démontrer que $15\\mid n$.",
+          "answerHeight": 270,
+          "guidance": {
+            "recall": "\\textbf{Gauss} : si $a\\mid bc$ et $\\operatorname{PGCD}(a,b)=1$, alors $a\\mid c$.",
+            "hints": [
+              "\\textbf{Identification} : associe l'énoncé aux rôles $a$, $b$ et $c$.",
+              "\\textbf{Vérification} : contrôle les deux hypothèses avant d'appliquer la conclusion."
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "z_congruences",
+      "title": "Congruences",
+      "statement": "Pour $n\\ge1$, $a\\equiv b\\pmod n$ signifie que $n\\mid(a-b)$.\\pause Les congruences sont compatibles avec l'addition et la multiplication.",
+      "questions": [
+        {
+          "text": "Calculer le reste de $7^{2026}$ dans la division par $5$.",
+          "answerHeight": 280,
+          "guidance": {
+            "recall": "\\textbf{Cycle} : pour une grande puissance modulo $n$, étudier les puissances de la base réduite.",
+            "hints": [
+              "\\textbf{Base} : réduis $7$ modulo $5$, puis repère le cycle.",
+              "\\textbf{Exposant} : réduis $2026$ modulo la longueur du cycle."
+            ]
+          }
+        },
+        {
+          "text": "Résoudre dans $\\mathbb{Z}$ : $3x\\equiv4\\pmod7$.",
+          "answerHeight": 270,
+          "guidance": {
+            "recall": "\\textbf{Inverse} : si $\\operatorname{PGCD}(a,n)=1$, $a$ possède un inverse modulo $n$.",
+            "hints": [
+              "\\textbf{Recherche} : trouve l'entier qui, multiplié par $3$, vaut $1$ modulo $7$.",
+              "\\textbf{Isolement} : multiplie les deux membres par cet inverse."
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

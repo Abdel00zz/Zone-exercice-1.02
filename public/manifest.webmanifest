@@ -1,0 +1,15 @@
+{
+  "name": "Générateur de Fiches d'Exercices",
+  "short_name": "Fiches Exercices",
+  "description": "Créez, éditez et annotez des fiches d'exercices avec zones de réponse manuscrites.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8fafc",
+  "theme_color": "#0284c7",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

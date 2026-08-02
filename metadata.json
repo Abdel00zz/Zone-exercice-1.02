@@ -1,0 +1,5 @@
+{
+  "name": "Générateur de Fiches d'Exercices V1.01",
+  "description": "Une application web pour créer, gérer et imprimer des fiches d'exercices personnalisées. Inclut un dashboard pour gérer plusieurs fiches, une fonction de recherche, et un rendu de formules mathématiques.",
+  "requestFramePermissions": []
+}
