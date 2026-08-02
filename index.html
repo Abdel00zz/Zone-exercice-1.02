@@ -11,19 +11,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Playfair+Display:wght@700&family=Roboto+Slab:wght@400;700&family=Space+Grotesk:wght@500;600;700&family=Syne:wght@500;600;700;800&family=Caveat:wght@400..700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/dreampulse/computer-modern-web-font@master/fonts.css">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Fira+Code:wght@400;500;600&family=Fredoka:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
-              sans: ['IBM Plex Sans', 'sans-serif'],
-              serif: ['IBM Plex Serif', 'serif'],
-              display: ['IBM Plex Sans', 'sans-serif'],
-              beamer: ['"Computer Modern Sans"', 'sans-serif'],
-              latex: ['"Computer Modern Serif"', 'serif'],
+              sans: ['Quicksand', 'Segoe UI', 'Arial', 'sans-serif'],
+              serif: ['Lora', 'Georgia', 'serif'],
+              display: ['Fredoka', 'Quicksand', 'sans-serif'],
+              beamer: ['Quicksand', 'Segoe UI', 'Arial', 'sans-serif'],
+              latex: ['Lora', 'Georgia', 'serif'],
+              mono: ['Fira Code', 'ui-monospace', 'monospace'],
               handwriting: ['Caveat', 'cursive'],
             },
           },
@@ -35,6 +35,10 @@
       body {
         background-color: #f8fafc; /* Gris clair (slate-50) */
         color: #000000;
+        font-family: 'Quicksand', 'Segoe UI', Arial, sans-serif;
+        font-weight: 500;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
       }
       
       .text-slate-900,
@@ -45,7 +49,7 @@
       }
       
       .prose {
-        font-family: 'Roboto Slab', serif;
+        font-family: 'Quicksand', 'Segoe UI', Arial, sans-serif;
         color: #1e293b !important;
       }
       
@@ -53,9 +57,65 @@
         color: #1e293b !important;
       }
       
-      /* Fix MathJax alignment issues in flex containers */
-      mjx-container[jax="SVG"] {
+      /* Fix MathJax alignment issues in flex containers.
+         Restreint aux formules en ligne : appliquée aussi aux formules
+         centrées, cette règle annulait leur centrage à l'écran alors que
+         l'impression les centrait — d'où un rendu incohérent. */
+      mjx-container[jax="SVG"]:not([display="true"]) {
         text-align: initial !important;
+      }
+
+      mjx-container[jax="SVG"] {
+        color: currentColor;
+      }
+
+      /* Formule centrée sur sa propre ligne, comme dans un sujet imprimé.
+         La marge appartient au conteneur `.math-display` : MathJax ne doit
+         pas en ajouter une seconde. */
+      mjx-container[jax="SVG"][display="true"] {
+        display: block !important;
+        width: auto !important;
+        text-align: center !important;
+        margin: 0 !important;
+      }
+
+      mjx-container[jax="SVG"][display="true"] > svg {
+        display: inline-block !important;
+        max-width: 100%;
+      }
+
+      /* ── Blocs de mise en page produits par MathText ──────────────────
+         Une formule normale ($…$) reste dans le fil de la phrase ; seule la
+         formule centrée ($$…$$) ouvre un bloc, et son interligne est mesuré
+         pour ne pas creuser l'énoncé. */
+      .math-display {
+        display: block;
+        text-align: center;
+        overflow-x: auto;
+        overflow-y: hidden;
+        margin: 0.4em 0;
+      }
+
+      /* Une formule qui ouvre ou termine l'énoncé ne double pas la marge. */
+      .math-display:first-child { margin-top: 0; }
+      .math-display:last-child { margin-bottom: 0; }
+
+      .math-center {
+        display: block;
+        text-align: center;
+        margin: 0.4em 0;
+      }
+
+      /* Tailwind applique display:block à tous les SVG. MathJax 4 laisse ce
+         choix au navigateur : on rétablit donc un vrai flux en ligne pour
+         éviter qu'une formule courte occupe toute la largeur de l'énoncé. */
+      mjx-container[jax="SVG"]:not([display="true"]) {
+        display: inline !important;
+        width: auto !important;
+      }
+
+      mjx-container[jax="SVG"]:not([display="true"]) > svg {
+        display: inline-block !important;
       }
 
       /* Ergonomie tablette Android : cibles tactiles confortables sans
@@ -71,13 +131,26 @@
         touch-action: manipulation;
       }
 
-      .canvas-toolbar .absolute.top-full {
-        max-width: calc(100vw - 16px);
+      /* Le rail vertical doit rester utilisable même sur un écran court : il
+         défile alors sur lui-même plutôt que de déborder de la fenêtre. */
+      .canvas-rail > div:first-child {
+        max-height: calc(100vh - 76px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+      }
+
+      .canvas-rail > div:first-child::-webkit-scrollbar {
+        display: none;
+      }
+
+      .canvas-rail-panel {
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
       }
 
       @media (pointer: coarse) {
-        .canvas-toolbar > div > div > button,
-        .canvas-toolbar > div > button {
+        .canvas-rail-button {
           min-width: 42px;
           min-height: 42px;
         }

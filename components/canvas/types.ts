@@ -51,7 +51,6 @@ export interface CorrectionToggle {
 
 export interface DrawingCanvasProps {
   height: number;
-  onAddImage?: () => void;
   styleName?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
   colorName?: 'black' | 'green' | 'blue' | 'white' | 'cream' | '';
   onStyleChange?: (style: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank') => void;

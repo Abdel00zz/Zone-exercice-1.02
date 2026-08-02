@@ -8,6 +8,7 @@ import ExerciseCard from './components/ExerciseCard';
 import SettingsModal from './components/SettingsModal';
 import EditableMathText from './components/EditableMathText';
 import SyncPanel from './components/SyncPanel';
+import CanvasFloatingToolbar from './components/canvas/FloatingToolbar';
 
 import { initialJson } from "./data/initialWorksheet";
 const createDefaultWorksheet = (): Worksheet => ({ id: "ws_default_3", name: initialJson.chapter || "Fiche de Démarrage", createdAt: new Date().toISOString(), content: initialJson }); const computeDefaultSchoolYear = (): string => { const now = new Date(); const year = now.getFullYear(); const month = now.getMonth(); const startYear = month >= 7 ? year : year - 1; return `${startYear}-${startYear + 1}`; };
@@ -206,7 +207,6 @@ const App: React.FC = () => {
 
   const worksheetSettings = selectedWorksheet?.content.settings ?? {};
   const showCanvas = worksheetSettings.showCanvas !== false;
-  const showSolutions = worksheetSettings.showSolutions || false;
   const answerSpaceMinHeight = worksheetSettings.answerSpaceMinHeight;
   const answerSpaceStyle = worksheetSettings.answerSpaceStyle ?? 'slate';
   const answerSpaceColor = worksheetSettings.answerSpaceColor;
@@ -219,17 +219,6 @@ const App: React.FC = () => {
   const hasExercises = exercises.length > 0;
   const firstExercise = hasExercises ? exercises[0] : null;
   const remainingExercises = hasExercises ? exercises.slice(1) : [];
-
-  const handleToggleGlobalSolutions = () => {
-    if (!selectedWorksheet) return;
-    handleUpdateWorksheetContent(selectedWorksheet.id, {
-      ...selectedWorksheet.content,
-      settings: {
-        ...worksheetSettings,
-        showSolutions: !showSolutions,
-      },
-    });
-  };
 
   const ErrorMessage: React.FC<{ message: string, onClose: () => void }> = ({ message, onClose }) => (
     <div className="container mx-auto my-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg relative" role="alert">
@@ -285,8 +274,6 @@ const App: React.FC = () => {
             onOpenSettings={() => setIsSettingsModalOpen(true)}
             isEditMode={isEditMode}
             onToggleEditMode={() => setIsEditMode(!isEditMode)}
-            showSolutions={showSolutions}
-            onToggleSolutions={handleToggleGlobalSolutions}
           />
           <main className={`max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-4 landscape:px-2 sm:landscape:px-4 py-8 landscape:py-4 ${isHeaderCollapsed ? 'mt-10 sm:mt-12' : 'mt-16 sm:mt-20'} transition-all duration-300 print:mt-0 print:max-w-none print:p-0 print:py-0`}>
             <div className="space-y-8 print:space-y-6">
@@ -324,7 +311,6 @@ const App: React.FC = () => {
                       exercise={firstExercise}
                       exerciseNumber={1}
                       showCanvas={showCanvas}
-                      showSolutions={showSolutions}
                       answerSpaceMinHeight={answerSpaceMinHeight}
                       answerSpaceStyle={answerSpaceStyle}
                       answerSpaceColor={answerSpaceColor}
@@ -344,7 +330,6 @@ const App: React.FC = () => {
                   exercise={exercise}
                   exerciseNumber={index + 2}
                   showCanvas={showCanvas}
-                  showSolutions={showSolutions}
                   answerSpaceMinHeight={answerSpaceMinHeight}
                   answerSpaceStyle={answerSpaceStyle}
                   answerSpaceColor={answerSpaceColor}
@@ -374,6 +359,12 @@ const App: React.FC = () => {
               )}
             </div>
           </main>
+          {/*
+            Barre d'outils UNIQUE de la fiche : montée une seule fois ici, elle
+            pilote toutes les zones de réponse (réglages partagés, actions
+            adressées à la dernière zone touchée).
+          */}
+          {showCanvas && <CanvasFloatingToolbar />}
           {isSettingsModalOpen && (
             <SettingsModal
               isOpen={isSettingsModalOpen}

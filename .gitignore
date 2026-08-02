@@ -28,3 +28,6 @@ dist-ssr
 
 # Fichiers de travail archivés (codemods ponctuels déjà appliqués)
 _archive
+
+# Configuration locale des assistants
+.claude/settings.local.json

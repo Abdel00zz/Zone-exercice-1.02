@@ -6,12 +6,12 @@ import AnswerSpace from './AnswerSpace';
 import ImageModal from './ImageModal';
 import { Image as ImageIcon } from 'lucide-react';
 import QuestionBeamerScope from './QuestionBeamerScope';
+import { computeQuestionLayout, joinAroundFigure } from '../utils/questionLayout';
 
 interface ExerciseCardProps {
   exercise: Exercise;
   exerciseNumber: number;
   showCanvas?: boolean;
-  showSolutions?: boolean;
   answerSpaceMinHeight?: number;
   answerSpaceStyle?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
   answerSpaceColor?: 'black' | 'green' | 'blue' | 'white' | 'cream';
@@ -22,22 +22,126 @@ interface ExerciseCardProps {
   onExerciseUpdate: (exerciseId: string, newProps: Partial<Exercise>) => void;
 }
 
-const getNumbering = (index: number, level: number): string => {
-  switch (level) {
-    case 0:
-      return `${index + 1}.`;
-    case 1:
-      return `${String.fromCharCode(97 + index)}.`;
-    default:
-      return '-';
+/**
+ * Hauteur exacte de la première ligne d'énoncé : `text-[1.05rem]` combiné à
+ * `leading-relaxed` (1.625). Le numéro reprend cette hauteur de ligne afin que
+ * son glyphe tombe sur la première ligne du texte, et non sur la dernière — un
+ * énoncé terminé par une formule centrée faisait auparavant glisser le numéro
+ * jusqu'en bas du bloc.
+ */
+const QUESTION_LINE_BOX = '1.70625rem';
+
+/**
+ * Numéro en pastille. La hauteur de la pastille vaut exactement celle de la
+ * première ligne d'énoncé : combinée à `align-items: start`, elle se centre
+ * sur cette ligne sans jamais dériver vers le bas du bloc.
+ *
+ * Hiérarchie visuelle : pastille pleine au niveau 0, pastille douce au niveau
+ * 1, simple étiquette au-delà — une seule famille de gris ardoise.
+ */
+const badgeStyle = (level: number): React.CSSProperties => {
+  const base: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontFamily: 'Quicksand, sans-serif',
+    height: QUESTION_LINE_BOX,
+    minWidth: QUESTION_LINE_BOX,
+    padding: '0 0.4rem',
+    borderRadius: '0.5rem',
+    lineHeight: 1,
+    whiteSpace: 'nowrap',
+    marginTop: 0,
+    WebkitPrintColorAdjust: 'exact',
+    printColorAdjust: 'exact' as any,
+  };
+
+  if (level <= 0) {
+    return {
+      ...base,
+      fontSize: '0.9rem',
+      fontWeight: 700,
+      color: '#0f172a',
+      backgroundColor: '#ffffff',
+      border: '1px solid #cbd5e1',
+      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
+    };
   }
+
+  if (level === 1) {
+    return {
+      ...base,
+      fontSize: '0.85rem',
+      fontWeight: 600,
+      color: '#475569',
+      backgroundColor: '#eef2f7',
+      border: '1px solid transparent',
+    };
+  }
+
+  return {
+    ...base,
+    fontSize: '0.8rem',
+    fontWeight: 500,
+    fontStyle: 'italic',
+    color: '#94a3b8',
+    backgroundColor: 'transparent',
+    border: '1px solid transparent',
+  };
 };
+
+const slideBadgeStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontFamily: 'Fredoka, Quicksand, sans-serif',
+  lineHeight: 1,
+  fontSize: '2rem',
+  color: '#1e293b',
+  fontWeight: 700,
+  marginBottom: '1.5rem',
+  backgroundColor: '#f1f5f9',
+  borderRadius: '9999px',
+  width: '4rem',
+  height: '4rem',
+  WebkitPrintColorAdjust: 'exact',
+  printColorAdjust: 'exact' as any,
+};
+
+/** Figure d'une question, ancrée dans le texte ou placée sous l'énoncé. */
+const QuestionFigure: React.FC<{ image: ImageConfig; isSlide?: boolean; inline?: boolean }> = ({ image, isSlide, inline }) => (
+  <div
+    className={`question-figure ${inline ? 'my-4' : 'mt-3 mb-2'} flex ${
+      isSlide ? 'justify-center my-8' :
+      image.placement === 'center' ? 'justify-center' :
+      image.placement === 'right' ? 'justify-end' : 'justify-start'
+    }`}
+  >
+    <div className="flex flex-col items-center gap-1">
+      <img
+        src={image.src}
+        alt={image.caption || "Image de la question"}
+        style={{
+          width: image.width ? `${image.width}px` : 'auto',
+          height: image.height ? `${image.height}px` : 'auto',
+          maxWidth: '100%',
+          objectFit: 'contain'
+        }}
+        className={`print:max-w-full ${isSlide ? 'max-h-[40vh]' : ''}`}
+      />
+      {image.caption && (
+        <span className={`text-slate-600 font-medium italic print:text-black mt-1 ${isSlide ? 'text-lg mt-4' : 'text-xs'}`}>
+          {image.caption}
+        </span>
+      )}
+    </div>
+  </div>
+);
 
 interface QuestionListProps {
   questions: QuestionPart[];
   level: number;
   showCanvas?: boolean;
-  showSolutions?: boolean;
   answerSpaceMinHeight?: number;
   answerSpaceStyle?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
   answerSpaceColor?: 'black' | 'green' | 'blue' | 'white' | 'cream';
@@ -47,44 +151,88 @@ interface QuestionListProps {
   onQuestionUpdate: (exerciseId: string, questionPath: (string | number)[], newProps: Partial<QuestionPart>) => void;
   exerciseId: string;
   path: (string | number)[];
+  /**
+   * Numéro chapeau du parent : il est inséré dans la première ligne de cette
+   * liste, à l'intérieur du même bloc que la sous-question, comme dans un sujet
+   * imprimé (« 1.  a. Calculer … »).
+   */
+  leadLabel?: string;
+  leadLevel?: number;
 }
 
-const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showCanvas = true, showSolutions, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, exerciseId, path }) => {
+const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, exerciseId, path, leadLabel, leadLevel = 0 }) => {
   const [activeImageModal, setActiveImageModal] = useState<number | null>(null);
 
   if (!questions || questions.length === 0) {
     return null;
   }
 
+  const hasLead = Boolean(leadLabel);
+
   return (
-    <div 
-      className={`question-list ${level > 0 ? 'question-list-sub' : 'question-list-main'}`}
-      style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
+    <div
+      className={`question-list ${level > 0 ? 'question-list-sub' : 'question-list-main'} ${hasLead ? 'question-list-lead' : ''}`}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
         gap: level > 0 ? '0.75rem' : '1.5rem',
-        paddingLeft: level > 0 ? '0.75rem' : '0',
+        paddingLeft: level > 0 && !hasLead ? '0.75rem' : '0',
       }}
     >
       {questions.map((q, index) => {
         const currentPath = [...path, index];
-        const hasSubquestions = q.subquestions && q.subquestions.length > 0;
-        const isPresentationSlide = presentationMode && level === 0 && hasSubquestions;
+        const layout = computeQuestionLayout(q, { level, index, presentationMode, showCanvas });
+        const { subquestions, hasSubquestions, collapsed, isSlide: isPresentationSlide, figure } = layout;
         const shouldBreakBefore = (oneQuestionPerPage && level === 0 && index > 0) || (isPresentationSlide && index > 0);
+
+        const subquestionList = (
+          <QuestionList
+            questions={subquestions}
+            level={level + 1}
+            showCanvas={showCanvas}
+            answerSpaceMinHeight={answerSpaceMinHeight}
+            answerSpaceStyle={answerSpaceStyle}
+            answerSpaceColor={answerSpaceColor}
+            presentationMode={presentationMode}
+            oneQuestionPerPage={oneQuestionPerPage}
+            onQuestionUpdate={onQuestionUpdate}
+            exerciseId={exerciseId}
+            path={[...currentPath, 'subquestions']}
+            isEditMode={isEditMode}
+            leadLabel={collapsed ? layout.label : undefined}
+            leadLevel={level}
+          />
+        );
+
+        /*
+            NUMÉRO CHAPEAU
+            Une question sans énoncé propre ne consomme aucune ligne : son
+            numéro descend dans la première sous-question, à l'intérieur du même
+            bloc (« 1.  a. Calculer ... »).
+        */
+        if (collapsed) {
+          return (
+            <QuestionBeamerScope key={index} content={{ text: q.text, answer: q.answer, solution: q.solution, guidance: q.guidance }}>
+              <div className={`question-block question-block-collapsed relative ${shouldBreakBefore ? 'print:break-before-page print:mt-10' : ''}`}>
+                {subquestionList}
+              </div>
+            </QuestionBeamerScope>
+          );
+        }
 
         return (
           <QuestionBeamerScope key={index} content={{ text: q.text, answer: q.answer, solution: q.solution, guidance: q.guidance }}>
           <div
             className={`question-block group/question relative ${shouldBreakBefore ? 'print:break-before-page print:mt-10' : ''}`}
           >
-            {/* 
+            {/*
                 MÉCANISME D'ALIGNEMENT INTELLIGENT & PRÉSENTATION
             */}
-            <div 
+            <div
               className={`
                 ${isPresentationSlide ? '' : `question-row question-row-level-${level}`}
-                bg-blue-50/40 rounded-xl p-3 sm:p-4 border border-blue-100/50 
-                print:bg-transparent print:border-transparent print:p-0
+                py-1
+                print:p-0
                 ${isPresentationSlide ? 'print:flex print:flex-col print:justify-center print:items-center print:min-h-[70vh] print:text-center' : ''}
               `}
               style={isPresentationSlide ? {
@@ -95,118 +243,89 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                 minHeight: '40vh',
                 textAlign: 'center',
                 padding: '2rem'
-              } : { 
+              } : {
                 display: 'grid',
-                gridTemplateColumns: 'min-content 1fr',
+                gridTemplateColumns: hasLead ? 'min-content min-content 1fr' : 'min-content 1fr',
                 gap: '0.75rem',
-                alignItems: 'baseline',
+                /* `start` et non `baseline` : la ligne de base d'un bloc
+                   terminé par une formule centrée est celle de la DERNIÈRE
+                   ligne, ce qui faisait tomber le numéro en bas du bloc. */
+                alignItems: 'start',
               }}
             >
+              {/* Numéro chapeau du parent. Les lignes suivantes conservent la
+                  pastille, masquée : la colonne garde ainsi exactement la même
+                  largeur et les sous-questions restent alignées. */}
+              {hasLead && !isPresentationSlide && (
+                <span
+                  className={`question-lead-badge question-badge-level-${leadLevel}`}
+                  style={index === 0 ? badgeStyle(leadLevel) : { ...badgeStyle(leadLevel), visibility: 'hidden' }}
+                  aria-hidden={index > 0}
+                >
+                  {leadLabel}
+                </span>
+              )}
+
               {/* Badge */}
-              <span 
+              <span
                 className={`question-number-badge ${isPresentationSlide ? '' : `question-badge-level-${level}`} ${isPresentationSlide ? 'print:!mx-auto print:!mb-6 print:!text-[2rem] print:!bg-gray-100 print:!rounded-full print:!p-4 print:!w-[4rem] print:!h-[4rem] print:!flex print:!items-center print:!justify-center' : ''}`}
-                style={isPresentationSlide ? {
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontFamily: '"Space Grotesk", sans-serif',
-                  lineHeight: 1,
-                  fontSize: '2rem',
-                  color: '#1e293b',
-                  fontWeight: 700,
-                  marginBottom: '1.5rem',
-                  backgroundColor: '#f1f5f9',
-                  borderRadius: '9999px',
-                  width: '4rem',
-                  height: '4rem',
-                  WebkitPrintColorAdjust: 'exact',
-                  printColorAdjust: 'exact' as any,
-                } : {
-                  display: 'inline-flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'flex-end',
-                  fontFamily: '"Space Grotesk", sans-serif',
-                  lineHeight: 1.2,
-                  WebkitPrintColorAdjust: 'exact',
-                  printColorAdjust: 'exact' as any,
-                  ...(level === 0
-                    ? {
-                        fontSize: '1.1rem',
-                        color: '#1e293b',
-                        fontWeight: 600,
-                        minWidth: '1.5rem',
-                        marginTop: 0
-                      }
-                    : {
-                        fontSize: '1rem',
-                        color: '#475569',
-                        fontWeight: 500,
-                        minWidth: '1.5rem',
-                        marginTop: 0
-                      }
-                  ),
-                }}
+                style={isPresentationSlide ? slideBadgeStyle : badgeStyle(level)}
               >
-                {getNumbering(index, level)}
+                {layout.label}
               </span>
 
               {/* Contenu de la question */}
-              <div 
+              <div
                 className={`question-content relative ${isPresentationSlide ? 'w-full max-w-3xl' : ''}`}
-                style={{ 
-                  minWidth: 0, 
-                  margin: 0, 
+                style={{
+                  minWidth: 0,
+                  margin: 0,
                   padding: 0,
                 }}
               >
-                <div 
-                  className={`question-text-wrapper text-slate-800 print:text-black leading-relaxed font-beamer ${isPresentationSlide ? 'text-[1.5rem] print:!text-[24pt] text-center print:!leading-relaxed' : 'text-[1.05rem] print:!text-[11pt] pr-8'}`} 
+                <div
+                  className={`question-text-wrapper text-slate-800 print:text-black leading-relaxed font-beamer ${isPresentationSlide ? 'text-[1.5rem] print:!text-[24pt] text-center print:!leading-relaxed' : 'text-[1.05rem] print:!text-[11pt] pr-8'}`}
                   style={{ margin: 0, padding: 0 }}
                 >
-                  <EditableMathText 
-                    text={q.text} 
-                    isEditMode={!!isEditMode}
-                    onChange={(newText) => onQuestionUpdate(exerciseId, currentPath, { text: newText })}
-                  />
+                  {figure && q.image ? (
+                    /* Figure ancrée : l'énoncé se poursuit sous l'illustration. */
+                    <>
+                      <EditableMathText
+                        text={figure.before}
+                        isEditMode={!!isEditMode}
+                        onChange={(newText) => onQuestionUpdate(exerciseId, currentPath, { text: joinAroundFigure(figure, newText, figure.after) })}
+                      />
+                      <QuestionFigure image={q.image} isSlide={isPresentationSlide} inline />
+                      <EditableMathText
+                        text={figure.after}
+                        isEditMode={!!isEditMode}
+                        onChange={(newText) => onQuestionUpdate(exerciseId, currentPath, { text: joinAroundFigure(figure, figure.before, newText) })}
+                      />
+                    </>
+                  ) : (
+                    <EditableMathText
+                      text={q.text}
+                      isEditMode={!!isEditMode}
+                      onChange={(newText) => onQuestionUpdate(exerciseId, currentPath, { text: newText })}
+                    />
+                  )}
                 </div>
-                
+
                 {/* Bouton d'ajout d'image (visible au survol) */}
                 <button
                   onClick={() => setActiveImageModal(index)}
                   className="absolute top-0 right-0 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg opacity-0 group-hover/question:opacity-100 transition-opacity no-print"
-                  title="Ajouter/Modifier une image"
+                  title="Image de la question — affichée au-dessus de la zone de réponse"
+                  aria-label="Ajouter ou modifier l'image de la question hors canvas"
                 >
                   <ImageIcon className="w-4 h-4" />
                 </button>
               </div>
             </div>
-            
-            {/* Rendu de l'image de la question (positionnée au-dessous de la question) */}
-            {q.image && q.image.src && (
-              <div className={`mt-3 mb-2 flex ${
-                isPresentationSlide ? 'justify-center my-8' :
-                q.image.placement === 'center' ? 'justify-center' : 
-                q.image.placement === 'right' ? 'justify-end' : 'justify-start'
-              }`}>
-                <div className="flex flex-col items-center gap-1">
-                  <img 
-                    src={q.image.src} 
-                    alt={q.image.caption || "Image de la question"} 
-                    style={{ 
-                      width: q.image.width ? `${q.image.width}px` : 'auto',
-                      height: q.image.height ? `${q.image.height}px` : 'auto',
-                      maxWidth: '100%',
-                      objectFit: 'contain'
-                    }}
-                    className={`print:max-w-full ${isPresentationSlide ? 'max-h-[40vh]' : ''}`}
-                  />
-                  {q.image.caption && (
-                    <span className={`text-slate-600 font-medium italic print:text-black mt-1 ${isPresentationSlide ? 'text-lg mt-4' : 'text-xs'}`}>
-                      {q.image.caption}
-                    </span>
-                  )}
-                </div>
-              </div>
+
+            {/* Figure non ancrée : rendue sous la question */}
+            {q.image && q.image.src && !figure && (
+              <QuestionFigure image={q.image} isSlide={isPresentationSlide} />
             )}
 
             {/* Page break after presentation slide */}
@@ -218,37 +337,21 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
 
             {hasSubquestions ? (
               <div className={`subquestions-container ${isPresentationSlide ? 'print:!mt-10' : ''}`} style={{ marginTop: '0.75rem' }}>
-                <QuestionList 
-                  questions={q.subquestions} 
-                  level={level + 1} 
-                  showCanvas={showCanvas}
-                  showSolutions={showSolutions}
-                  answerSpaceMinHeight={answerSpaceMinHeight}
-                  answerSpaceStyle={answerSpaceStyle}
-                  answerSpaceColor={answerSpaceColor}
-                  presentationMode={presentationMode}
-                  oneQuestionPerPage={oneQuestionPerPage}
-                  onQuestionUpdate={onQuestionUpdate}
-                  exerciseId={exerciseId}
-                  path={[...currentPath, 'subquestions']}
-                  isEditMode={isEditMode}
-                />
+                {subquestionList}
               </div>
             ) : showCanvas ? (
-               <AnswerSpace 
+               <AnswerSpace
                  height={q.answerHeight || answerSpaceMinHeight}
                  styleName={q.answerStyle || answerSpaceStyle}
                  colorName={q.answerColor || answerSpaceColor}
                  onHeightChange={(newHeight) => onQuestionUpdate(exerciseId, currentPath, { answerHeight: newHeight })}
                  onStyleChange={(newStyle) => onQuestionUpdate(exerciseId, currentPath, { answerStyle: newStyle })}
                  onColorChange={(newColor) => onQuestionUpdate(exerciseId, currentPath, { answerColor: newColor || undefined })}
-                 onAddImage={() => setActiveImageModal(index)}
                  strokes={q.strokes}
                  onStrokesChange={(newStrokes) => onQuestionUpdate(exerciseId, currentPath, { strokes: newStrokes })}
                  solution={q.solution}
                  answer={q.answer}
                  guidance={q.guidance}
-                 showSolution={showSolutions}
                  isEditMode={isEditMode}
                  onSolutionUpdate={(newSol) => onQuestionUpdate(exerciseId, currentPath, { solution: newSol })}
                />
@@ -272,24 +375,27 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
 };
 
 
-const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, showCanvas = true, showSolutions, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onExerciseUpdate }) => {
+const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onExerciseUpdate }) => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   return (
     <div className={`exercise-card bg-white text-black p-4 sm:p-6 lg:p-10 landscape:px-4 landscape:py-5 sm:landscape:px-6 rounded-2xl shadow-sm mb-10 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border border-slate-200 print:border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
-      <h2 className="exercise-title text-xl font-bold font-display text-slate-900 print:text-black flex flex-col md:flex-row print:block items-start md:items-center gap-3 mb-8 print:mb-5 pt-2">
-        <span 
-          className="exercise-badge font-bold uppercase tracking-widest shadow-none print:mb-3 print:inline-block shrink-0"
+      {/* En-tête : le numéro d'exercice, puis le titre en badge secondaire
+          juste en dessous — même famille de formes que les pastilles de
+          question, une seule teinte d'accent. */}
+      <h2 className="exercise-title flex flex-col items-start gap-4 mb-8 print:mb-5 pt-2">
+        <span
+          className="exercise-badge uppercase tracking-widest shrink-0"
           style={{
-            backgroundColor: '#7dd3fc',
-            color: '#000000',
-            fontSize: '0.85rem',
-            padding: '0.4rem 1rem',
-            borderRadius: '0.4rem',
-            border: '1px solid #0284c7',
+            backgroundColor: '#e0f2fe',
+            color: '#075985',
+            fontSize: '0.8rem',
+            padding: '0.4rem 0.9rem',
+            borderRadius: '0.6rem',
+            border: '1px solid #bae6fd',
             display: 'inline-flex',
             alignItems: 'center',
-            fontFamily: '"Space Grotesk", sans-serif',
+            fontFamily: 'Fredoka, Quicksand, sans-serif',
             fontWeight: 600,
             letterSpacing: '0.1em',
             WebkitPrintColorAdjust: 'exact',
@@ -300,22 +406,39 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
           Exercice {exerciseNumber}
         </span>
         {(exercise.title || isEditMode) && (
-          <div className="font-beamer font-normal text-[1.1rem]">
-            <EditableMathText 
+          <span
+            className="exercise-subtitle-badge font-beamer"
+            style={{
+              backgroundColor: '#ffffff',
+              color: '#0f172a',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              padding: '0.18rem 0.55rem',
+              borderRadius: '0.4rem',
+              border: '1px solid #e2e8f0',
+              display: 'inline-flex',
+              alignItems: 'center',
+              lineHeight: 1.3,
+              WebkitPrintColorAdjust: 'exact',
+              printColorAdjust: 'exact' as any,
+            }}
+          >
+            <EditableMathText
               text={exercise.title || ""}
               isEditMode={!!isEditMode}
               onChange={(newTitle) => onExerciseUpdate(exercise.id, { title: newTitle })}
               className={!exercise.title && isEditMode ? "min-w-[150px] text-slate-400 italic" : ""}
             />
-          </div>
+          </span>
         )}
       </h2>
-      
+
       {/* Bouton d'ajout d'image pour l'énoncé (visible au survol) */}
       <button
         onClick={() => setIsImageModalOpen(true)}
         className="absolute top-6 right-6 p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg opacity-0 group-hover/exercise:opacity-100 transition-opacity no-print"
-        title="Ajouter/Modifier une image pour l'énoncé"
+        title="Image de l'énoncé — affichée au-dessus de la zone de réponse"
+        aria-label="Ajouter ou modifier l'image de l'énoncé hors canvas"
       >
         <ImageIcon className="w-5 h-5" />
       </button>
@@ -323,8 +446,8 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
       {exercise.statement && (
         <div className="exercise-statement prose prose-lg max-w-none text-slate-800 print:text-black mb-8 pl-1 font-beamer text-[1.1rem] print:!text-[11.5pt]">
             <div className="text-slate-800 print:text-black leading-relaxed">
-              <EditableMathText 
-                text={exercise.statement} 
+              <EditableMathText
+                text={exercise.statement}
                 isEditMode={!!isEditMode}
                 onChange={(newStatement) => onExerciseUpdate(exercise.id, { statement: newStatement })}
               />
@@ -335,14 +458,14 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
       {/* Rendu de l'image de l'exercice (sous l'énoncé, hors du canva) */}
       {exercise.image && exercise.image.src && (
         <div className={`mt-3 mb-6 flex ${
-          exercise.image.placement === 'center' ? 'justify-center' : 
+          exercise.image.placement === 'center' ? 'justify-center' :
           exercise.image.placement === 'right' ? 'justify-end' : 'justify-start'
         }`}>
           <div className="flex flex-col items-center gap-1">
-            <img 
-              src={exercise.image.src} 
-              alt={exercise.image.caption || "Image de l'exercice"} 
-              style={{ 
+            <img
+              src={exercise.image.src}
+              alt={exercise.image.caption || "Image de l'exercice"}
+              style={{
                 width: exercise.image.width ? `${exercise.image.width}px` : 'auto',
                 height: exercise.image.height ? `${exercise.image.height}px` : 'auto',
                 maxWidth: '100%',
@@ -360,20 +483,18 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
       )}
 
       {showCanvas && (exercise.statementAnswerHeight !== undefined || (exercise.questions && exercise.questions.length === 0)) && (
-         <AnswerSpace 
+         <AnswerSpace
             height={exercise.statementAnswerHeight || answerSpaceMinHeight}
             styleName={exercise.statementAnswerStyle || answerSpaceStyle}
             colorName={exercise.statementAnswerColor || answerSpaceColor}
             onHeightChange={(newHeight) => onExerciseUpdate(exercise.id, { statementAnswerHeight: newHeight })}
             onStyleChange={(newStyle) => onExerciseUpdate(exercise.id, { statementAnswerStyle: newStyle })}
             onColorChange={(newColor) => onExerciseUpdate(exercise.id, { statementAnswerColor: newColor || undefined })}
-            onAddImage={() => setIsImageModalOpen(true)}
             strokes={exercise.statementStrokes}
             onStrokesChange={(newStrokes) => onExerciseUpdate(exercise.id, { statementStrokes: newStrokes })}
             solution={exercise.solution}
             answer={exercise.answer}
             guidance={exercise.guidance}
-            showSolution={showSolutions}
             isEditMode={isEditMode}
             onSolutionUpdate={(newSol) => onExerciseUpdate(exercise.id, { solution: newSol })}
           />
@@ -381,11 +502,10 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
 
       {exercise.questions && exercise.questions.length > 0 && (
         <div className="mt-8 exercise-questions-wrapper print:mt-6">
-          <QuestionList 
-            questions={exercise.questions} 
-            level={0} 
+          <QuestionList
+            questions={exercise.questions}
+            level={0}
             showCanvas={showCanvas}
-            showSolutions={showSolutions}
             answerSpaceMinHeight={answerSpaceMinHeight}
             answerSpaceStyle={answerSpaceStyle}
             answerSpaceColor={answerSpaceColor}

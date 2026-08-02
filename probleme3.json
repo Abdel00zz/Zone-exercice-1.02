@@ -1,0 +1,189 @@
+{
+  "chapter": "Problème 3 - Fonctions exponentielle et logarithme",
+  "version": "1.1",
+  "settings": {
+    "showCanvas": true,
+    "showSolutions": false,
+    "presentationMode": false,
+    "oneQuestionPerPage": false,
+    "answerSpaceMinHeight": 240,
+    "answerSpaceStyle": "grid",
+    "answerSpaceColor": "white",
+    "className": "Baccalauréat",
+    "schoolYear": "2026-2027"
+  },
+  "exercises": [
+    {
+      "id": "probleme3_partie_a",
+      "title": "Partie A",
+      "statement": "On considère les fonctions $g$ et $h$ définies sur $]0,+\\infty[$ par $$g(x)=1-\\ln x\\qquad\\text{et}\\qquad h(x)=x^2e^{x-1}.$$",
+      "questions": [
+        {
+          "text": "",
+          "subquestions": [
+            {
+              "text": "Calculer $g(1)$ et $h(1)$.",
+              "answerHeight": 200,
+              "guidance": {
+                "recall": "\\textbf{Valeurs de référence} : $\\ln 1=0$ et $e^0=1$.",
+                "hints": [
+                  "\\textbf{Substitue} : remplace $x$ par $1$ dans $g(x)=1-\\ln x$.",
+                  "\\textbf{Exposant} : dans $h$, calcule $1-1$ avant l'exponentielle."
+                ]
+              }
+            },
+            {
+              "text": "Résoudre dans $]0,+\\infty[$ l'équation $$g(x)=0.$$",
+              "answerHeight": 220,
+              "guidance": {
+                "recall": "\\textbf{Équivalence} : pour $x>0$, $\\ln x=a\\iff x=e^{a}$.",
+                "hints": [
+                  "\\textbf{Isole} : écris $1-\\ln x=0$ sous la forme $\\ln x=1$.",
+                  "\\textbf{Applique} : passe à l'exponentielle dans les deux membres."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "text": "Les courbes $(C_g)$ et $(C_h)$ ci-dessous représentent respectivement les fonctions $g$ et $h$ dans un même repère orthonormé.\\figure Justifier graphiquement que $$\\forall x\\in]0,1[,\\qquad h(x)-g(x)<0,$$ et que $$\\forall x\\in]1,+\\infty[,\\qquad h(x)-g(x)>0.$$",
+          "answerHeight": 300,
+          "image": {
+            "id": "probleme3_courbes_g_h",
+            "src": "/assets/probleme3-graph.svg",
+            "width": 520,
+            "placement": "center"
+          },
+          "guidance": {
+            "recall": "\\textbf{Lecture graphique} : $h(x)-g(x)<0$ signifie que $(C_h)$ est sous $(C_g)$.",
+            "hints": [
+              "\\textbf{Sur $]0,1[$} : dis laquelle des deux courbes est en dessous à gauche de $x=1$.",
+              "\\textbf{Sur $]1,+\\infty[$} : refais la comparaison à droite de $x=1$."
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "probleme3_partie_b",
+      "title": "Partie B",
+      "statement": "On considère la fonction $f$ définie sur $]0,+\\infty[$ par $$f(x)=e^{x-1}-\\dfrac{\\ln x}{x}.$$ On note $(C_f)$ sa courbe représentative dans un repère orthonormé $(O,\\vec{i},\\vec{j})$.",
+      "questions": [
+        {
+          "text": "",
+          "subquestions": [
+            {
+              "text": "Vérifier que $$\\lim_{x\\to0^+}f(x)=+\\infty,$$ puis interpréter géométriquement ce résultat.",
+              "answerHeight": 280,
+              "guidance": {
+                "recall": "\\textbf{Limites usuelles} : $\\lim\\limits_{x\\to0^+}\\ln x=-\\infty$ et $\\lim\\limits_{x\\to0^+}\\dfrac{1}{x}=+\\infty$.",
+                "hints": [
+                  "\\textbf{Découpe} : cherche la limite de $e^{x-1}$ puis celle de $\\dfrac{\\ln x}{x}$.",
+                  "\\textbf{Interprète} : une limite infinie en $0$ donne une asymptote ; précise laquelle."
+                ]
+              }
+            },
+            {
+              "text": "Vérifier que $$\\lim_{x\\to+\\infty}f(x)=+\\infty.$$",
+              "answerHeight": 240,
+              "guidance": {
+                "recall": "\\textbf{Croissances comparées} : $\\lim\\limits_{x\\to+\\infty}\\dfrac{\\ln x}{x}=0$.",
+                "hints": [
+                  "\\textbf{Terme dominant} : donne la limite de $e^{x-1}$ en $+\\infty$.",
+                  "\\textbf{Assemble} : soustrais les deux limites obtenues."
+                ]
+              }
+            },
+            {
+              "text": "Montrer que $$\\lim_{x\\to+\\infty}\\dfrac{f(x)}{x}=+\\infty,$$ puis interpréter géométriquement ce résultat.",
+              "answerHeight": 280,
+              "guidance": {
+                "recall": "\\textbf{Croissances comparées} : $\\lim\\limits_{x\\to+\\infty}\\dfrac{e^{x}}{x}=+\\infty$.",
+                "hints": [
+                  "\\textbf{Divise} : écris $\\dfrac{f(x)}{x}=\\dfrac{e^{x-1}}{x}-\\dfrac{\\ln x}{x^2}$.",
+                  "\\textbf{Interprète} : conclus sur la branche infinie de $(C_f)$ en $+\\infty$."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "text": "",
+          "subquestions": [
+            {
+              "text": "Montrer que, pour tout $x\\in]0,+\\infty[$, $$f'(x)=\\dfrac{h(x)-g(x)}{x^2}.$$",
+              "answerHeight": 300,
+              "guidance": {
+                "recall": "\\textbf{Dérivée d'un quotient} : $\\left(\\dfrac{u}{v}\\right)'=\\dfrac{u'v-uv'}{v^2}$.",
+                "hints": [
+                  "\\textbf{Applique} : dérive $\\dfrac{\\ln x}{x}$ avec $u=\\ln x$ et $v=x$.",
+                  "\\textbf{Réduis} : mets tout au dénominateur $x^2$, puis identifie $g$ et $h$."
+                ]
+              }
+            },
+            {
+              "text": "Dresser le tableau de variations de la fonction $f$ sur $]0,+\\infty[$. On pourra utiliser les résultats de la partie A.",
+              "answerHeight": 340,
+              "guidance": {
+                "recall": "\\textbf{Signe de la dérivée} : $x^2>0$, donc $f'(x)$ a le signe de $h(x)-g(x)$.",
+                "hints": [
+                  "\\textbf{Réutilise} : reprends le signe de $h-g$ établi en partie A.",
+                  "\\textbf{Complète} : porte $0$, $1$, $+\\infty$, les deux limites et $f(1)$ dans le tableau."
+                ]
+              }
+            },
+            {
+              "text": "En déduire que, pour tout $x\\in]0,+\\infty[$, $$e^{x-1}\\ge 1+\\dfrac{\\ln x}{x}.$$",
+              "answerHeight": 260,
+              "guidance": {
+                "recall": "\\textbf{Extremum} : un changement de sens de variation donne un minimum global.",
+                "hints": [
+                  "\\textbf{Évalue} : calcule $f$ au point où $f'$ change de signe.",
+                  "\\textbf{Traduis} : remplace $f(x)$ par son expression dans l'inégalité obtenue."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "text": "Montrer que l'équation $f(x)=x$ admet une solution $\\alpha$ telle que $\\dfrac{3}{2}<\\alpha<2$. On donne $f(2)\\simeq2{,}37$ et $f\\left(\\dfrac{3}{2}\\right)\\simeq1{,}38$.",
+          "answerHeight": 320,
+          "guidance": {
+            "recall": "\\textbf{Théorème des valeurs intermédiaires} : une fonction continue qui change de signe sur $[a,b]$ s'annule dans $]a,b[$.",
+            "hints": [
+              "\\textbf{Pose} : introduis $F(x)=f(x)-x$ sur $\\left[\\dfrac{3}{2},2\\right]$.",
+              "\\textbf{Compare} : calcule les signes de $F\\left(\\dfrac{3}{2}\\right)$ et $F(2)$ avec les valeurs données."
+            ]
+          }
+        },
+        {
+          "text": "On désigne par $\\varphi$ la restriction de $f$ à $[1,+\\infty[$.",
+          "subquestions": [
+            {
+              "text": "Montrer que $\\varphi$ admet une fonction réciproque $\\varphi^{-1}$ définie sur un intervalle $J$ à déterminer.",
+              "answerHeight": 300,
+              "guidance": {
+                "recall": "\\textbf{Bijection} : continue et strictement monotone sur $I$ $\\Rightarrow$ bijection de $I$ sur $\\varphi(I)$.",
+                "hints": [
+                  "\\textbf{Monotonie} : justifie le sens de variation de $f$ sur $[1,+\\infty[$.",
+                  "\\textbf{Image} : détermine $J$ avec $f(1)$ et la limite en $+\\infty$."
+                ]
+              }
+            },
+            {
+              "text": "Justifier que $\\varphi^{-1}$ est strictement croissante sur $J$.",
+              "answerHeight": 240,
+              "guidance": {
+                "recall": "\\textbf{Réciproque} : $\\varphi^{-1}$ a le même sens de variation que $\\varphi$.",
+                "hints": [
+                  "\\textbf{Rappelle} : indique le sens de variation de $\\varphi$ sur $[1,+\\infty[$.",
+                  "\\textbf{Conclus} : applique la propriété sur l'intervalle $J$."
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -385,24 +385,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 									</div>
 								</label>
 
-								<label className="flex items-start gap-3 p-4 bg-emerald-50/50 border border-emerald-200 rounded-xl cursor-pointer hover:bg-emerald-50 transition shadow-sm">
-									<div className="flex items-center h-5">
-										<input
-											type="checkbox"
-											checked={editableContent.settings?.showSolutions || false}
-											onChange={(e) => setEditableContent(prev => ({
-												...prev,
-												settings: { ...prev.settings, showSolutions: e.target.checked }
-											}))}
-											className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-										/>
-									</div>
-									<div className="flex flex-col">
-										<span className="text-sm font-semibold text-emerald-900">Afficher les corrigés manuscrits par défaut</span>
-										<span className="text-xs text-emerald-700">Affiche directement le corrigé rédigé en écriture manuscrite dans toutes les zones de réponse.</span>
-									</div>
-								</label>
-
 								<label className="flex items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition shadow-sm">
 									<div className="flex items-center h-5">
 										<input

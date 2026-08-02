@@ -1,15 +1,8 @@
 import React, { useRef, useCallback, useId, useState, useEffect } from 'react';
-import type { ImageConfig, PedagogicalGuidance } from '../types';
+import type { PedagogicalGuidance } from '../types';
 import { DrawingCanvas } from './DrawingCanvas';
 import SolutionViewer from './SolutionViewer';
 import { useQuestionProgress } from './QuestionBeamerScope';
-
-interface AnswerSpaceProps {
-  height?: number;
-  styleName?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
-  onHeightChange: (newHeight: number) => void;
-  image?: ImageConfig;
-}
 
 // Configuration
 const MM_TO_PX = 3.7795275591;
@@ -123,14 +116,11 @@ interface AnswerSpaceProps {
   onHeightChange: (newHeight: number) => void;
   onStyleChange?: (style: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank') => void;
   onColorChange?: (color: 'black' | 'green' | 'blue' | 'white' | 'cream' | '') => void;
-  onAddImage?: () => void;
-  image?: ImageConfig;
   strokes?: any[];
   onStrokesChange?: (strokes: any[]) => void;
   solution?: string;
   answer?: string;
   guidance?: PedagogicalGuidance;
-  showSolution?: boolean;
   isEditMode?: boolean;
   onSolutionUpdate?: (newSol: string) => void;
 }
@@ -142,14 +132,11 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   onHeightChange,
   onStyleChange,
   onColorChange,
-  onAddImage,
-  image,
   strokes = [],
   onStrokesChange,
   solution,
   answer,
   guidance,
-  showSolution,
   isEditMode,
   onSolutionUpdate,
 }) => {
@@ -167,15 +154,9 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   const solutionContent = solution || answer || guidanceContent;
   const estimatedSolutionLines = Math.max(1, Math.ceil(solutionContent.length / 72));
   const solutionMinHeight = Math.min(560, Math.max(190, 104 + estimatedSolutionLines * 30));
-  const [isSolutionVisible, setIsSolutionVisible] = useState<boolean>(
-    showSolution !== undefined ? showSolution : hasSolutionContent
-  );
-
-  useEffect(() => {
-    if (showSolution !== undefined) {
-      setIsSolutionVisible(showSolution);
-    }
-  }, [showSolution]);
+  // L'aide appartient à cette zone uniquement : chaque canvas démarre fermé
+  // et son bouton local ne modifie aucune autre question.
+  const [isSolutionVisible, setIsSolutionVisible] = useState(false);
 
   useEffect(() => {
     if (isSolutionVisible && hasSolutionContent && height < solutionMinHeight) {
@@ -480,9 +461,13 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
           </div>
         </div>
 
-        {/* Corrigé placé dans le papier, sous les annotations et sous la barre d'outils. */}
+        {/*
+          Corrigé placé dans le papier, sous les annotations. La barre d'outils
+          n'occupe plus le haut de la zone : le corrigé récupère cette place, et
+          seule une réserve à droite reste nécessaire pour le bouton « Aide ».
+        */}
         {isSolutionVisible && (hasSolutionContent || isEditMode) && (
-          <div className="absolute inset-0 z-[5] px-3 sm:px-4 pb-3 pt-14 sm:pt-16 overflow-hidden bg-transparent border-none pointer-events-none select-none transition-all print:pt-3">
+          <div className="absolute inset-0 z-[5] pl-3 sm:pl-4 pr-20 sm:pr-24 pb-3 pt-3 overflow-hidden bg-transparent border-none pointer-events-none select-none transition-all print:pr-4">
             <SolutionViewer
               solution={solution}
               answer={answer}
@@ -498,7 +483,6 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
         {isNearViewport ? (
           <DrawingCanvas
             height={height}
-            onAddImage={onAddImage}
             styleName={styleName}
             colorName={colorName}
             onStyleChange={onStyleChange}

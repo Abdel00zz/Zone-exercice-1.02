@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 360" role="img" aria-labelledby="title desc">
+  <title id="title">Courbes des fonctions g et h</title>
+  <desc id="desc">Repère orthonormé montrant la courbe décroissante de g en bleu et la courbe croissante de h en vert, qui se coupent au point de coordonnées 1 et 1.</desc>
+  <rect width="560" height="360" fill="#ffffff"/>
+
+  <g stroke="#d9dde3" stroke-width="1">
+    <path d="M70 61H500 M70 110H500 M70 159H500 M70 208H500 M70 257H500 M70 306H500"/>
+    <path d="M172 40V306 M275 40V306 M377 40V306 M479 40V306"/>
+  </g>
+
+  <g stroke="#111827" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M55 257H520"/>
+    <path d="M70 326V30"/>
+    <path d="M520 257l-8-4v8z" fill="#111827"/>
+    <path d="M70 30l-4 8h8z" fill="#111827"/>
+  </g>
+
+  <g stroke="#111827" stroke-width="1.2">
+    <path d="M172 252v10 M275 252v10 M377 252v10 M479 252v10"/>
+    <path d="M65 61h10 M65 110h10 M65 159h10 M65 208h10 M65 306h10"/>
+    <path d="M348 253v8"/>
+  </g>
+
+  <g fill="#111827" font-family="Georgia, 'Times New Roman', serif" font-size="17">
+    <text x="536" y="263" font-style="italic">x</text>
+    <text x="63" y="20" font-style="italic">y</text>
+    <text x="53" y="274" font-style="italic">O</text>
+    <text x="167" y="280">1</text>
+    <text x="270" y="280">2</text>
+    <text x="372" y="280">3</text>
+    <text x="474" y="280">4</text>
+    <text x="339" y="278" font-style="italic">e</text>
+    <text x="47" y="213">1</text>
+    <text x="47" y="164">2</text>
+    <text x="47" y="115">3</text>
+    <text x="47" y="66">4</text>
+    <text x="40" y="311">-1</text>
+  </g>
+
+  <path
+    d="M75 60 C79 81 84 106 91 128 C101 151 117 174 132 184 C145 194 158 202 172 208 C195 219 221 229 247 236 C280 245 315 252 348 257 C390 264 435 271 487 277"
+    fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
+  <path
+    d="M70 257 C96 257 117 254 132 246 C148 237 161 224 172 208 C187 185 198 155 209 121 C219 90 226 62 232 28"
+    fill="none" stroke="#059669" stroke-width="3" stroke-linecap="round"/>
+
+  <circle cx="172" cy="208" r="4" fill="#111827"/>
+
+  <g font-family="Georgia, 'Times New Roman', serif" font-size="19" font-style="italic">
+    <text x="236" y="78" fill="#059669">(C<tspan baseline-shift="sub" font-size="13">h</tspan>)</text>
+    <text x="390" y="292" fill="#2563eb">(C<tspan baseline-shift="sub" font-size="13">g</tspan>)</text>
+  </g>
+</svg>

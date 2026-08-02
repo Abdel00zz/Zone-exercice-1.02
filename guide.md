@@ -260,6 +260,55 @@ l'envelopper dans un objet `worksheet`, `data` ou `content`.
 Chaque question possède son propre objet `guidance`. Le robot ne doit jamais
 fusionner les aides de deux questions.
 
+### Numéro chapeau : `1.  a.  b.`
+
+Quand le PDF présente un numéro suivi immédiatement de sous-questions, sans
+énoncé propre, laisser `text` vide. Le numéro est alors aligné sur la première
+sous-question, comme à l'impression du sujet :
+
+```json
+{
+  "text": "",
+  "subquestions": [
+    { "text": "Calculer $g(1)$ et $h(1)$." },
+    { "text": "Résoudre dans $]0,+\\infty[$ l'équation $$g(x)=0.$$" }
+  ]
+}
+```
+
+rendu :
+
+```
+1.   a. Calculer g(1) et h(1).
+     b. Résoudre dans ]0,+∞[ l'équation
+                    g(x) = 0.
+```
+
+Si le numéro porte une donnée commune (« On désigne par $\varphi$ la restriction
+de $f$ … »), renseigner `text` : la donnée occupe alors sa ligne et les
+sous-questions s'indentent en dessous.
+
+### Profondeur et numérotation
+
+| Niveau | Étiquette |
+|---:|---|
+| 0 | `1.` `2.` `3.` |
+| 1 | `a.` `b.` `c.` |
+| 2 | `i.` `ii.` `iii.` |
+| 3 | `α.` `β.` `γ.` |
+| 4 et au-delà | `•` |
+
+Rester à deux niveaux quand le PDF n'en demande pas davantage.
+
+### Formule centrée à l'intérieur d'une question
+
+Une question peut enchaîner texte, formule centrée puis reprise du texte. Placer
+simplement la formule entre `$$ … $$` :
+
+```json
+{ "text": "Vérifier que $$\\lim_{x\\to0^+}f(x)=+\\infty,$$ puis interpréter géométriquement ce résultat." }
+```
+
 ## 7. Aide progressive pédagogique
 
 ### Contrat recommandé
@@ -286,18 +335,44 @@ Cette structure définit trois niveaux d'aide ordonnés :
 
 ### Règles de rédaction de l'aide
 
-- une idée courte par fragment ;
-- trois fragments par question par défaut ;
-- rédiger les fragments pour tenir sur la même ligne autant que possible ;
-- considérer chaque fragment comme la suite logique du précédent ;
-- aucun saut de ligne manuel inutile ;
+Un indice est **direct, ciblé et clair**. Il dit quoi faire maintenant, sur quel
+objet précis, en une seule opération exécutable.
+
+**Direct**
+
+- commencer par un verbe d'action à l'impératif : `Substitue`, `Isole`,
+  `Dérive`, `Pose`, `Divise`, `Compare`, `Conclus` ;
+- proscrire les formules d'attente : « essaie de », « pense à », « n'oublie pas
+  que », « tu peux commencer par », « il faudrait » ;
+- aucune question rhétorique adressée à l'élève.
+
+**Ciblé**
+
+- nommer l'objet exact : la fonction, l'intervalle, la variable, le théorème ;
+- une seule opération par fragment, applicable immédiatement ;
+- écrire l'expression concernée en LaTeX plutôt que de la décrire en mots.
+
+**Clair**
+
+- au plus douze mots hors formule ;
 - un mot-clé en gras au début de chaque fragment avec `\\textbf{...}` ;
-- le rappel cite la propriété utile, pas tout le chapitre ;
-- le premier indice indique quoi observer ou quelle opération choisir ;
-- le second indice indique comment contrôler ou poursuivre ;
-- ne jamais donner le résultat numérique final ;
-- ne jamais recopier une solution complète ;
-- ne pas inclure les labels `Consigne`, `Rappel` ou `Indice` dans les chaînes ;
+- le fragment tient sur une ligne, sans saut de ligne manuel ;
+- ne pas inclure les labels `Consigne`, `Rappel` ou `Indice` dans les chaînes.
+
+**Structure**
+
+- `recall` cite la propriété utile, pas tout le chapitre ;
+- premier indice : l'opération de départ ;
+- second indice : la poursuite ou le contrôle ;
+- chaque fragment est la suite logique du précédent ;
+- deux indices par question par défaut, trois au maximum ;
+- ne jamais donner le résultat numérique final ni recopier une solution.
+
+| À éviter | À écrire |
+|---|---|
+| « Pense à utiliser la dérivée du quotient. » | `\\textbf{Applique} : dérive $\\dfrac{\\ln x}{x}$ avec $u=\\ln x$ et $v=x$.` |
+| « Observe quelle courbe est située sous l'autre. » | `\\textbf{Sur $]0,1[$} : dis laquelle des deux courbes est en dessous à gauche de $x=1$.` |
+| « Utilise le théorème des valeurs intermédiaires. » | `\\textbf{Pose} : introduis $F(x)=f(x)-x$ sur $\\left[\\dfrac{3}{2},2\\right]$.` |
 
 Les champs techniques acceptés sont `instruction`, `recall`, `hints` et
 `answer`. Pour le mode pédagogique demandé, le robot doit utiliser uniquement
@@ -435,6 +510,23 @@ Recadrer la figure sans inclure le texte voisin. Conserver les axes, unités,
 flèches, points nommés et légendes. Ne pas convertir un schéma important en
 description textuelle si la géométrie visuelle est nécessaire à la question.
 
+### Ancre `\\figure` : figure au milieu de l'énoncé
+
+Par défaut, l'illustration est placée sous tout le texte de la question. Quand le
+PDF intercale la figure entre deux phrases, insérer l'ancre `\\figure` à
+l'endroit exact :
+
+```json
+{
+  "text": "Les courbes $(C_g)$ et $(C_h)$ ci-dessous représentent $g$ et $h$ dans un même repère orthonormé.\\figure Justifier graphiquement que $$\\forall x\\in]0,1[,\\qquad h(x)-g(x)<0.$$",
+  "image": { "id": "fig_courbes", "src": "/assets/courbes.svg", "width": 520, "placement": "center" }
+}
+```
+
+`\\image` et `\\includegraphics{...}` sont acceptés comme synonymes. Sans ancre,
+le comportement historique est conservé. L'ancre est ignorée si la question ne
+porte pas d'objet `image`.
+
 ## 12. Champ JSON `strokes`
 
 Par défaut, une question ne contient aucun champ `strokes`. Le JSON ne contient
@@ -563,7 +655,10 @@ Le robot doit exécuter ces contrôles avant livraison.
 - `exercises` est un tableau non vide ;
 - chaque exercice possède `id`, `title`, `statement`, `questions` ;
 - tous les `id` sont uniques ;
-- chaque question possède `text` ;
+- chaque question possède `text`, éventuellement vide pour un numéro chapeau ;
+- une question à `text` vide possède obligatoirement des `subquestions` ;
+- profondeur limitée à ce que le PDF impose, deux niveaux dans le cas courant ;
+- une ancre `\\figure` n'apparaît que dans une question munie d'un objet `image` ;
 - chaque `hints` est un tableau de chaînes ;
 - les styles et couleurs appartiennent aux listes autorisées.
 
@@ -578,7 +673,10 @@ Le robot doit exécuter ces contrôles avant livraison.
 
 ### Pédagogie et confidentialité de la réponse
 
-- trois étapes d'aide par question quand elles sont utiles ;
+- deux indices par question quand ils sont utiles, trois au maximum ;
+- chaque indice commence par un verbe d'action à l'impératif ;
+- aucun indice ne contient « essaie de », « pense à », « n'oublie pas » ;
+- chaque indice nomme l'objet visé et une seule opération ;
 - mots-clés en gras ;
 - fragments courts et affichables sur une même ligne ;
 - aucune réponse finale dans `guidance`, `answer`, `solution` ou `strokes` ;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Printer, Sliders, Menu, CheckCircle2 } from 'lucide-react';
+import { Printer, Sliders, Menu } from 'lucide-react';
 
 interface WorksheetHeaderProps {
   worksheetName: string;
@@ -8,8 +8,6 @@ interface WorksheetHeaderProps {
   onToggleCollapse?: (collapsed: boolean) => void;
   isEditMode?: boolean;
   onToggleEditMode?: () => void;
-  showSolutions?: boolean;
-  onToggleSolutions?: () => void;
 }
 
 const WorksheetHeader: React.FC<WorksheetHeaderProps> = ({
@@ -19,8 +17,6 @@ const WorksheetHeader: React.FC<WorksheetHeaderProps> = ({
   onToggleCollapse,
   isEditMode = false,
   onToggleEditMode,
-  showSolutions = false,
-  onToggleSolutions,
 }) => {
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
   const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalIsCollapsed;
@@ -84,22 +80,6 @@ const WorksheetHeader: React.FC<WorksheetHeaderProps> = ({
 
             {/* Actions */}
             <div className="flex items-center gap-2 shrink-0">
-              {onToggleSolutions && (
-                <button
-                  onClick={onToggleSolutions}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-2xs ${
-                    showSolutions
-                      ? 'text-white bg-emerald-600 hover:bg-emerald-700 border-emerald-700'
-                      : 'text-slate-700 hover:text-emerald-700 bg-slate-50 hover:bg-emerald-50 border-slate-200 hover:border-emerald-200'
-                  } border`}
-                  aria-label="Afficher/Masquer toutes les aides"
-                  title="Afficher/Masquer tous les rappels de cours"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Aide</span>
-                </button>
-              )}
-
               {onToggleEditMode && (
                 <button
                   onClick={onToggleEditMode}

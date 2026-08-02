@@ -73,7 +73,7 @@ function parseBeamerContent(input: string): ParsedBlock[] {
 /** Confie le contenu complet à MathText afin de préserver les overlays Beamer. */
 function renderLatexContent(raw: string, textColorClass: string) {
   return (
-    <div className={`font-handwriting text-lg sm:text-xl leading-relaxed ${textColorClass}`}>
+    <div className={`font-sans text-base sm:text-lg font-medium leading-relaxed tracking-[-0.01em] ${textColorClass}`}>
       <MathText text={raw} />
     </div>
   );
@@ -148,7 +148,7 @@ export const SolutionViewer: React.FC<SolutionViewerProps> = ({
     const visibleStages = guidanceStages.slice(0, Math.max(1, progressStep));
     return (
       <div className="relative h-full w-full overflow-y-auto pr-1 pointer-events-auto canvas-guidance-scroll">
-        <div className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 pb-3 pt-1 font-handwriting text-lg sm:text-xl leading-relaxed ${textColorClass}`}>
+        <div className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 pb-3 pt-1 font-sans text-base sm:text-lg font-medium leading-relaxed tracking-[-0.01em] ${textColorClass}`}>
           {visibleStages.map((stage, index) => {
             return (
               <span key={`${stage.kind}-${index}`} className="inline-flex max-w-full items-baseline gap-2 align-baseline animate-in fade-in duration-200">

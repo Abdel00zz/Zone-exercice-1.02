@@ -192,8 +192,9 @@ const StaticMathTextImpl: React.FC<MathTextProps> = ({ text, className = '', rev
 
   const expandedText = expandFillBlanks(text, revealFillBlanks);
 
-  // 1. Tokenize display math blocks \[ ... \], $$ ... $$, \begin{align*} ... \end{align*}, \begin{cases} ... \end{cases}
-  const displayMathRegex = /(\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|\\begin{(?:align|align\*|equation|equation\*|cases|matrix|pmatrix|bmatrix)}[\s\S]*?\\end{(?:align|align\*|equation|equation\*|cases|matrix|pmatrix|bmatrix)})/g;
+  // 1. Tokenize display math blocks \[ ... \], $$ ... $$, \begin{align*} ... \end{align*},
+  //    \begin{cases} ... \end{cases}, ainsi que le bloc de texte centré \begin{center} ... \end{center}
+  const displayMathRegex = /(\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|\\begin{center}[\s\S]*?\\end{center}|\\begin{(?:align|align\*|equation|equation\*|cases|matrix|pmatrix|bmatrix)}[\s\S]*?\\end{(?:align|align\*|equation|equation\*|cases|matrix|pmatrix|bmatrix)})/g;
 
   const displayTokens = expandedText.split(displayMathRegex);
 
@@ -201,6 +202,16 @@ const StaticMathTextImpl: React.FC<MathTextProps> = ({ text, className = '', rev
     <span className={className}>
       {displayTokens.map((token, tokenIdx) => {
         if (!token) return null;
+
+        // Bloc de texte centré : \begin{center} ... \end{center}
+        if (token.startsWith('\\begin{center}')) {
+          const inner = token.slice('\\begin{center}'.length, -'\\end{center}'.length);
+          return (
+            <div key={`center-${tokenIdx}`} className="math-center">
+              <StaticMathText text={inner} revealFillBlanks={revealFillBlanks} />
+            </div>
+          );
+        }
 
         // Is this token a Display Math block?
         const isDisplayMath =
@@ -212,15 +223,18 @@ const StaticMathTextImpl: React.FC<MathTextProps> = ({ text, className = '', rev
           token.startsWith('\\begin{matrix');
 
         if (isDisplayMath) {
+          /* `math-display` porte seule l'interligne de la formule centrée :
+             MathJax et Tailwind ajoutaient chacun leur marge, ce qui créait un
+             saut visible entre la phrase et la formule. */
           return (
-            <div key={`display-${tokenIdx}`} className="my-2 my-auto text-center overflow-x-auto">
+            <div key={`display-${tokenIdx}`} className="math-display">
               <MathJax dynamic>{token}</MathJax>
             </div>
           );
         }
 
-        // Token is regular text with linebreaks: \\[0.5em], \\[1em], \\\\, \newline, \par
-        const lineBreakRegex = /(\\\\\[[0-9.]+(?:em|cm|pt|px)?\]|\\\\|\\newline|\\par)/g;
+        // Token is regular text with linebreaks and vertical spacing commands
+        const lineBreakRegex = /(\\\\\[[0-9.]+(?:em|cm|pt|px)?\]|\\\\|\\newline|\\par|\\smallskip|\\medskip|\\bigskip)/g;
         const lineParts = token.split(lineBreakRegex);
 
         return (
@@ -239,6 +253,15 @@ const StaticMathTextImpl: React.FC<MathTextProps> = ({ text, className = '', rev
               }
               if (linePart === '\\par') {
                 return <div key={`par-${lineIdx}`} className="h-3" />;
+              }
+              if (linePart === '\\smallskip') {
+                return <div key={`skip-${lineIdx}`} style={{ height: '0.3em' }} />;
+              }
+              if (linePart === '\\medskip') {
+                return <div key={`skip-${lineIdx}`} style={{ height: '0.6em' }} />;
+              }
+              if (linePart === '\\bigskip') {
+                return <div key={`skip-${lineIdx}`} style={{ height: '1.1em' }} />;
               }
 
               // Render formatted segments
@@ -443,24 +466,28 @@ const ProgressiveInline: React.FC<{ text: string; step: number; revealFillBlanks
 };
 
 interface ItemizeBlock {
+  kind: 'itemize' | 'enumerate';
   before: string;
   body: string;
   spec?: string;
   after: string;
 }
 
+/** Repère la première liste, à puces (`itemize`) ou numérotée (`enumerate`). */
 function splitFirstItemize(text: string): ItemizeBlock | null {
-  const start = text.match(/\\begin\{itemize\}(?:\s*\[\s*<([^>]+)>\s*\])?/);
+  const start = text.match(/\\begin\{(itemize|enumerate)\}(?:\s*\[\s*<([^>]+)>\s*\])?/);
   if (!start || start.index === undefined) return null;
+  const kind = start[1] as ItemizeBlock['kind'];
   const bodyStart = start.index + start[0].length;
-  const endToken = '\\end{itemize}';
+  const endToken = `\\end{${kind}}`;
   const bodyEnd = text.indexOf(endToken, bodyStart);
   if (bodyEnd === -1) return null;
 
   return {
+    kind,
     before: text.slice(0, start.index),
     body: text.slice(bodyStart, bodyEnd),
-    spec: start[1],
+    spec: start[2],
     after: text.slice(bodyEnd + endToken.length),
   };
 }
@@ -481,10 +508,11 @@ const ProgressiveContent: React.FC<{ text: string; step: number; revealFillBlank
   if (!itemize) return <ProgressiveInline text={text} step={step} revealFillBlanks={revealFillBlanks} />;
 
   const items = parseItems(itemize.body);
+  const ListTag = itemize.kind === 'enumerate' ? 'ol' : 'ul';
   return (
     <>
       <ProgressiveContent text={itemize.before} step={step} revealFillBlanks={revealFillBlanks} />
-      <ul className="list-disc list-outside ml-6 my-2 space-y-1">
+      <ListTag className={`${itemize.kind === 'enumerate' ? 'list-decimal' : 'list-disc'} list-outside ml-6 my-2 space-y-1`}>
         {items.map((item, index) => {
           const spec = item.spec ?? itemize.spec;
           const plusValue = index + 1;
@@ -495,7 +523,7 @@ const ProgressiveContent: React.FC<{ text: string; step: number; revealFillBlank
             </li>
           );
         })}
-      </ul>
+      </ListTag>
       <ProgressiveContent text={itemize.after} step={step} revealFillBlanks={revealFillBlanks} />
     </>
   );

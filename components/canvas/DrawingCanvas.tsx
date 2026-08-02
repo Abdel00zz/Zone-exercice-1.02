@@ -1,13 +1,17 @@
 import React, { useRef, useState, useEffect, useCallback, useId } from 'react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
-import { Stroke, DrawingCanvasProps, ShapeType, Point, ToolType, PenType, HighlighterType, EraserType, SelectionMode, LineStyle, PressureCurve } from './types';
-import { Toolbar } from './Toolbar';
+import { Stroke, DrawingCanvasProps, Point, ToolType } from './types';
 import { drawStroke } from './renderUtils';
 import { pointInPolygon, strokeIntersectsPoint, isPointInImage, isPointOnImageResizeHandle } from './utils';
-import { subscribeToViewport, setActiveCanvas, isActiveCanvas, clearActiveCanvas, isTypingTarget } from './canvasRegistry';
+import {
+  setActiveCanvas, isActiveCanvas, clearActiveCanvas, isTypingTarget,
+  registerCanvas, notifyCanvasChanged, type CanvasHandle,
+} from './canvasRegistry';
+import { closeToolMenu, getToolState, setToolState, useToolValue } from './toolStore';
 import { calibratePressure, constrainShapePoint, recognizeStrokeShape, StrokeSmoother } from './inkEngine';
 import CanvasTextLayer from './CanvasTextLayer';
 import CanvasTextEditor, { CanvasTextDraft } from './CanvasTextEditor';
+import CorrectionProgressControl from './CorrectionProgressControl';
 
 /**
  * Résolution du canvas. Le bitmap est dimensionné en pixels physiques pour que
@@ -18,17 +22,6 @@ import CanvasTextEditor, { CanvasTextDraft } from './CanvasTextEditor';
  * une dizaine de canvas simultanément.
  */
 const getRenderScale = () => Math.min(2, Math.max(1, window.devicePixelRatio || 1));
-const CANVAS_PREFS_KEY = 'exercise-canvas-prefs-v1';
-
-const loadCanvasPrefs = () => {
-  if (typeof window === 'undefined') return {} as Record<string, unknown>;
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(CANVAS_PREFS_KEY) || '{}');
-    return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : {};
-  } catch {
-    return {} as Record<string, unknown>;
-  }
-};
 
 type HistoryAction =
   | { type: 'add'; stroke: Stroke }
@@ -36,7 +29,6 @@ type HistoryAction =
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   height,
-  onAddImage,
   styleName,
   colorName,
   onStyleChange,
@@ -48,7 +40,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   correctionToggle,
 }) => {
   const instanceId = useId();
-  const initialPrefs = useRef(loadCanvasPrefs()).current;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDrawing = useRef(false);
@@ -66,36 +57,21 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   // pointerUp), regroupés en une seule action d'historique à la fin du geste.
   const eraseGestureRef = useRef<{ index: number; stroke: Stroke }[]>([]);
   const [redoStack, setRedoStack] = useState<HistoryAction[]>([]);
-  const [tool, setTool] = useState<ToolType>('pointer');
-  const [openMenu, setOpenMenu] = useState<'pen' | 'highlighter' | 'eraser' | 'shape' | 'lasso' | 'more' | 'palette' | null>(null);
-  
-  const [penType, setPenType] = useState<PenType>(() => {
-    const savedPenType = initialPrefs.penType as PenType | undefined;
-    return savedPenType && ['ballpoint', 'fountain', 'marker', 'pencil'].includes(savedPenType)
-      ? savedPenType
-      : 'ballpoint';
-  });
-  const [lineStyle, setLineStyle] = useState<LineStyle>('solid');
-  const [straightenLines, setStraightenLines] = useState(false);
-  const [highlighterType, setHighlighterType] = useState<HighlighterType>(() => {
-    const saved = initialPrefs.highlighterType;
-    return saved === 'round' ? 'round' : 'chisel';
-  });
-  const [highlighterStraightLines, setHighlighterStraightLines] = useState(initialPrefs.highlighterStraightLines === true);
-  const [eraserType, setEraserType] = useState<EraserType>('stroke');
-  const [shapeType, setShapeType] = useState<ShapeType>('line');
-  
-  const [selectionMode, setSelectionMode] = useState<SelectionMode>('lasso');
-  const [includePartialSelection, setIncludePartialSelection] = useState(true);
-  const [alignWithShapes, setAlignWithShapes] = useState(initialPrefs.alignWithShapes !== false);
-  const [highlighterOpacity, setHighlighterOpacity] = useState(0.45);
-  
-  const [color, setColor] = useState<string>('#0f172a');
-  const [highlighterColor, setHighlighterColor] = useState<string>('#fde047');
-  const [lineWidth, setLineWidth] = useState<number>(4);
-  const [highlighterWidth, setHighlighterWidth] = useState<number>(18);
-  const [eraserWidth, setEraserWidth] = useState<number>(30);
-  
+
+  /**
+   * Les réglages d'outil sont partagés par toute la fiche (`toolStore`) et pilotés
+   * par la barre flottante unique. Seules les valeurs qui changent le RENDU de ce
+   * canvas sont souscrites ; les autres sont lues au moment de l'événement pointeur
+   * via `getToolState()`, pour ne pas re-rendre les dizaines de canvas montés à
+   * chaque déplacement d'un curseur d'épaisseur.
+   */
+  const tool = useToolValue(snapshot => snapshot.tool);
+  const selectionMode = useToolValue(snapshot => snapshot.selectionMode);
+  const showMeasurements = useToolValue(snapshot => snapshot.showMeasurements);
+  const palmRejection = useToolValue(snapshot => snapshot.palmRejection);
+  // Couleur de repli de la couche texte DOM (le canvas 2D ne rend pas le LaTeX).
+  const color = useToolValue(snapshot => snapshot.color);
+
   const [textInput, setTextInput] = useState<CanvasTextDraft | null>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const lastPenInputAtRef = useRef(0);
@@ -109,17 +85,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     return () => window.cancelAnimationFrame(frame);
   }, [textInput?.visible]);
 
-  const [palmRejection, setPalmRejection] = useState(initialPrefs.palmRejection !== false);
-  const [pressureCurve, setPressureCurve] = useState<PressureCurve>((initialPrefs.pressureCurve as PressureCurve) || 'balanced');
-  const [penStabilization, setPenStabilization] = useState(Number(initialPrefs.penStabilization ?? 0.35));
-  const [shapeRecognition, setShapeRecognition] = useState(initialPrefs.shapeRecognition !== false);
-  const [snapGrid, setSnapGrid] = useState(initialPrefs.snapGrid === true);
-  const [angleSnap, setAngleSnap] = useState(initialPrefs.angleSnap === true);
-  const [angleStep, setAngleStep] = useState<15 | 30 | 45>((initialPrefs.angleStep as 15 | 30 | 45) || 15);
-  const [regularShapes, setRegularShapes] = useState(initialPrefs.regularShapes === true);
-  const [showMeasurements, setShowMeasurements] = useState(initialPrefs.showMeasurements !== false);
-  const [eraserHighlighterOnly, setEraserHighlighterOnly] = useState(initialPrefs.eraserHighlighterOnly === true);
-  const [eraserAutoSize, setEraserAutoSize] = useState(initialPrefs.eraserAutoSize === true);
   const smootherRef = useRef<StrokeSmoother | null>(null);
   const recognitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognizedStrokeRef = useRef<Stroke | null>(null);
@@ -142,18 +107,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const activeImageIndexRef = useRef<number | null>(null);
   const activeResizeHandleRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(CANVAS_PREFS_KEY, JSON.stringify({
-        penType, highlighterType, highlighterStraightLines, palmRejection, pressureCurve, penStabilization,
-        shapeRecognition, snapGrid, angleSnap, angleStep, regularShapes, alignWithShapes,
-        showMeasurements, eraserHighlighterOnly, eraserAutoSize,
-      }));
-    } catch {
-      /* Les préférences restent utilisables pour la session courante. */
-    }
-  }, [penType, highlighterType, highlighterStraightLines, palmRejection, pressureCurve, penStabilization, shapeRecognition, snapGrid, angleSnap, angleStep, regularShapes, alignWithShapes, showMeasurements, eraserHighlighterOnly, eraserAutoSize]);
 
   const redrawAll = useCallback(() => {
     const canvas = canvasRef.current;
@@ -298,6 +251,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   const commitTextInput = useCallback(() => {
     if (!textInput) return;
+    const { color, lineWidth } = getToolState();
     if (textInput.text.trim()) {
       if (textInput.editingIndex !== undefined && strokesRef.current[textInput.editingIndex]?.isText) {
         strokesRef.current[textInput.editingIndex] = {
@@ -320,7 +274,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       commitStrokes();
     }
     setTextInput(null);
-  }, [color, commitStrokes, lineWidth, textInput]);
+  }, [commitStrokes, textInput]);
 
   /** Mémorise la position de départ des traits sélectionnés avant un déplacement. */
   const beginSelectionDrag = useCallback((selection: Set<number>) => {
@@ -440,7 +394,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         };
         strokesRef.current.push(newStroke);
         setRedoStack([]);
-        setTool('pointer');
+        setToolState({ tool: 'pointer', openMenu: null });
         redrawAll(); commitStrokes();
       };
     };
@@ -454,6 +408,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
+    const { pressureCurve, penType } = getToolState();
 
     return {
       x: e.clientX - rect.left,
@@ -474,6 +429,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   };
 
   const scheduleShapeRecognition = (activeTool: ToolType) => {
+    const { shapeRecognition, highlighterStraightLines } = getToolState();
     if (!shapeRecognition || !['pen', 'highlighter'].includes(activeTool) || (activeTool === 'highlighter' && highlighterStraightLines)) return;
     if (recognitionTimerRef.current) clearTimeout(recognitionTimerRef.current);
     recognitionTimerRef.current = setTimeout(() => {
@@ -486,7 +442,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   };
 
   const alignPointToExistingShapes = (point: Point): Point => {
-    if (!alignWithShapes) return point;
+    if (!getToolState().alignWithShapes) return point;
     const threshold = 10;
     let bestX = point.x;
     let bestY = point.y;
@@ -557,8 +513,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       const stroke = strokesRef.current[index];
       if (!stroke?.isText || !stroke.text) return false;
       setActiveCanvas(instanceId);
-      setTool('text');
-      setOpenMenu(null);
+      setToolState({ tool: 'text', openMenu: null });
       setSelectedStrokeIndexes(new Set([index]));
       setTextInput({
         visible: true,
@@ -581,11 +536,12 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   }, [isEditMode, openTextEditorByIndex]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const settings = getToolState();
     if (e.pointerType === 'pen') lastPenInputAtRef.current = Date.now();
     // Sur Android, un rejet permanent rendait le canvas inutilisable au doigt.
     // On ne rejette le toucher que dans la courte fenêtre qui suit le stylet.
-    if (palmRejection && e.pointerType === 'touch' && Date.now() - lastPenInputAtRef.current < 900) return;
-    setOpenMenu(null);
+    if (settings.palmRejection && e.pointerType === 'touch' && Date.now() - lastPenInputAtRef.current < 900) return;
+    closeToolMenu();
     setActiveCanvas(instanceId);
 
     const coords = getCoordinates(e);
@@ -604,7 +560,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     }
 
     const stylusEraser = isStylusEraser(e);
-    const activeTool = stylusEraser ? 'eraser' : tool;
+    const activeTool: ToolType = stylusEraser ? 'eraser' : settings.tool;
     clearShapeRecognition();
     smootherRef.current = null;
 
@@ -669,13 +625,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
     isDrawing.current = true;
     
-    if (activeTool === 'eraser' && (eraserType === 'stroke' || eraserHighlighterOnly)) {
+    if (activeTool === 'eraser' && (settings.eraserType === 'stroke' || settings.eraserHighlighterOnly)) {
       eraseGestureRef.current = [];
       let erasedAny = false;
-      const activeEraserWidth = eraserAutoSize ? eraserWidth * (0.55 + coords.pressure * 0.9) : eraserWidth;
+      const activeEraserWidth = settings.eraserAutoSize ? settings.eraserWidth * (0.55 + coords.pressure * 0.9) : settings.eraserWidth;
       const kept: Stroke[] = [];
       strokesRef.current.forEach((s, idx) => {
-        if ((!eraserHighlighterOnly || s.isHighlighter) && strokeIntersectsPoint(s, coords.x, coords.y, activeEraserWidth / 2)) {
+        if ((!settings.eraserHighlighterOnly || s.isHighlighter) && strokeIntersectsPoint(s, coords.x, coords.y, activeEraserWidth / 2)) {
           erasedAny = true;
           eraseGestureRef.current.push({ index: idx, stroke: s });
         } else {
@@ -710,7 +666,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       }
       
       setSelectedStrokeIndexes(new Set());
-      if (selectionMode === 'rectangle') {
+      if (settings.selectionMode === 'rectangle') {
         dragModeRef.current = 'select';
         dragStartRef.current = { x: coords.x, y: coords.y };
         selectionBoxRef.current = { x: coords.x, y: coords.y, w: 0, h: 0 };
@@ -719,23 +675,23 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       }
       redrawAll();
     } else {
-      const startPoint = activeTool === 'shape' && snapGrid
+      const startPoint = activeTool === 'shape' && settings.snapGrid
         ? { ...coords, x: Math.round(coords.x / 24) * 24, y: Math.round(coords.y / 24) * 24 }
         : coords;
       currentStrokeRef.current = {
         points: [startPoint],
-        color: activeTool === 'highlighter' ? highlighterColor : color,
-        width: activeTool === 'highlighter' ? highlighterWidth : activeTool === 'eraser' ? eraserWidth : lineWidth,
-        opacity: activeTool === 'highlighter' ? highlighterOpacity : 1,
+        color: activeTool === 'highlighter' ? settings.highlighterColor : settings.color,
+        width: activeTool === 'highlighter' ? settings.highlighterWidth : activeTool === 'eraser' ? settings.eraserWidth : settings.lineWidth,
+        opacity: activeTool === 'highlighter' ? settings.highlighterOpacity : 1,
         isEraser: activeTool === 'eraser',
         isHighlighter: activeTool === 'highlighter',
-        shapeType: activeTool === 'shape' ? shapeType : undefined,
-        penType: activeTool === 'pen' ? penType : undefined,
-        lineStyle: activeTool === 'pen' ? lineStyle : undefined,
-        highlighterType: activeTool === 'highlighter' ? highlighterType : undefined
+        shapeType: activeTool === 'shape' ? settings.shapeType : undefined,
+        penType: activeTool === 'pen' ? settings.penType : undefined,
+        lineStyle: activeTool === 'pen' ? settings.lineStyle : undefined,
+        highlighterType: activeTool === 'highlighter' ? settings.highlighterType : undefined
       };
-      if (activeTool === 'pen' || (activeTool === 'highlighter' && !highlighterStraightLines)) {
-        smootherRef.current = new StrokeSmoother(penStabilization);
+      if (activeTool === 'pen' || (activeTool === 'highlighter' && !settings.highlighterStraightLines)) {
+        smootherRef.current = new StrokeSmoother(settings.penStabilization);
         smootherRef.current.seed(startPoint, e.timeStamp);
       }
       scheduleShapeRecognition(activeTool);
@@ -757,9 +713,10 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing.current) return;
+    const settings = getToolState();
     if (e.pointerType === 'pen') lastPenInputAtRef.current = Date.now();
-    if (palmRejection && e.pointerType === 'touch' && Date.now() - lastPenInputAtRef.current < 900) return;
-    
+    if (settings.palmRejection && e.pointerType === 'touch' && Date.now() - lastPenInputAtRef.current < 900) return;
+
     const nativeE = e.nativeEvent as any;
     const events = nativeE.getCoalescedEvents ? nativeE.getCoalescedEvents() : [nativeE];
     
@@ -767,7 +724,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         const rawCoords = getCoordinates(event);
         if (rawCoords) {
             const stylusEraser = isStylusEraser(event);
-            const activeTool = stylusEraser ? 'eraser' : tool;
+            const activeTool: ToolType = stylusEraser ? 'eraser' : settings.tool;
             let coords = rawCoords;
             if (smootherRef.current && (activeTool === 'pen' || activeTool === 'highlighter')) {
               coords = smootherRef.current.next(rawCoords, event.timeStamp);
@@ -812,12 +769,12 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                 }
                 return;
             } else if (activeTool === 'eraser') {
-              if (eraserType === 'stroke' || eraserHighlighterOnly) {
+              if (settings.eraserType === 'stroke' || settings.eraserHighlighterOnly) {
                 let erasedAny = false;
-                const activeEraserWidth = eraserAutoSize ? eraserWidth * (0.55 + coords.pressure * 0.9) : eraserWidth;
+                const activeEraserWidth = settings.eraserAutoSize ? settings.eraserWidth * (0.55 + coords.pressure * 0.9) : settings.eraserWidth;
                 const kept: Stroke[] = [];
                 strokesRef.current.forEach((s, idx) => {
-                  if ((!eraserHighlighterOnly || s.isHighlighter) && strokeIntersectsPoint(s, coords.x, coords.y, activeEraserWidth / 2)) {
+                  if ((!settings.eraserHighlighterOnly || s.isHighlighter) && strokeIntersectsPoint(s, coords.x, coords.y, activeEraserWidth / 2)) {
                     erasedAny = true;
                     eraseGestureRef.current.push({ index: idx, stroke: s });
                   } else {
@@ -830,15 +787,18 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                 }
               } else {
                 // Pixel eraser via stylus button or tool
+                const pixelEraserWidth = settings.eraserAutoSize
+                  ? settings.eraserWidth * (0.55 + coords.pressure * 0.9)
+                  : settings.eraserWidth;
                 if (currentStrokeRef.current) {
                   currentStrokeRef.current.isEraser = true;
-                  currentStrokeRef.current.width = eraserAutoSize ? eraserWidth * (0.55 + coords.pressure * 0.9) : eraserWidth;
+                  currentStrokeRef.current.width = pixelEraserWidth;
                   currentStrokeRef.current.points.push(coords);
                 } else {
                   currentStrokeRef.current = {
                     points: [coords],
                     color: '',
-                    width: eraserAutoSize ? eraserWidth * (0.55 + coords.pressure * 0.9) : eraserWidth,
+                    width: pixelEraserWidth,
                     isEraser: true
                   };
                 }
@@ -846,7 +806,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             } else if (activeTool === 'lasso') {
               if (isDraggingSelectionRef.current && dragStartRef.current) {
                 moveSelectionBy(coords.x - dragStartRef.current.x, coords.y - dragStartRef.current.y);
-              } else if (selectionMode === 'rectangle' && selectionBoxRef.current && dragStartRef.current) {
+              } else if (settings.selectionMode === 'rectangle' && selectionBoxRef.current && dragStartRef.current) {
                 selectionBoxRef.current.w = coords.x - dragStartRef.current.x;
                 selectionBoxRef.current.h = coords.y - dragStartRef.current.y;
               } else {
@@ -856,14 +816,14 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
               clearShapeRecognition();
               if (activeTool === 'shape') {
                 const start = currentStrokeRef.current.points[0];
-                const constrained = constrainShapePoint(start, coords, shapeType, {
-                  snapGrid,
-                  angleSnap,
-                  angleStep,
-                  regularShapes: regularShapes !== e.shiftKey,
+                const constrained = constrainShapePoint(start, coords, settings.shapeType, {
+                  snapGrid: settings.snapGrid,
+                  angleSnap: settings.angleSnap,
+                  angleStep: settings.angleStep,
+                  regularShapes: settings.regularShapes !== e.shiftKey,
                 });
                 currentStrokeRef.current.points = [start, alignPointToExistingShapes(constrained)];
-              } else if (activeTool === 'highlighter' && highlighterStraightLines) {
+              } else if (activeTool === 'highlighter' && settings.highlighterStraightLines) {
                 const start = currentStrokeRef.current.points[0];
                 const dx = Math.abs(coords.x - start.x);
                 const dy = Math.abs(coords.y - start.y);
@@ -898,13 +858,14 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     releasePointer(e);
+    const settings = getToolState();
     if (recognitionTimerRef.current) clearTimeout(recognitionTimerRef.current);
     recognitionTimerRef.current = null;
     smootherRef.current = null;
     if (!isDrawing.current && !currentStrokeRef.current) return;
     isDrawing.current = false;
 
-    if (tool === 'pointer') {
+    if (settings.tool === 'pointer') {
        if (dragModeRef.current === 'select' && selectionBoxRef.current) {
            const box = selectionBoxRef.current;
            const minX = Math.min(box.x, box.x + box.w);
@@ -946,11 +907,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
        return;
     }
 
-    if (tool === 'lasso') {
+    if (settings.tool === 'lasso') {
       if (isDraggingSelectionRef.current) {
         isDraggingSelectionRef.current = false;
         dragStartRef.current = null;
-      } else if (selectionMode === 'rectangle' && selectionBoxRef.current) {
+      } else if (settings.selectionMode === 'rectangle' && selectionBoxRef.current) {
         const box = selectionBoxRef.current;
         const minX = Math.min(box.x, box.x + box.w);
         const maxX = Math.max(box.x, box.x + box.w);
@@ -961,7 +922,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           const newSelection = new Set<number>();
           strokesRef.current.forEach((stroke, idx) => {
             let isSelected = false;
-            if (includePartialSelection) {
+            if (settings.includePartialSelection) {
               isSelected = stroke.points.some(p => p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY);
             } else {
               isSelected = stroke.points.every(p => p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY);
@@ -979,7 +940,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         
         strokesRef.current.forEach((stroke, idx) => {
           let isSelected = false;
-          if (includePartialSelection) {
+          if (settings.includePartialSelection) {
             isSelected = stroke.points.some(p => pointInPolygon(p, lassoPoly));
             if (!isSelected) {
               for (let i = 0; i < lassoPoly.length; i += 4) {
@@ -1004,11 +965,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       }
     } else if (currentStrokeRef.current) {
       const stylusEraser = isStylusEraser(e);
-      const activeTool = stylusEraser ? 'eraser' : tool;
+      const activeTool: ToolType = stylusEraser ? 'eraser' : settings.tool;
       if (recognizedStrokeRef.current && (activeTool === 'pen' || activeTool === 'highlighter')) {
         currentStrokeRef.current = recognizedStrokeRef.current;
       }
-      if (straightenLines && activeTool === 'pen' && currentStrokeRef.current.points.length > 4) {
+      if (settings.straightenLines && activeTool === 'pen' && currentStrokeRef.current.points.length > 4) {
         const pts = currentStrokeRef.current.points;
         const p1 = pts[0];
         const p2 = pts[pts.length - 1];
@@ -1207,84 +1168,76 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     if (recognitionTimerRef.current) clearTimeout(recognitionTimerRef.current);
   }, [instanceId]);
 
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const [floatingState, setFloatingState] = useState<{ isFloating: boolean; left: number; width: number }>({
-    isFloating: false,
-    left: 0,
-    width: 0,
-  });
+  /**
+   * Passerelle vers la barre d'outils unique de la fiche.
+   *
+   * La ref est réassignée à chaque rendu pour que le registre appelle toujours
+   * les fermetures courantes, sans réinscription ; l'inscription elle-même n'a
+   * lieu qu'au montage.
+   */
+  const handleRef = useRef<CanvasHandle | null>(null);
+  handleRef.current = {
+    undo,
+    redo,
+    clear,
+    deleteSelection,
+    duplicateSelection,
+    importImage: () => fileInputRef.current?.click(),
+    setBackgroundStyle: (style) => onStyleChange?.(style),
+    setBackgroundColor: (value) => onColorChange?.(value),
+    snapshot: {
+      canUndo: strokeCount > 0,
+      canRedo: redoStack.length > 0,
+      hasSelection: selectedStrokeIndexes.size > 0,
+      styleName,
+      colorName,
+      canChangeBackground: !!(onStyleChange || onColorChange),
+    },
+  };
 
-  // Abonnement partagé : un seul écouteur `scroll` pour toute la fiche, mesuré
-  // une fois par frame, au lieu d'un écouteur non throttlé par canvas.
-  useEffect(() => {
-    const measure = () => {
-      if (!wrapperRef.current) return;
-      const rect = wrapperRef.current.getBoundingClientRect();
-      const headerOffset = 52;
-      const minCanvasVisible = 120;
+  useEffect(() => registerCanvas(instanceId, () => handleRef.current!), [instanceId]);
 
-      const shouldFloat = rect.top < headerOffset && rect.bottom > (headerOffset + minCanvasVisible);
-
-      setFloatingState(prev => {
-        if (!shouldFloat) {
-          return prev.isFloating ? { isFloating: false, left: 0, width: 0 } : prev;
-        }
-        const left = Math.round(rect.left);
-        const width = Math.round(rect.width);
-        // Évite un re-rendu (et donc un re-rendu de toute la Toolbar) par frame
-        // quand la position n'a pas bougé d'un pixel entier.
-        if (prev.isFloating && prev.left === left && prev.width === width) return prev;
-        return { isFloating: true, left, width };
-      });
-    };
-
-    measure();
-    return subscribeToViewport(measure);
-  }, []);
+  // Sans notification, la barre garderait « Annuler » grisé après le premier trait.
+  useEffect(() => { notifyCanvasChanged(instanceId); });
 
   return (
-    <div ref={wrapperRef} className={`absolute inset-0 flex flex-col pointer-events-none group/canvas ${openMenu ? 'z-[70]' : 'z-10'}`}>
-      {floatingState.isFloating && <div className="w-full h-[40px] shrink-0 pointer-events-none" />}
-      <Toolbar 
-        tool={tool} setTool={setTool} openMenu={openMenu} setOpenMenu={setOpenMenu}
-        penType={penType} setPenType={setPenType}
-        highlighterType={highlighterType} setHighlighterType={setHighlighterType}
-        highlighterStraightLines={highlighterStraightLines} setHighlighterStraightLines={setHighlighterStraightLines}
-        eraserType={eraserType} setEraserType={setEraserType}
-        shapeType={shapeType} setShapeType={setShapeType}
-        lineStyle={lineStyle} setLineStyle={setLineStyle} straightenLines={straightenLines} setStraightenLines={setStraightenLines}
-        selectionMode={selectionMode} setSelectionMode={setSelectionMode}
-        includePartialSelection={includePartialSelection} setIncludePartialSelection={setIncludePartialSelection}
-        alignWithShapes={alignWithShapes} setAlignWithShapes={setAlignWithShapes}
-        highlighterOpacity={highlighterOpacity} setHighlighterOpacity={setHighlighterOpacity}
-        color={color} setColor={setColor}
-        highlighterColor={highlighterColor} setHighlighterColor={setHighlighterColor}
-        lineWidth={lineWidth} setLineWidth={setLineWidth}
-        highlighterWidth={highlighterWidth} setHighlighterWidth={setHighlighterWidth}
-        eraserWidth={eraserWidth} setEraserWidth={setEraserWidth}
-        palmRejection={palmRejection} setPalmRejection={setPalmRejection}
-        pressureCurve={pressureCurve} setPressureCurve={setPressureCurve}
-        penStabilization={penStabilization} setPenStabilization={setPenStabilization}
-        shapeRecognition={shapeRecognition} setShapeRecognition={setShapeRecognition}
-        snapGrid={snapGrid} setSnapGrid={setSnapGrid}
-        angleSnap={angleSnap} setAngleSnap={setAngleSnap}
-        angleStep={angleStep} setAngleStep={setAngleStep}
-        regularShapes={regularShapes} setRegularShapes={setRegularShapes}
-        showMeasurements={showMeasurements} setShowMeasurements={setShowMeasurements}
-        eraserHighlighterOnly={eraserHighlighterOnly} setEraserHighlighterOnly={setEraserHighlighterOnly}
-        eraserAutoSize={eraserAutoSize} setEraserAutoSize={setEraserAutoSize}
-        onUndo={undo} onRedo={redo} onClear={clear} onDeleteSelection={deleteSelection}
-        canUndo={strokeCount > 0} canRedo={redoStack.length > 0} hasSelection={selectedStrokeIndexes.size > 0}
-        onAddImage={onAddImage} fileInputRef={fileInputRef} handleImageUpload={handleImageUpload}
-        styleName={styleName} colorName={colorName}
-        onStyleChange={onStyleChange} onColorChange={onColorChange}
-        isFloating={floatingState.isFloating}
-        floatingLeft={floatingState.left}
-        floatingWidth={floatingState.width}
-        correctionProgress={correctionProgress}
-        correctionToggle={correctionToggle}
+    <div className="absolute inset-0 flex flex-col pointer-events-none group/canvas z-10">
+      {/*
+        Le corrigé est propre à CETTE question : il reste donc dans la zone, à
+        l'inverse des réglages d'outils désormais portés par la barre unique.
+      */}
+      {correctionToggle?.available && (
+        <div className="absolute right-1.5 top-1.5 z-30 flex items-center gap-1.5 pointer-events-auto no-print">
+          {correctionProgress && correctionToggle.visible && (
+            <CorrectionProgressControl progress={correctionProgress} />
+          )}
+          <button
+            type="button"
+            aria-pressed={correctionToggle.visible}
+            onClick={correctionToggle.toggle}
+            className={`min-h-10 rounded-full border px-3.5 text-xs font-bold shadow-sm transition active:scale-95 ${
+              correctionToggle.visible
+                ? 'border-emerald-700 bg-emerald-600 text-white'
+                : 'border-slate-300 bg-white/90 text-slate-700 backdrop-blur-sm hover:border-emerald-500 hover:text-emerald-700'
+            }`}
+            title={correctionToggle.visible ? 'Masquer le rappel de cours' : 'Afficher le rappel de cours'}
+          >
+            Aide
+          </button>
+        </div>
+      )}
+
+      {/* Import d'image : déclenché depuis la barre flottante, mais la cible reste cette zone. */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImageUpload}
+        accept="image/*"
+        aria-label="Importer une image dans le canvas"
+        className="hidden"
       />
-      <div 
+
+      <div
         ref={containerRef}
         className="flex-1 w-full relative pointer-events-auto"
         style={{ touchAction: palmRejection ? 'none' : 'auto' }}

@@ -10,6 +10,9 @@
     color-scheme: light;
     --print-font-size: 10.5pt;
     --print-line-height: 1.5;
+    /* Hauteur de la première ligne d'énoncé : 11pt × 1.625 (leading-relaxed).
+       Les numéros reprennent cette valeur pour tomber sur cette ligne. */
+    --print-question-line-box: 17.875pt;
   }
 
   * {
@@ -89,7 +92,7 @@
     border: 1pt solid #000 !important;
     padding: 1.5mm 4mm !important;
     border-radius: 4pt !important;
-    font-family: 'Space Grotesk', sans-serif !important;
+    font-family: 'Fredoka', 'Quicksand', sans-serif !important;
     font-weight: 600 !important;
     font-size: 9pt !important;
     letter-spacing: 0.1em !important;
@@ -99,7 +102,7 @@
     box-shadow: none !important;
   }
 
-  /* TITRE EXERCICE */
+  /* TITRE EXERCICE — numéro puis titre en cartouche, l'un sous l'autre */
   .exercise-title {
     margin-bottom: 5mm !important;
     font-size: 14pt !important;
@@ -108,21 +111,32 @@
     padding-bottom: 0 !important;
     border: none !important;
   }
-  
-  .exercise-title > span:last-child {
-    font-size: 16pt !important;
-    display: block !important;
+
+  .exercise-subtitle-badge {
+    display: inline-flex !important;
     margin-top: 2mm !important;
+    font-size: 11pt !important;
+    font-weight: 600 !important;
+    color: #000 !important;
+    background-color: #fff !important;
+    border: 0.75pt solid #000 !important;
+    border-radius: 3pt !important;
+    padding: 1mm 3mm !important;
+    line-height: 1.2 !important;
   }
 
   /* ══════════════════════════════════════════════
      QUESTION BADGES — CHIC & PRO STYLE
   ══════════════════════════════════════════════ */
-  .question-number-badge {
-    font-family: 'Space Grotesk', sans-serif !important;
-    display: inline-flex !important;
-    align-items: baseline !important;
-    justify-content: center !important;
+  .question-number-badge,
+  .question-lead-badge {
+    font-family: 'Quicksand', sans-serif !important;
+    display: inline-block !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+    /* Même hauteur de ligne que l'énoncé : le numéro tombe sur sa PREMIÈRE
+       ligne, y compris lorsque la question se termine par une formule centrée. */
+    line-height: var(--print-question-line-box) !important;
     margin-top: 0 !important;
     flex-shrink: 0 !important;
   }
@@ -134,11 +148,11 @@
     border: none !important;
     width: auto !important;
     height: auto !important;
-    line-height: 1.2 !important;
+    line-height: var(--print-question-line-box) !important;
     text-align: right !important;
     font-size: 11pt !important;
     font-weight: 600 !important;
-    font-family: 'Space Grotesk', sans-serif !important;
+    font-family: 'Quicksand', sans-serif !important;
     padding: 0 !important;
     margin-top: 0 !important;
   }
@@ -154,12 +168,12 @@
     border: none !important;
     width: auto !important;
     height: auto !important;
-    line-height: 1.2 !important;
+    line-height: var(--print-question-line-box) !important;
     text-align: right !important;
     font-size: 10pt !important;
     font-style: normal !important;
     font-weight: 500 !important;
-    font-family: 'Space Grotesk', sans-serif !important;
+    font-family: 'Quicksand', sans-serif !important;
     justify-content: flex-end !important;
     padding: 0 !important;
     margin-top: 0 !important;
@@ -169,14 +183,33 @@
     content: "" !important; /* Managed by JS text content */
   }
 
+  /* Levels 2+ : i. ii. iii. puis α. β. — même sobriété */
+  .question-badge-level-2,
+  .question-badge-level-3,
+  .question-badge-level-4 {
+    background-color: transparent !important;
+    color: #000 !important;
+    border: none !important;
+    width: auto !important;
+    height: auto !important;
+    line-height: var(--print-question-line-box) !important;
+    text-align: right !important;
+    font-size: 9.5pt !important;
+    font-style: italic !important;
+    font-weight: 500 !important;
+    font-family: 'Quicksand', sans-serif !important;
+    justify-content: flex-end !important;
+    padding: 0 !important;
+    margin-top: 0 !important;
+  }
+
   /* ══════════════════════════════════════════════
      QUESTION ROWS — GRID LAYOUT
   ══════════════════════════════════════════════ */
   .question-row {
     display: grid !important;
-    grid-template-columns: min-content 1fr !important;
     gap: 4mm !important;
-    align-items: baseline !important;
+    align-items: start !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
@@ -202,6 +235,37 @@
     margin-top: 0 !important;
   }
 
+  /* Numéro chapeau « 1.  a. … » : la gouttière est portée par la colonne du
+     numéro, la liste ne doit donc pas la redoubler. */
+  .question-list-lead {
+    padding-left: 0 !important;
+  }
+
+  .question-block-collapsed {
+    break-inside: auto !important;
+  }
+
+  /* Formule centrée : marge unique, portée par le conteneur */
+  .math-display,
+  .math-center {
+    display: block !important;
+    text-align: center !important;
+    margin: 1.2mm 0 !important;
+    break-inside: avoid !important;
+  }
+
+  .math-display:first-child,
+  .math-center:first-child { margin-top: 0 !important; }
+
+  .math-display:last-child,
+  .math-center:last-child { margin-bottom: 0 !important; }
+
+  /* Une figure ancrée reste solidaire de la phrase qui l'introduit */
+  .question-figure {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
   .subquestions-container {
     margin-top: 2mm !important;
   }
@@ -214,9 +278,10 @@
     fill: #000 !important;
   }
 
+  /* La marge verticale appartient à .math-display : MathJax n'en ajoute pas. */
   mjx-container[display="true"] {
     display: block !important;
-    margin: 2mm 0 !important;
+    margin: 0 !important;
     text-align: center !important;
   }
 
@@ -226,7 +291,7 @@
 
   .question-content mjx-container[display="true"] {
     display: block !important;
-    margin: 1.5mm auto !important;
+    margin: 0 auto !important;
     max-width: 100% !important;
     overflow-x: visible !important;
   }
