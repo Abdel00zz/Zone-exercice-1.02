@@ -142,12 +142,15 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const heightLabelRef = useRef<HTMLDivElement>(null);
+  const resizeHandleRef = useRef<HTMLDivElement>(null);
   const isResizing = useRef(false);
   const startY = useRef(0);
   const startHeight = useRef(0);
   const pendingHeight = useRef(height);
   const rafId = useRef<number>(0);
+  const previousBodyStyles = useRef({ cursor: '', userSelect: '' });
   const questionProgress = useQuestionProgress();
+  const [isResizeActive, setIsResizeActive] = useState(false);
 
   const guidanceContent = [guidance?.instruction, guidance?.recall, ...(guidance?.hints || []), guidance?.answer].filter(Boolean).join(' ');
   const hasSolutionContent = !!(solution || answer || guidanceContent);
@@ -181,12 +184,13 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   const gridPatternId = `grid-${uid}`;
 
   const clampHeight = (value: number) => Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, value));
+  const snapHeight = (value: number) => Math.round(clampHeight(Math.round(value / GRID_SIZE_PX) * GRID_SIZE_PX));
 
   // Calcul de la nouvelle hauteur avec snapping (redimensionnement manuel)
   const calculateHeight = useCallback((clientY: number): number => {
     const delta = clientY - startY.current;
     const rawHeight = startHeight.current + delta;
-    return clampHeight(Math.round(rawHeight / GRID_SIZE_PX) * GRID_SIZE_PX);
+    return snapHeight(rawHeight);
   }, []);
 
   /**
@@ -201,6 +205,10 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
     pendingHeight.current = next;
     if (containerRef.current) containerRef.current.style.height = `${next}px`;
     if (heightLabelRef.current) heightLabelRef.current.textContent = `${next}px`;
+    if (resizeHandleRef.current) {
+      resizeHandleRef.current.setAttribute('aria-valuenow', String(next));
+      resizeHandleRef.current.setAttribute('aria-valuetext', `${next} pixels`);
+    }
   }, []);
 
   const handleMove = useCallback((clientY: number) => {
@@ -215,6 +223,13 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
     startY.current = clientY;
     startHeight.current = containerRef.current.offsetHeight;
     pendingHeight.current = height;
+    previousBodyStyles.current = {
+      cursor: document.body.style.cursor,
+      userSelect: document.body.style.userSelect,
+    };
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    setIsResizeActive(true);
     return true;
   }, [height]);
 
@@ -223,53 +238,59 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
     if (!isResizing.current) return;
     isResizing.current = false;
     cancelAnimationFrame(rafId.current);
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
+    document.body.style.cursor = previousBodyStyles.current.cursor;
+    document.body.style.userSelect = previousBodyStyles.current.userSelect;
+    setIsResizeActive(false);
     if (pendingHeight.current !== height) {
       onHeightChange(pendingHeight.current);
     }
   }, [height, onHeightChange]);
 
-  // Mouse events
-  const handleMouseMove = useCallback((e: MouseEvent) => handleMove(e.clientY), [handleMove]);
-  const handleMouseUp = useCallback(() => {
-    endResize();
-    window.removeEventListener('mousemove', handleMouseMove);
-    window.removeEventListener('mouseup', handleMouseUp);
-  }, [endResize, handleMouseMove]);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  // Un seul flux Pointer Events couvre souris, doigt et stylet. La capture
+  // maintient le redimensionnement actif même si le pointeur quitte la poignée.
+  const handleResizePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
     e.preventDefault();
     if (!beginResize(e.clientY)) return;
-    document.body.style.cursor = 'row-resize';
-    document.body.style.userSelect = 'none';
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* non disponible */ }
+  }, [beginResize]);
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  }, [beginResize, handleMouseMove, handleMouseUp]);
-
-  // Touch events
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (e.touches.length === 1) {
-      e.preventDefault();
-      handleMove(e.touches[0].clientY);
-    }
+  const handleResizePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!e.isPrimary || !isResizing.current) return;
+    e.preventDefault();
+    handleMove(e.clientY);
   }, [handleMove]);
 
-  const handleTouchEnd = useCallback(() => {
+  const handleResizePointerEnd = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!e.isPrimary) return;
+    if (isResizing.current) applyHeight(calculateHeight(e.clientY));
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch { /* capture déjà libérée */ }
     endResize();
-    window.removeEventListener('touchmove', handleTouchMove);
-    window.removeEventListener('touchend', handleTouchEnd);
-  }, [endResize, handleTouchMove]);
+  }, [applyHeight, calculateHeight, endResize]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
-    if (!beginResize(e.touches[0].clientY)) return;
-
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd);
-    window.addEventListener('touchcancel', handleTouchEnd);
-  }, [beginResize, handleTouchMove, handleTouchEnd]);
+  // Certains navigateurs Android peuvent perdre la capture lors d'un geste
+  // interrompu par le système. Le relâchement global garantit la sortie de
+  // l'état actif et conserve la dernière hauteur atteinte.
+  useEffect(() => {
+    if (!isResizeActive) return;
+    const finishFromWindow = (event: PointerEvent) => {
+      if (isResizing.current) applyHeight(calculateHeight(event.clientY));
+      endResize();
+    };
+    const finishOnBlur = () => endResize();
+    window.addEventListener('pointerup', finishFromWindow, true);
+    window.addEventListener('pointercancel', finishFromWindow, true);
+    window.addEventListener('blur', finishOnBlur);
+    return () => {
+      window.removeEventListener('pointerup', finishFromWindow, true);
+      window.removeEventListener('pointercancel', finishFromWindow, true);
+      window.removeEventListener('blur', finishOnBlur);
+    };
+  }, [applyHeight, calculateHeight, endResize, isResizeActive]);
 
   // La poignée porte role="slider" et tabIndex : elle doit donc être pilotable
   // au clavier, ce qui n'était pas le cas.
@@ -286,17 +307,26 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
 
     if (next === null) return;
     e.preventDefault();
-    const snapped = clampHeight(Math.round(next / GRID_SIZE_PX) * GRID_SIZE_PX);
+    const snapped = snapHeight(next);
     if (snapped !== height) onHeightChange(snapped);
   }, [height, onHeightChange]);
+
+  useEffect(() => {
+    pendingHeight.current = height;
+    if (heightLabelRef.current) heightLabelRef.current.textContent = `${height}px`;
+    if (resizeHandleRef.current) {
+      resizeHandleRef.current.setAttribute('aria-valuenow', String(height));
+      resizeHandleRef.current.setAttribute('aria-valuetext', `${height} pixels`);
+    }
+  }, [height]);
 
   // Filet de sécurité : si le composant disparaît en plein glissement, on retire
   // les styles globaux posés sur <body>.
   useEffect(() => () => {
     cancelAnimationFrame(rafId.current);
     if (isResizing.current) {
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      document.body.style.cursor = previousBodyStyles.current.cursor;
+      document.body.style.userSelect = previousBodyStyles.current.userSelect;
     }
   }, []);
 
@@ -328,10 +358,14 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   }, []);
 
   return (
-    <div className="my-3 answer-space group relative">
+    <div className="mt-3 mb-8 answer-space group relative">
       <div
         ref={containerRef}
-        className="w-full relative rounded-none transition-shadow duration-200 hover:shadow-md print:rounded-none print:shadow-none box-border"
+        className={`w-full relative rounded-none transition-[box-shadow] duration-200 print:rounded-none print:shadow-none box-border ${
+          isResizeActive
+            ? 'shadow-[0_0_0_3px_rgba(14,165,233,0.18),0_10px_28px_rgba(15,23,42,0.12)]'
+            : 'hover:shadow-md'
+        }`}
         style={{
           height: `${height}px`,
           backgroundColor: theme.screen.bg,
@@ -431,16 +465,18 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
 
         {/*
           Poignée de redimensionnement.
-          Elle occupait auparavant toute la largeur sur 20 px de haut, à
-          l'intérieur du cadre : ces 20 px du bas de chaque zone de réponse
-          étaient donc impossibles à écrire, la poignée captant le pointeur
-          avant le canvas. Elle est désormais réduite à une pastille centrée,
-          à cheval sur le bord inférieur.
+          La cible tactile est volontairement plus grande que la pastille
+          visible. Elle dépasse surtout sous le canvas afin de préserver la
+          surface d'écriture, et l'espace inférieur du composant lui est réservé.
         */}
         <div
-          className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-28 h-4 cursor-row-resize z-[40] flex items-center justify-center opacity-40 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200 no-print group/handle rounded-full bg-white/80 backdrop-blur-[2px] border border-slate-200 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
+          ref={resizeHandleRef}
+          className="absolute -bottom-8 left-1/2 z-[40] flex h-11 w-40 -translate-x-1/2 touch-none cursor-row-resize select-none items-center justify-center no-print outline-none group/handle"
+          onPointerDown={handleResizePointerDown}
+          onPointerMove={handleResizePointerMove}
+          onPointerUp={handleResizePointerEnd}
+          onPointerCancel={handleResizePointerEnd}
+          onLostPointerCapture={endResize}
           onKeyDown={handleHandleKeyDown}
           role="slider"
           aria-label="Ajuster la hauteur de la zone de réponse"
@@ -450,15 +486,29 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
           aria-valuenow={height}
           aria-valuetext={`${height} pixels`}
           tabIndex={0}
+          title="Glisser pour ajuster la hauteur"
         >
-          <div className="w-10 h-[3px] bg-slate-300 rounded-full group-hover/handle:bg-slate-500 transition-colors duration-200" />
-        </div>
-
-        {/* Indicateur discret ; le bouton Corrigé vit désormais dans la barre du canvas. */}
-        <div className="absolute top-1.5 right-1.5 z-20 no-print">
-          <div className="px-1.5 py-0.5 text-[10px] font-mono bg-black/60 text-white rounded select-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            {height}px
-          </div>
+          <span
+            className={`relative flex h-5 w-[78px] items-center justify-center rounded-full border backdrop-blur-md transition-all duration-200 ${
+              isResizeActive
+                ? 'scale-105 border-slate-800 bg-slate-900 shadow-[0_6px_18px_rgba(15,23,42,0.28)]'
+                : 'border-slate-300/90 bg-slate-50/95 opacity-90 shadow-[0_3px_10px_rgba(15,23,42,0.10)] group-hover:border-slate-400 group-hover:bg-white group-hover:opacity-100 group-focus-visible/handle:opacity-100 group-focus-visible/handle:ring-2 group-focus-visible/handle:ring-sky-400 group-focus-visible/handle:ring-offset-2'
+            }`}
+          >
+            <span className="flex flex-col gap-[3px]" aria-hidden="true">
+              <span className={`block h-px w-8 rounded-full transition-colors ${isResizeActive ? 'bg-white/90' : 'bg-slate-500'}`} />
+              <span className={`block h-px w-5 self-center rounded-full transition-colors ${isResizeActive ? 'bg-white/70' : 'bg-slate-400'}`} />
+            </span>
+            <span
+              ref={heightLabelRef}
+              className={`pointer-events-none absolute left-[calc(100%+8px)] whitespace-nowrap rounded-full bg-slate-900 px-2 py-1 font-mono text-[10px] font-semibold text-white shadow-lg transition-all ${
+                isResizeActive ? 'translate-x-0 opacity-100' : '-translate-x-1 opacity-0'
+              }`}
+              aria-hidden="true"
+            >
+              {height}px
+            </span>
+          </span>
         </div>
 
         {/*

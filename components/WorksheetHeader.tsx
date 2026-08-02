@@ -1,22 +1,16 @@
 import React, { useState } from 'react';
-import { Printer, Sliders, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 interface WorksheetHeaderProps {
   worksheetName: string;
-  onOpenSettings: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: (collapsed: boolean) => void;
-  isEditMode?: boolean;
-  onToggleEditMode?: () => void;
 }
 
 const WorksheetHeader: React.FC<WorksheetHeaderProps> = ({
   worksheetName,
-  onOpenSettings,
   isCollapsed: externalIsCollapsed,
   onToggleCollapse,
-  isEditMode = false,
-  onToggleEditMode,
 }) => {
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
   const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalIsCollapsed;
@@ -27,21 +21,6 @@ const WorksheetHeader: React.FC<WorksheetHeaderProps> = ({
     if (onToggleCollapse) {
       onToggleCollapse(next);
     }
-  };
-
-  const handlePrint = () => {
-    const originalTitle = document.title;
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('fr-FR').replace(/\//g, '-');
-    const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
-    const safeName = worksheetName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-
-    document.title = `${safeName}_${dateStr}_${timeStr}`;
-    window.print();
-
-    setTimeout(() => {
-      document.title = originalTitle;
-    }, 100);
   };
 
   return (
@@ -59,7 +38,7 @@ const WorksheetHeader: React.FC<WorksheetHeaderProps> = ({
           </button>
         ) : (
           /* Full / Compact Header Bar */
-          <div className="pointer-events-auto w-full bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-xl shadow-sm hover:shadow-md px-3.5 sm:px-5 py-2 flex items-center justify-between gap-3 transition-all duration-300">
+          <div className="pointer-events-auto w-full bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-xl shadow-sm hover:shadow-md px-3.5 sm:px-5 py-2 flex items-center gap-3 transition-all duration-300">
             {/* Title Section */}
             <div className="flex items-center gap-2.5 min-w-0">
               <button
@@ -78,44 +57,6 @@ const WorksheetHeader: React.FC<WorksheetHeaderProps> = ({
               </h1>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 shrink-0">
-              {onToggleEditMode && (
-                <button
-                  onClick={onToggleEditMode}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all active:scale-95 shadow-2xs ${
-                    isEditMode 
-                      ? 'text-yellow-700 bg-yellow-100 hover:bg-yellow-200 border-yellow-300' 
-                      : 'text-slate-700 hover:text-yellow-600 bg-slate-50 hover:bg-yellow-50 border-slate-200 hover:border-yellow-200'
-                  } border`}
-                  aria-label="Mode Édition"
-                  title="Activer/Désactiver le mode édition"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isEditMode ? "text-yellow-600" : "text-slate-500"}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                  <span className="hidden sm:inline">Édition</span>
-                </button>
-              )}
-
-              <button
-                onClick={onOpenSettings}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-blue-600 bg-slate-50 hover:bg-blue-50/80 border border-slate-200 hover:border-blue-200 rounded-lg transition-all active:scale-95 shadow-2xs"
-                aria-label="Paramètres"
-                title="Paramètres de la fiche"
-              >
-                <Sliders className="h-3.5 w-3.5 text-slate-500" />
-                <span className="hidden sm:inline">Paramètres</span>
-              </button>
-
-              <button
-                onClick={handlePrint}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 shadow-2xs hover:shadow-xs"
-                aria-label="Imprimer la fiche"
-                title="Imprimer (Ctrl+P)"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Imprimer</span>
-              </button>
-            </div>
           </div>
         )}
       </div>

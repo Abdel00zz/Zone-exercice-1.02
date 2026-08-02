@@ -1,14 +1,42 @@
-const CACHE_NAME = 'fiches-exercices-v1';
+const CACHE_PREFIX = 'mathplus-fiches';
+const CACHE_NAME = `${CACHE_PREFIX}-v3`;
+const APP_SHELL = [
+  '/',
+  '/manifest.webmanifest',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/icon-maskable-512.png',
+  '/icons/apple-touch-icon.png',
+];
+const TRUSTED_STATIC_ORIGINS = new Set([
+  self.location.origin,
+  'https://cdn.tailwindcss.com',
+  'https://cdn.jsdelivr.net',
+  'https://fonts.googleapis.com',
+  'https://fonts.gstatic.com',
+]);
 
-self.addEventListener('install', () => {
-  self.skipWaiting();
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+    caches.keys().then((keys) => Promise.all(
+      keys
+        .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+        .map((key) => caches.delete(key))
+    ))
   );
   self.clients.claim();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -16,16 +44,19 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  // Seules les ressources de ce domaine sont mises en cache ; jamais la synchro cloud (toujours fraîche).
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+  // La synchronisation cloud reste toujours fraîche et n'entre jamais dans le cache PWA.
+  if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) return;
+  if (!TRUSTED_STATIC_ORIGINS.has(url.origin)) return;
 
   if (request.mode === 'navigate') {
     // Document HTML : réseau d'abord (respecte le gate mot de passe / dernier déploiement), cache en secours hors-ligne.
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/', clone));
+          }
           return response;
         })
         .catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
@@ -38,7 +69,7 @@ self.addEventListener('fetch', (event) => {
     caches.match(request).then((cached) => {
       const network = fetch(request)
         .then((response) => {
-          if (response && response.status === 200) {
+          if (response && (response.ok || response.type === 'opaque')) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }

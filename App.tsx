@@ -3,7 +3,6 @@ import type { Worksheet, WorksheetContent, QuestionPart, Exercise } from './type
 import useLocalStorage from './hooks/useLocalStorage';
 import { useCloudSync } from './hooks/useCloudSync';
 import Dashboard from './components/Dashboard';
-import WorksheetHeader from './components/WorksheetHeader';
 import ExerciseCard from './components/ExerciseCard';
 import SettingsModal from './components/SettingsModal';
 import EditableMathText from './components/EditableMathText';
@@ -21,7 +20,6 @@ const App: React.FC = () => {
   const [importError, setImportError] = useState<string | null>(null);
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
 
   React.useEffect(() => {
@@ -81,7 +79,6 @@ const App: React.FC = () => {
   const handleSelectWorksheet = (id: string) => {
     setSelectedWorksheetId(id);
     setActiveView('worksheet');
-    setIsHeaderCollapsed(false);
     window.history.pushState({ view: 'worksheet', id }, '');
   };
 
@@ -220,6 +217,19 @@ const App: React.FC = () => {
   const firstExercise = hasExercises ? exercises[0] : null;
   const remainingExercises = hasExercises ? exercises.slice(1) : [];
 
+  const handlePrintWorksheet = () => {
+    if (!selectedWorksheet) return;
+    const originalTitle = document.title;
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('fr-FR').replace(/\//g, '-');
+    const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
+    const safeName = selectedWorksheet.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+    document.title = `${safeName}_${dateStr}_${timeStr}`;
+    window.print();
+    setTimeout(() => { document.title = originalTitle; }, 100);
+  };
+
   const ErrorMessage: React.FC<{ message: string, onClose: () => void }> = ({ message, onClose }) => (
     <div className="container mx-auto my-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg relative" role="alert">
       <strong className="font-bold">Erreur !</strong>
@@ -267,15 +277,7 @@ const App: React.FC = () => {
         />
       ) : selectedWorksheet ? (
         <>
-          <WorksheetHeader 
-            worksheetName={selectedWorksheet.name}
-            isCollapsed={isHeaderCollapsed}
-            onToggleCollapse={setIsHeaderCollapsed}
-            onOpenSettings={() => setIsSettingsModalOpen(true)}
-            isEditMode={isEditMode}
-            onToggleEditMode={() => setIsEditMode(!isEditMode)}
-          />
-          <main className={`max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-4 landscape:px-2 sm:landscape:px-4 py-8 landscape:py-4 ${isHeaderCollapsed ? 'mt-10 sm:mt-12' : 'mt-16 sm:mt-20'} transition-all duration-300 print:mt-0 print:max-w-none print:p-0 print:py-0`}>
+          <main className="max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-4 landscape:px-2 sm:landscape:px-4 py-8 landscape:py-4 mt-16 sm:mt-20 transition-all duration-300 print:mt-0 print:max-w-none print:p-0 print:py-0">
             <div className="space-y-8 print:space-y-6">
               <div className="title-and-first-exercise-container space-y-6 print:space-y-4">
                 <div className="flex flex-wrap items-start justify-between text-xs font-semibold uppercase tracking-wider text-slate-500 print:text-[9pt] print:text-black">
@@ -289,7 +291,7 @@ const App: React.FC = () => {
 
                 {selectedWorksheet.content.chapter && (
                   <div className="text-center py-2 print:py-0">
-                    <div role="heading" aria-level={1} className="text-4xl md:text-5xl font-bold font-display text-slate-900 print:text-3xl print:mb-0 tracking-tight">
+                    <div role="heading" aria-level={1} className="font-chapter text-[2.15rem] sm:text-4xl md:text-[2.75rem] font-medium leading-[1.12] text-slate-800 print:text-3xl print:mb-0 tracking-[-0.035em]">
                       <EditableMathText 
                         text={selectedWorksheet.content.chapter} 
                         isEditMode={isEditMode} 
@@ -364,7 +366,12 @@ const App: React.FC = () => {
             pilote toutes les zones de réponse (réglages partagés, actions
             adressées à la dernière zone touchée).
           */}
-          {showCanvas && <CanvasFloatingToolbar />}
+          <CanvasFloatingToolbar
+            isEditMode={isEditMode}
+            onToggleEditMode={() => setIsEditMode(value => !value)}
+            onOpenSettings={() => setIsSettingsModalOpen(true)}
+            onPrint={handlePrintWorksheet}
+          />
           {isSettingsModalOpen && (
             <SettingsModal
               isOpen={isSettingsModalOpen}

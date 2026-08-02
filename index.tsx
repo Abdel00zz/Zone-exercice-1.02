@@ -12,10 +12,13 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
-// PWA : permet l'installation sur l'écran d'accueil et un fonctionnement hors-ligne minimal.
-if ('serviceWorker' in navigator) {
+// Le service worker de production fournit l'installation et le cache hors ligne.
+// Il reste désactivé en développement pour ne jamais servir un bundle obsolète à Vite/HMR.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then((registration) => registration.update())
+      .catch((error) => console.warn('Service worker indisponible', error));
   });
 }
 

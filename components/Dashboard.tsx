@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import type { Worksheet, WorksheetContent } from '../types';
-import { Trash2, Pencil, Search, Code, Calendar, ChevronRight, FileText, Plus, Menu, Cloud } from 'lucide-react';
+import { Trash2, Pencil, Search, Code, Calendar, ChevronRight, FileText, Plus, Menu, Cloud, Download, X } from 'lucide-react';
 import JSONManagerModal from './JSONManagerModal';
 import type { CloudSyncStatus } from '../hooks/useCloudSync';
+import { usePwaInstall } from '../hooks/usePwaInstall';
 
 interface DashboardProps {
     worksheets: Worksheet[];
@@ -37,6 +38,13 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [isManagerModalOpen, setIsManagerModalOpen] = useState(false);
     const [jsonMode, setJsonMode] = useState<'create' | 'edit'>('create');
     const [editingWorksheet, setEditingWorksheet] = useState<Worksheet | null>(null);
+    const [showInstallHelp, setShowInstallHelp] = useState(false);
+    const { installed, nativePromptAvailable, requestInstall } = usePwaInstall();
+
+    const handleInstall = async () => {
+        if (nativePromptAvailable && await requestInstall()) return;
+        setShowInstallHelp(true);
+    };
 
     const processImport = (jsonData: WorksheetContent, fallbackName: string = 'Nouvelle Fiche') => {
         if (!jsonData.chapter || typeof jsonData.chapter !== 'string' || !jsonData.exercises || !Array.isArray(jsonData.exercises)) {
@@ -131,6 +139,18 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 aria-label="Rechercher une fiche par nom"
                             />
                         </div>
+
+                        {!installed && (
+                            <button
+                                onClick={handleInstall}
+                                className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 text-sky-700 shadow-sm transition-all hover:border-sky-300 hover:bg-sky-100 hover:shadow-md active:scale-95 shrink-0 focus:outline-none focus:ring-2 focus:ring-sky-600/20"
+                                title="Installer l'application"
+                                aria-label="Installer l'application"
+                            >
+                                <Download className="h-5 w-5" />
+                                <span className="hidden lg:inline text-sm font-bold">Installer</span>
+                            </button>
+                        )}
                         
                         <button
                             onClick={onOpenSyncPanel}
@@ -303,6 +323,34 @@ const Dashboard: React.FC<DashboardProps> = ({
                 initialValue={jsonMode === 'edit' && editingWorksheet ? editingWorksheet.content : undefined}
                 mode={jsonMode}
             />
+
+            {showInstallHelp && (
+                <aside
+                    role="dialog"
+                    aria-label="Installer l'application"
+                    className="fixed bottom-4 left-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.22)] backdrop-blur-xl"
+                >
+                    <button
+                        type="button"
+                        onClick={() => setShowInstallHelp(false)}
+                        className="absolute right-2.5 top-2.5 grid h-9 w-9 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                        aria-label="Fermer les instructions d'installation"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                    <div className="flex gap-3 pr-8">
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-sky-100 text-sky-700">
+                            <Download className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h2 className="font-display text-base font-bold text-slate-900">Installer MathPlus</h2>
+                            <p className="mt-1 text-sm font-medium leading-relaxed text-slate-600">
+                                Ouvrez le menu du navigateur puis choisissez <strong>Installer l’application</strong> ou <strong>Ajouter à l’écran d’accueil</strong>. Sur iPhone/iPad, utilisez <strong>Partager</strong>, puis <strong>Sur l’écran d’accueil</strong>.
+                            </p>
+                        </div>
+                    </div>
+                </aside>
+            )}
             </div>
         </div>
     );

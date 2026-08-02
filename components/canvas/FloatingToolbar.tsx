@@ -1,22 +1,22 @@
 /**
- * Barre d'outils UNIQUE de la fiche : verticale, flottante, repliable.
+ * Barre d'outils UNIQUE de la fiche : horizontale, flottante en haut et
+ * repliable.
  *
  * Elle remplace les N barres horizontales qui étaient montées une par zone de
  * réponse. Les réglages d'outil vivent dans `toolStore` (partagés par toutes les
  * zones), les actions (annuler, effacer, importer…) sont adressées au canvas
  * actif via `canvasRegistry`.
  *
- * Ergonomie tablette : cibles tactiles de 48 px minimum, icônes agrandies,
- * panneaux qui s'ouvrent du côté opposé au bord d'ancrage, rail déplaçable au
- * doigt et repliable en une pastille.
+ * Ergonomie tablette : cibles tactiles confortables, défilement horizontal sur
+ * petit écran et panneaux compacts qui s'ouvrent sous la barre.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Check, ChevronDown, ChevronLeft, ChevronRight, Circle, Crosshair, Diamond,
-  GripVertical, Hexagon, Image as ImageIcon, Lasso, Minus, MousePointer2,
+  Check, ChevronDown, ChevronUp, Circle, Crosshair, Diamond,
+  Hexagon, Image as ImageIcon, Lasso, Minus, MousePointer2,
   MoveDiagonal2, MoveHorizontal, Palette, Pen, Pentagon, Plus, Ruler,
-  Settings2, Square, Trash2, Triangle, Type, X, ArrowRight,
+  Settings2, Square, Trash2, Triangle, Type, X, ArrowRight, Pencil, Printer,
 } from 'lucide-react';
 import type {
   HighlighterType, PenType, PressureCurve, ShapeType, ToolType,
@@ -92,9 +92,7 @@ const BACKGROUND_COLORS: Array<{ id: 'white' | 'black' | 'green' | 'blue' | 'cre
   { id: 'cream', name: 'Crème', color: '#fef3c7' },
 ];
 
-const RAIL_WIDTH = 50;
-const ESTIMATED_RAIL_HEIGHT = 570;
-const RAIL_TOP_GUTTER = 66;
+const TOOLBAR_HEIGHT = 50;
 
 // ── Fragments visuels ───────────────────────────────────────────────────────
 
@@ -154,7 +152,7 @@ interface RailButtonProps {
 
 /**
  * Bouton visuel de 40 px ; la feuille de style élargit discrètement la cible à
- * 42 px sur écran tactile. Le rail reste ainsi compact sans devenir imprécis.
+ * 42 px sur écran tactile. La barre reste ainsi compacte sans devenir imprécise.
  */
 const RailButton: React.FC<RailButtonProps> = ({ label, active, disabled, tone = 'neutral', onClick, children }) => (
   <button
@@ -233,73 +231,28 @@ const PanelHeader: React.FC<{ title: string; onClose: () => void }> = ({ title, 
 
 // ── Barre ───────────────────────────────────────────────────────────────────
 
-export const CanvasFloatingToolbar: React.FC = () => {
+interface CanvasFloatingToolbarProps {
+  isEditMode: boolean;
+  onToggleEditMode: () => void;
+  onOpenSettings: () => void;
+  onPrint: () => void;
+}
+
+export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
+  isEditMode,
+  onToggleEditMode,
+  onOpenSettings,
+  onPrint,
+}) => {
   const tools = useToolState();
   const canvas = useActiveCanvasSnapshot();
   const railRef = useRef<HTMLDivElement>(null);
-  const [railHeight, setRailHeight] = useState(ESTIMATED_RAIL_HEIGHT);
   const [expandedSection, setExpandedSection] = useState<'background' | 'ink' | 'geometry' | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
 
-  const { openMenu, railCollapsed, railSide, railTop } = tools;
-  const isLeft = railSide === 'left';
+  const { openMenu, railCollapsed } = tools;
 
   const activePen = PEN_STYLES.find(style => style.value === tools.penType) || PEN_STYLES[0];
-
-  // La hauteur réelle du rail dépend du repli et de la densité d'affichage :
-  // elle conditionne à la fois le bornage vertical et la taille des panneaux.
-  useEffect(() => {
-    const element = railRef.current;
-    if (!element || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => {
-      const measured = element.firstElementChild?.getBoundingClientRect().height;
-      if (measured) setRailHeight(Math.round(measured));
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [railCollapsed]);
-
-  // Position verticale par défaut : rail centré, recalculée si la fenêtre change
-  // de taille (rotation de tablette) au point de le faire sortir de l'écran.
-  useEffect(() => {
-    const clampToViewport = () => {
-      const maxTop = Math.max(RAIL_TOP_GUTTER, window.innerHeight - railHeight - 8);
-      setToolState({
-        railTop: railTop === null
-          ? Math.max(RAIL_TOP_GUTTER, Math.round((window.innerHeight - railHeight) / 2))
-          : Math.min(Math.max(RAIL_TOP_GUTTER, railTop), maxTop),
-      });
-    };
-    clampToViewport();
-    window.addEventListener('resize', clampToViewport);
-    return () => window.removeEventListener('resize', clampToViewport);
-  }, [railTop, railHeight]);
-
-  // Déplacement du rail : vertical libre, horizontal par aimantation au bord le
-  // plus proche au relâchement.
-  const dragRef = useRef<{ pointerId: number; offsetY: number } | null>(null);
-  const handleDragStart = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
-    const rect = railRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    dragRef.current = { pointerId: event.pointerId, offsetY: event.clientY - rect.top };
-    try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* capture indisponible */ }
-    closeToolMenu();
-  }, []);
-
-  const handleDragMove = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    event.preventDefault();
-    const maxTop = Math.max(RAIL_TOP_GUTTER, window.innerHeight - railHeight - 8);
-    setToolState({ railTop: Math.min(Math.max(RAIL_TOP_GUTTER, event.clientY - drag.offsetY), maxTop) });
-  }, [railHeight]);
-
-  const handleDragEnd = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
-    if (dragRef.current?.pointerId !== event.pointerId) return;
-    dragRef.current = null;
-    try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* déjà relâché */ }
-    setToolState({ railSide: event.clientX < window.innerWidth / 2 ? 'left' : 'right' });
-  }, []);
 
   // Le stylet est souvent posé sur la zone d'écriture au moment d'un tap ailleurs :
   // fermer au clic extérieur évite qu'un panneau reste ouvert par-dessus la fiche.
@@ -351,17 +304,11 @@ export const CanvasFloatingToolbar: React.FC = () => {
     if (tools.applyBackgroundToAll) withEveryCanvas(apply); else withActiveCanvas(apply);
   };
 
-  const railStyle: React.CSSProperties = {
-    top: railTop ?? RAIL_TOP_GUTTER,
-    [isLeft ? 'left' : 'right']: 10,
-  };
-
   if (railCollapsed) {
     return (
       <div
         ref={railRef}
-        className="canvas-toolbar canvas-rail fixed z-40 print:hidden"
-        style={railStyle}
+        className="canvas-toolbar canvas-rail fixed left-1/2 top-2 z-40 -translate-x-1/2 print:hidden"
       >
         <button
           type="button"
@@ -389,23 +336,17 @@ export const CanvasFloatingToolbar: React.FC = () => {
     );
   }
 
-  // Le panneau s'ouvre vers le bas quand le rail est haut dans l'écran, vers le
-  // haut sinon : il reste ainsi entièrement visible où que soit la barre.
-  const currentTop = railTop ?? RAIL_TOP_GUTTER;
-  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const anchorFromTop = currentTop < viewportHeight * 0.42;
   const panelStyle: React.CSSProperties = {
-    [isLeft ? 'left' : 'right']: RAIL_WIDTH + 6,
-    ...(anchorFromTop ? { top: 0 } : { bottom: 0 }),
-    maxHeight: anchorFromTop
-      ? Math.max(220, viewportHeight - currentTop - 16)
-      : Math.max(220, currentTop + railHeight - 16),
+    top: TOOLBAR_HEIGHT + 6,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    maxHeight: `calc(100vh - ${TOOLBAR_HEIGHT + 22}px)`,
   };
 
   const panel = (title: string, body: React.ReactNode, width = 320) => (
     <div
       className="canvas-rail-panel absolute flex flex-col overflow-y-auto overscroll-contain rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-[0_16px_42px_rgba(15,23,42,0.18)] backdrop-blur-xl"
-      style={{ ...panelStyle, width: `min(${width}px, calc(100vw - ${RAIL_WIDTH + 28}px))` }}
+      style={{ ...panelStyle, width: `min(${width}px, calc(100vw - 20px))` }}
     >
       <PanelHeader title={title} onClose={closeToolMenu} />
       {body}
@@ -417,27 +358,11 @@ export const CanvasFloatingToolbar: React.FC = () => {
   return (
     <div
       ref={railRef}
-      className="canvas-toolbar canvas-rail fixed z-40 print:hidden"
-      style={railStyle}
+      className="canvas-toolbar canvas-rail fixed left-1/2 top-2 z-40 w-[calc(100vw-16px)] max-w-fit -translate-x-1/2 print:hidden"
     >
       <div
-        className="flex flex-col items-center gap-0 rounded-full bg-slate-100/95 p-1 shadow-[0_7px_24px_rgba(15,23,42,0.14)] backdrop-blur-xl"
-        style={{ width: RAIL_WIDTH }}
+        className="flex h-[50px] max-w-full flex-row items-center gap-0 overflow-x-auto rounded-full bg-slate-100/95 p-1 shadow-[0_7px_24px_rgba(15,23,42,0.14)] backdrop-blur-xl"
       >
-        {/* Poignée : déplacement vertical, aimantation au bord le plus proche. */}
-        <button
-          type="button"
-          onPointerDown={handleDragStart}
-          onPointerMove={handleDragMove}
-          onPointerUp={handleDragEnd}
-          onPointerCancel={handleDragEnd}
-          title="Déplacer la barre"
-          aria-label="Déplacer la barre d'outils"
-          className="flex h-6 w-full cursor-grab touch-none items-center justify-center rounded-lg text-slate-400 hover:bg-white/70 active:cursor-grabbing"
-        >
-          <GripVertical size={16} />
-        </button>
-
         <RailButton label="Stylo" active={tools.tool === 'pen'} onClick={() => selectTool('pen', 'pen')}>
           <PenIcon src={activePen.image} size={30} />
         </RailButton>
@@ -473,7 +398,7 @@ export const CanvasFloatingToolbar: React.FC = () => {
           <MousePointer2 size={22} strokeWidth={tools.tool === 'pointer' ? 2.3 : 1.7} />
         </RailButton>
 
-        <div className="my-0.5 h-px w-7 bg-slate-300/80" />
+        <div className="mx-0.5 h-7 w-px shrink-0 bg-slate-300/80" />
 
         <RailButton label="Annuler" disabled={!canvas.canUndo} onClick={() => withActiveCanvas(handle => handle.undo())}>
           <PngIcon src={CANVAS_ICONS.undo} size={21} />
@@ -499,9 +424,9 @@ export const CanvasFloatingToolbar: React.FC = () => {
           <ImageIcon size={21} />
         </RailButton>
 
-        <div className="my-0.5 h-px w-7 bg-slate-300/80" />
+        <div className="mx-0.5 h-7 w-px shrink-0 bg-slate-300/80" />
 
-        <RailButton label="Options du canvas" active={openMenu === 'more'} onClick={() => toggleMenu('more')}>
+        <RailButton label="Option" active={openMenu === 'more'} onClick={() => toggleMenu('more')}>
           <Settings2 size={21} />
         </RailButton>
 
@@ -510,9 +435,9 @@ export const CanvasFloatingToolbar: React.FC = () => {
           onClick={() => setToolState({ railCollapsed: true, openMenu: null })}
           title="Replier la barre"
           aria-label="Replier la barre d'outils"
-          className="grid h-7 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-white hover:text-slate-700"
+          className="grid h-9 w-7 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-white hover:text-slate-700"
         >
-          {isLeft ? <ChevronLeft size={17} /> : <ChevronRight size={17} />}
+          <ChevronUp size={17} />
         </button>
       </div>
 
@@ -752,8 +677,52 @@ export const CanvasFloatingToolbar: React.FC = () => {
         </div>
       ))}
 
-      {openMenu === 'more' && panel('Options du canvas', (
+      {openMenu === 'more' && panel('Option', (
         <div className="flex flex-col gap-2.5">
+          <section aria-label="Actions de la fiche" className="rounded-xl border border-slate-200/90 bg-white p-2">
+            <div className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Fiche</div>
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  closeToolMenu();
+                  onToggleEditMode();
+                }}
+                aria-pressed={isEditMode}
+                className={`flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1.5 text-[11px] font-bold transition active:scale-[0.97] ${
+                  isEditMode
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700'
+                }`}
+              >
+                <Pencil size={18} strokeWidth={1.9} />
+                <span>Édition</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  closeToolMenu();
+                  onOpenSettings();
+                }}
+                className="flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-slate-100 px-1.5 text-[11px] font-bold text-slate-600 transition hover:bg-sky-50 hover:text-sky-700 active:scale-[0.97]"
+              >
+                <Settings2 size={18} strokeWidth={1.9} />
+                <span>Paramètres</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  closeToolMenu();
+                  onPrint();
+                }}
+                className="flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-slate-900 px-1.5 text-[11px] font-bold text-white transition hover:bg-slate-800 active:scale-[0.97]"
+              >
+                <Printer size={18} strokeWidth={1.9} />
+                <span>Imprimer</span>
+              </button>
+            </div>
+          </section>
+
           <Toggle label="Rejet de paume" checked={tools.palmRejection} onChange={() => setToolState({ palmRejection: !tools.palmRejection })} />
 
           <Section
@@ -865,17 +834,6 @@ export const CanvasFloatingToolbar: React.FC = () => {
             )}
           </Section>
 
-          <button
-            type="button"
-            onClick={() => setToolState({ railSide: isLeft ? 'right' : 'left' })}
-            className="flex min-h-12 items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700"
-          >
-            <span>Position de la barre</span>
-            <span className="flex items-center gap-1.5 text-slate-500">
-              {isLeft ? <ChevronLeft size={17} /> : <ChevronRight size={17} />}
-              {isLeft ? 'Gauche' : 'Droite'}
-            </span>
-          </button>
         </div>
       ))}
     </div>

@@ -1,15 +1,30 @@
 {
-  "name": "Générateur de Fiches d'Exercices",
-  "short_name": "Fiches Exercices",
+  "id": "/",
+  "name": "MathPlus – Fiches d'exercices",
+  "short_name": "MathPlus",
   "description": "Créez, éditez et annotez des fiches d'exercices avec zones de réponse manuscrites.",
+  "lang": "fr",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
   "background_color": "#f8fafc",
   "theme_color": "#0284c7",
+  "categories": ["education", "productivity"],
   "icons": [
-    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mes fiches",
+      "short_name": "Fiches",
+      "description": "Ouvrir le tableau de bord MathPlus",
+      "url": "/",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
   ]
 }

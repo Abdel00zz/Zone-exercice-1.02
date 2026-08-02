@@ -3,15 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Générateur de Fiches d'Exercices</title>
+    <title>MathPlus – Fiches d'exercices</title>
+    <meta name="description" content="Créez, annotez et utilisez vos fiches d’exercices MathPlus, même hors connexion." />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#0284c7" />
+    <meta name="application-name" content="MathPlus" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="MathPlus" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/icons/icon.svg" />
+    <link rel="icon" href="/icons/icon-192.png" sizes="192x192" type="image/png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Fira+Code:wght@400;500;600&family=Fredoka:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Fira+Code:wght@400;500;600&family=Fredoka:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Playwrite+FR+Trad:wght@100..400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <script>
       tailwind.config = {
@@ -21,10 +28,11 @@
               sans: ['Quicksand', 'Segoe UI', 'Arial', 'sans-serif'],
               serif: ['Lora', 'Georgia', 'serif'],
               display: ['Fredoka', 'Quicksand', 'sans-serif'],
+              chapter: ['Plus Jakarta Sans', 'Quicksand', 'Segoe UI', 'sans-serif'],
               beamer: ['Quicksand', 'Segoe UI', 'Arial', 'sans-serif'],
               latex: ['Lora', 'Georgia', 'serif'],
               mono: ['Fira Code', 'ui-monospace', 'monospace'],
-              handwriting: ['Caveat', 'cursive'],
+              handwriting: ['Playwrite FR Trad', 'Caveat', 'cursive'],
             },
           },
         },
@@ -55,6 +63,24 @@
       
       .prose * {
         color: #1e293b !important;
+      }
+
+      /* Écriture scolaire française réservée aux rappels et indices affichés
+         dans le canvas. Les formules conservent le dessin MathJax moderne. */
+      .canvas-help-text {
+        font-family: 'Playwrite FR Trad', 'Caveat', cursive;
+        font-weight: 300;
+        line-height: 1.8;
+        letter-spacing: 0.005em;
+        font-synthesis: weight;
+      }
+
+      .canvas-help-text strong {
+        font-weight: 400;
+      }
+
+      .canvas-help-text mjx-container {
+        letter-spacing: normal;
       }
       
       /* Fix MathJax alignment issues in flex containers.
@@ -131,12 +157,13 @@
         touch-action: manipulation;
       }
 
-      /* Le rail vertical doit rester utilisable même sur un écran court : il
-         défile alors sur lui-même plutôt que de déborder de la fenêtre. */
+      /* La barre horizontale reste compacte sur tablette et devient
+         défilable sur les écrans plus étroits sans masquer la fiche. */
       .canvas-rail > div:first-child {
-        max-height: calc(100vh - 76px);
-        overflow-y: auto;
-        overscroll-behavior: contain;
+        max-width: calc(100vw - 16px);
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
         scrollbar-width: none;
       }
 

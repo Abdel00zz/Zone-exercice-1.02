@@ -78,7 +78,7 @@ function renderFormattedSegment(text: string, keyPrefix: string = 'fmt', revealF
 
   while (remaining.length > 0) {
     // Find next LaTeX text command
-    const match = remaining.match(/\\(textbf|textit|emph|underline|textsf|texttt|quad|qquad|textcolor|Large|large|small)/);
+    const match = remaining.match(/\\(textbf|textit|emph|underline|textsf|texttt|quad|qquad|textcolor|Large|large|small)\b/);
 
     if (!match || match.index === undefined) {
       // No formatting command found in remaining string
@@ -117,7 +117,9 @@ function renderFormattedSegment(text: string, keyPrefix: string = 'fmt', revealF
       continue;
     }
 
-    let afterCmd = remaining.substring(matchPos + match[0].length);
+    // LaTeX autorise des espaces ou un retour à la ligne entre la commande et
+    // son argument : `\textbf {mot}` doit être équivalent à `\textbf{mot}`.
+    let afterCmd = remaining.substring(matchPos + match[0].length).replace(/^\s+/, '');
 
     // Color extraction for \textcolor{color}{content}
     let textColor = '';
@@ -126,7 +128,7 @@ function renderFormattedSegment(text: string, keyPrefix: string = 'fmt', revealF
         const colorEnd = afterCmd.indexOf('}');
         if (colorEnd !== -1) {
           textColor = afterCmd.substring(1, colorEnd);
-          afterCmd = afterCmd.substring(colorEnd + 1);
+          afterCmd = afterCmd.substring(colorEnd + 1).replace(/^\s+/, '');
         }
       }
     }
