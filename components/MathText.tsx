@@ -10,6 +10,20 @@ interface MathTextProps {
 }
 
 /**
+ * Répare les commandes `\text...` écrites avec un seul antislash dans un JSON.
+ * Le parseur JSON transforme alors silencieusement `\t` en tabulation, ce qui
+ * produisait `extbf{...}` à l'écran au lieu d'un texte gras.
+ */
+function repairJsonTextCommandEscapes(value: string): string {
+  return value
+    .replace(/\u0009extbf(?=\s*\{)/g, '\\textbf')
+    .replace(/\u0009extit(?=\s*\{)/g, '\\textit')
+    .replace(/\u0009extsf(?=\s*\{)/g, '\\textsf')
+    .replace(/\u0009exttt(?=\s*\{)/g, '\\texttt')
+    .replace(/\u0009extcolor(?=\s*\{)/g, '\\textcolor');
+}
+
+/**
  * Auto-detects loose mathematical expressions/variables in plain text
  * and wraps them in inline math delimiters ($...$) so MathJax compiles them.
  */
@@ -192,7 +206,7 @@ function renderFormattedSegment(text: string, keyPrefix: string = 'fmt', revealF
 const StaticMathTextImpl: React.FC<MathTextProps> = ({ text, className = '', revealFillBlanks = false }) => {
   if (!text) return null;
 
-  const expandedText = expandFillBlanks(text, revealFillBlanks);
+  const expandedText = expandFillBlanks(repairJsonTextCommandEscapes(text), revealFillBlanks);
 
   // 1. Tokenize display math blocks \[ ... \], $$ ... $$, \begin{align*} ... \end{align*},
   //    \begin{cases} ... \end{cases}, ainsi que le bloc de texte centré \begin{center} ... \end{center}
