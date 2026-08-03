@@ -275,14 +275,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             {sidebarCollapsed ? (
                                 <button type="button" onClick={() => setSidebarCollapsed(false)} className="grid h-11 w-11 place-items-center rounded-2xl bg-[#172126] text-white shadow-sm transition hover:bg-[#25363c] focus:outline-none focus:ring-4 focus:ring-[#19788c]/15" title="Développer la barre latérale" aria-label="Développer la barre latérale"><PanelLeftOpen className="h-5 w-5" /></button>
                             ) : (
-                                <div>
-                                    <h1 className="max-w-[190px] font-serif text-[1.65rem] font-semibold leading-[1.06] tracking-[-0.035em] text-[#111719] sm:text-[1.85rem]">
-                                        Mes Fiches d'Exercices
-                                    </h1>
-                                    <p className="mt-2 text-xs font-semibold text-[#697478]">
-                                        {worksheets.length} fiche{worksheets.length !== 1 ? 's' : ''} disponible{worksheets.length !== 1 ? 's' : ''}
-                                    </p>
-                                </div>
+                                <div />
                             )}
                         </div>
 
@@ -544,10 +537,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <button
                                 type="button"
                                 onClick={handleOpenManager}
-                                className="inline-flex h-[46px] shrink-0 items-center justify-center gap-2 rounded-full bg-[#172126] px-5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(23,33,38,0.14)] transition hover:-translate-y-0.5 hover:bg-[#25363c] focus:outline-none focus:ring-4 focus:ring-[#19788c]/20"
+                                className="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full bg-[#172126] text-white shadow-[0_8px_18px_rgba(23,33,38,0.14)] transition hover:-translate-y-0.5 hover:bg-[#25363c] focus:outline-none focus:ring-4 focus:ring-[#19788c]/20"
+                                title="Créer une nouvelle fiche"
+                                aria-label="Créer une nouvelle fiche"
                             >
-                                <Plus className="h-4 w-4" />
-                                Créer une nouvelle fiche
+                                <Plus className="h-5 w-5" />
                             </button>
                         </div>
                     </header>
