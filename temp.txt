@@ -1,0 +1,99 @@
+const initialJson: WorksheetContent = {
+  "chapter": "Logique et Raisonnements",
+  "exercises": [
+    {
+      "id": "ex1",
+      "title": "Techniques de démonstration",
+      "statement": "Dans cet exercice, nous allons utiliser différentes méthodes de raisonnement.\\pause Bonne chance !",
+      "questions": [
+        {
+          "text": "\\onslide<1->Donner la négation des assertions suivantes :",
+          "subquestions": [
+            {
+              "text": "\\onslide<2-> $(P): \\forall x \\in \\mathbb{R}, \\exists k \\in \\mathbb{Z} ; k \\le x < k+1$"
+            },
+            {
+              "text": "\\onslide<3-> $(Q): \\forall (\\alpha, \\beta) \\in \\mathbb{R}^2 ; (\\alpha - \\beta) > 1 \\implies \\exists n \\in \\mathbb{Z} ; \\alpha < n < \\beta$"
+            }
+          ]
+        },
+        {
+          "text": "\\pause Montrer par la contraposée que : $\\forall n \\in \\mathbb{N}; \\frac{n^2}{3} \\in \\mathbb{N} \\implies \\frac{n}{3} \\in \\mathbb{N}$"
+        },
+        {
+          "text": "\\pause En déduire par l'absurde que : $\\sqrt{3} \\notin \\mathbb{Q}$"
+        },
+        {
+          "text": "\\pause Soit $q \\in \\mathbb{R} \\setminus \\{1\\}$. Montrer par récurrence que : $\\forall n \\in \\mathbb{N}^*; q + q^2 + \\dots + q^n = q \\times \\frac{q^n - 1}{q - 1}$"
+        }
+      ]
+    },
+    {
+      "id": "ex2",
+      "title": "Raisonnements et assertions logiques",
+      "statement": "",
+      "questions": [
+        {
+          "text": "Montrer que : $\\forall n \\in \\mathbb{N}; 7 \\mid 21^n - 2^{3n}$"
+        },
+        {
+          "text": "Montrer que : $\\forall x \\in \\mathbb{R}_+^*; x \\ne 0 \\implies \\sqrt{x+1} \\le 1 + \\frac{x}{2}$"
+        },
+        {
+          "text": "On considère les deux assertions : $P: \\forall x \\in \\mathbb{R}_+^*; x \\ge 2\\sqrt{x} - 1$ et $Q: \\forall y \\in \\mathbb{R}, \\exists x \\in \\mathbb{R}; xy \\ne x$",
+          "subquestions": [
+            {
+              "text": "Donner la négation de $P$ et de $Q$"
+            },
+            {
+              "text": "Montrer que $P$ est vraie et que $Q$ est fausse"
+            },
+            {
+              "text": "Déterminer la valeur de vérité de : $R: (\\exists y \\in \\mathbb{R}, \\forall x \\in \\mathbb{R}; xy = x) \\implies (\\exists x \\in \\mathbb{R}_+^*; x < 2\\sqrt{x} - 1)$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ex3",
+      "title": "Arithmétique et polynômes",
+      "statement": "",
+      "questions": [
+        {
+          "text": "Démontrer que l'équation $9x^5 - 12x^4 + 6x - 5 = 0$ n'admet pas de solution entière."
+        }
+      ]
+    },
+    {
+      "id": "ex4",
+      "title": "Nombres irrationnels",
+      "statement": "On rappelle que $\\sqrt{2}$ est un nombre irrationnel.",
+      "questions": [
+        {
+          "text": "Démontrer que si $a$ et $b$ sont deux entiers relatifs tels que $a + b\\sqrt{2} = 0$, alors $a = b = 0$."
+        },
+        {
+          "text": "En déduire que si $m, n, p$ et $q$ sont des entiers relatifs, alors $m + n\\sqrt{2} = p + q\\sqrt{2} \\iff (m = p \\text{ et } n = q)$."
+        }
+      ]
+    }
+  ]
+};
+
+const createDefaultWorksheet = (): Worksheet => ({
+  id: 'ws_default_1',
+  name: initialJson.chapter || 'Fiche de Démarrage',
+  createdAt: new Date().toISOString(),
+  content: initialJson
+});
+
+const computeDefaultSchoolYear = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const startYear = month >= 7 ? year : year - 1;
+  return `${startYear}-${startYear + 1}`;
+};
+
+const App: React.FC = () => {

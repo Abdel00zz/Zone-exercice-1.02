@@ -60,13 +60,13 @@ const toRoman = (value: number): string => {
 export const formatNumbering = (index: number, level: number): string => {
   switch (numberingStyleForLevel(level)) {
     case 'decimal':
-      return `${index + 1}.`;
+      return `${index + 1}`;
     case 'alpha':
-      return `${toAlpha(index)}.`;
+      return `${toAlpha(index)}`;
     case 'roman':
-      return `${toRoman(index + 1)}.`;
+      return `${toRoman(index + 1)}`;
     case 'greek':
-      return `${GREEK_LETTERS[index % GREEK_LETTERS.length]}.`;
+      return `${GREEK_LETTERS[index % GREEK_LETTERS.length]}`;
     default:
       return '•';
   }

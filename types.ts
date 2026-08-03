@@ -58,7 +58,25 @@ export interface WorksheetContent {
     className?: string;
     schoolYear?: string;
     logoDataUrl?: string;
+    /** Informations propres à cette fiche. Si absentes, la configuration générale est utilisée. */
+    userName?: string;
+    textFont?: string;
+    mathFont?: string;
+    handwritingFont?: string;
+    textScale?: number;
+    mathScale?: number;
   };
+}
+
+/** Préférences partagées par toutes les fiches qui ne possèdent pas de surcharge locale. */
+export interface AppConfiguration {
+  userName: string;
+  schoolYear: string;
+  textFont: string;
+  mathFont: string;
+  handwritingFont: string;
+  textScale: number;
+  mathScale: number;
 }
 
 export interface Worksheet {

@@ -4,7 +4,7 @@ import { Stroke, DrawingCanvasProps, Point, ToolType } from './types';
 import { drawStroke } from './renderUtils';
 import { pointInPolygon, strokeIntersectsPoint, isPointInImage, isPointOnImageResizeHandle } from './utils';
 import {
-  setActiveCanvas, isActiveCanvas, clearActiveCanvas, isTypingTarget,
+  setActiveCanvas, isActiveCanvas, clearActiveCanvas, isTypingTarget, useCanvasIsActive,
   registerCanvas, notifyCanvasChanged, type CanvasHandle,
 } from './canvasRegistry';
 import { closeToolMenu, getToolState, setToolState, useToolValue } from './toolStore';
@@ -28,6 +28,7 @@ type HistoryAction =
   | { type: 'erase'; items: { index: number; stroke: Stroke }[] };
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
+  instanceId: providedInstanceId,
   height,
   styleName,
   colorName,
@@ -39,7 +40,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   correctionProgress,
   correctionToggle,
 }) => {
-  const instanceId = useId();
+  const generatedInstanceId = useId();
+  const instanceId = providedInstanceId ?? generatedInstanceId;
+  const isCanvasActive = useCanvasIsActive(instanceId);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDrawing = useRef(false);
@@ -1202,12 +1205,18 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   return (
     <div className="absolute inset-0 flex flex-col pointer-events-none group/canvas z-10">
+      {isCanvasActive && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-20 rounded-[3px] border-2 border-[#d8ad18] shadow-[0_0_0_3px_rgba(246,234,202,0.72)] transition-all duration-200"
+        />
+      )}
       {/*
         Le corrigé est propre à CETTE question : il reste donc dans la zone, à
         l'inverse des réglages d'outils désormais portés par la barre unique.
       */}
       {correctionToggle?.available && (
-        <div className="absolute right-1.5 top-1.5 z-30 flex items-center gap-1.5 pointer-events-auto no-print">
+          <div className="absolute -bottom-6 right-3 z-30 flex items-center gap-1.5 pointer-events-auto no-print">
           {correctionProgress && correctionToggle.visible && (
             <CorrectionProgressControl progress={correctionProgress} />
           )}
@@ -1215,10 +1224,10 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             type="button"
             aria-pressed={correctionToggle.visible}
             onClick={correctionToggle.toggle}
-            className={`min-h-10 rounded-full border px-3.5 text-xs font-bold shadow-sm transition active:scale-95 ${
+            className={`min-h-10 rounded-full border px-4 text-xs font-bold shadow-[0_5px_14px_rgba(23,33,38,0.14)] transition active:scale-95 ${
               correctionToggle.visible
-                ? 'border-emerald-700 bg-emerald-600 text-white'
-                : 'border-slate-300 bg-white/90 text-slate-700 backdrop-blur-sm hover:border-emerald-500 hover:text-emerald-700'
+                ? 'border-[#19788c] bg-[#19788c] text-white'
+                : 'border-[#dedbd2] bg-[#fffefa] text-[#435054] backdrop-blur-sm hover:border-[#19788c] hover:bg-[#e7f0ef] hover:text-[#19788c]'
             }`}
             title={correctionToggle.visible ? 'Masquer le rappel de cours' : 'Afficher le rappel de cours'}
           >
@@ -1240,6 +1249,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       <div
         ref={containerRef}
         className="flex-1 w-full relative pointer-events-auto"
+        onPointerDownCapture={() => setActiveCanvas(instanceId)}
         style={{ touchAction: palmRejection ? 'none' : 'auto' }}
       >
         <canvas

@@ -3,6 +3,7 @@ import type { PedagogicalGuidance } from '../types';
 import { DrawingCanvas } from './DrawingCanvas';
 import SolutionViewer from './SolutionViewer';
 import { useQuestionProgress } from './QuestionBeamerScope';
+import { setActiveCanvas, useCanvasIsActive } from './canvas/canvasRegistry';
 
 // Configuration
 const MM_TO_PX = 3.7795275591;
@@ -141,6 +142,8 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   onSolutionUpdate,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasInstanceId = useId();
+  const isCanvasActive = useCanvasIsActive(canvasInstanceId);
   const heightLabelRef = useRef<HTMLDivElement>(null);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
   const isResizing = useRef(false);
@@ -358,18 +361,24 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   }, []);
 
   return (
-    <div className="mt-3 mb-8 answer-space group relative">
+    <div
+      className="mt-3 mb-8 answer-space group relative"
+      onPointerDownCapture={() => setActiveCanvas(canvasInstanceId)}
+      data-active={isCanvasActive || undefined}
+    >
       <div
         ref={containerRef}
         className={`w-full relative rounded-none transition-[box-shadow] duration-200 print:rounded-none print:shadow-none box-border ${
           isResizeActive
-            ? 'shadow-[0_0_0_3px_rgba(14,165,233,0.18),0_10px_28px_rgba(15,23,42,0.12)]'
-            : 'hover:shadow-md'
+            ? 'shadow-[0_0_0_3px_rgba(216,173,24,0.30),0_10px_28px_rgba(23,33,38,0.12)]'
+            : isCanvasActive
+              ? 'shadow-[0_0_0_3px_rgba(216,173,24,0.22),0_8px_20px_rgba(23,33,38,0.08)]'
+              : 'hover:shadow-md'
         }`}
         style={{
           height: `${height}px`,
           backgroundColor: theme.screen.bg,
-          border: `1px solid ${theme.screen.border}`,
+          border: isCanvasActive ? '2px solid #d8ad18' : `1px solid ${theme.screen.border}`,
           boxSizing: 'border-box',
           // overflow: 'hidden', // Permet au menu déroulant de dépasser
         }}
@@ -471,7 +480,7 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
         */}
         <div
           ref={resizeHandleRef}
-          className="absolute -bottom-8 left-1/2 z-[40] flex h-11 w-40 -translate-x-1/2 touch-none cursor-row-resize select-none items-center justify-center no-print outline-none group/handle"
+          className="absolute bottom-0 left-1/2 z-[40] flex h-8 w-40 -translate-x-1/2 translate-y-[5px] touch-none cursor-row-resize select-none items-center justify-center no-print outline-none group/handle"
           onPointerDown={handleResizePointerDown}
           onPointerMove={handleResizePointerMove}
           onPointerUp={handleResizePointerEnd}
@@ -489,19 +498,17 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
           title="Glisser pour ajuster la hauteur"
         >
           <span
-            className={`relative flex h-5 w-[78px] items-center justify-center rounded-full border backdrop-blur-md transition-all duration-200 ${
+            className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${
               isResizeActive
-                ? 'scale-105 border-slate-800 bg-slate-900 shadow-[0_6px_18px_rgba(15,23,42,0.28)]'
-                : 'border-slate-300/90 bg-slate-50/95 opacity-90 shadow-[0_3px_10px_rgba(15,23,42,0.10)] group-hover:border-slate-400 group-hover:bg-white group-hover:opacity-100 group-focus-visible/handle:opacity-100 group-focus-visible/handle:ring-2 group-focus-visible/handle:ring-sky-400 group-focus-visible/handle:ring-offset-2'
+                ? 'h-1.5 w-16 bg-[#d8ad18] shadow-[0_2px_12px_rgba(117,89,0,0.4)] scale-105'
+                : isCanvasActive
+                  ? 'h-[4px] w-12 bg-[#d8ad18]'
+                  : 'h-[4px] w-10 bg-[#dedbd2] group-hover:w-14 group-hover:bg-[#c69800] group-focus-visible/handle:bg-[#d8ad18]'
             }`}
           >
-            <span className="flex flex-col gap-[3px]" aria-hidden="true">
-              <span className={`block h-px w-8 rounded-full transition-colors ${isResizeActive ? 'bg-white/90' : 'bg-slate-500'}`} />
-              <span className={`block h-px w-5 self-center rounded-full transition-colors ${isResizeActive ? 'bg-white/70' : 'bg-slate-400'}`} />
-            </span>
             <span
               ref={heightLabelRef}
-              className={`pointer-events-none absolute left-[calc(100%+8px)] whitespace-nowrap rounded-full bg-slate-900 px-2 py-1 font-mono text-[10px] font-semibold text-white shadow-lg transition-all ${
+              className={`pointer-events-none absolute left-[calc(100%+12px)] whitespace-nowrap rounded-full bg-[#172126] px-2 py-1 font-mono text-[10px] font-semibold text-white shadow-lg transition-all ${
                 isResizeActive ? 'translate-x-0 opacity-100' : '-translate-x-1 opacity-0'
               }`}
               aria-hidden="true"
@@ -532,6 +539,7 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
 
         {isNearViewport ? (
           <DrawingCanvas
+            instanceId={canvasInstanceId}
             height={height}
             styleName={styleName}
             colorName={colorName}

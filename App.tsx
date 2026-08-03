@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { Worksheet, WorksheetContent, QuestionPart, Exercise } from './types';
+import type { Worksheet, WorksheetContent, QuestionPart, Exercise, AppConfiguration } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
 import { useCloudSync } from './hooks/useCloudSync';
 import Dashboard from './components/Dashboard';
@@ -8,11 +8,26 @@ import SettingsModal from './components/SettingsModal';
 import EditableMathText from './components/EditableMathText';
 import SyncPanel from './components/SyncPanel';
 import CanvasFloatingToolbar from './components/canvas/FloatingToolbar';
+import ConfigurationModal from './components/ConfigurationModal';
+import { MathJaxContext } from 'better-react-mathjax';
+import { DEFAULT_MATHJAX_FONT, resolveMathJaxFont } from './utils/mathjaxFonts';
 
 import { initialJson } from "./data/initialWorksheet";
 const createDefaultWorksheet = (): Worksheet => ({ id: "ws_default_3", name: initialJson.chapter || "Fiche de Démarrage", createdAt: new Date().toISOString(), content: initialJson }); const computeDefaultSchoolYear = (): string => { const now = new Date(); const year = now.getFullYear(); const month = now.getMonth(); const startYear = month >= 7 ? year : year - 1; return `${startYear}-${startYear + 1}`; };
+const DEFAULT_CONFIGURATION: AppConfiguration = {
+  userName: '',
+  schoolYear: computeDefaultSchoolYear(),
+  textFont: "'Latin Modern Roman', 'Computer Modern', 'CMU Serif', 'Lora', Georgia, serif",
+  mathFont: DEFAULT_MATHJAX_FONT,
+  handwritingFont: "'Playwrite FR Trad', 'Caveat', cursive",
+  textScale: 100,
+  mathScale: 100,
+};
+
 const App: React.FC = () => {
   const [worksheets, setWorksheets] = useLocalStorage<Worksheet[]>('worksheets', []);
+  const [worksheetClasses, setWorksheetClasses] = useLocalStorage<string[]>('worksheet-classes', []);
+  const [configuration, setConfiguration] = useLocalStorage<AppConfiguration>('app-configuration', DEFAULT_CONFIGURATION);
   const cloudSync = useCloudSync(worksheets, setWorksheets);
   const [isSyncPanelOpen, setIsSyncPanelOpen] = useState(false);
   const [activeView, setActiveView] = useState<'dashboard' | 'worksheet'>('dashboard');
@@ -20,11 +35,50 @@ const App: React.FC = () => {
   const [importError, setImportError] = useState<string | null>(null);
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isConfigurationOpen, setIsConfigurationOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  const mathJaxFont = resolveMathJaxFont(configuration.mathFont);
+  const mathJaxScale = Math.min(140, Math.max(80, configuration.mathScale)) / 100;
+  const mathJaxConfig = useMemo(() => ({
+    loader: { load: ['input/tex', 'output/svg', '[tex]/ams', '[tex]/color', '[tex]/textmacros'] },
+    tex: {
+      packages: { '[+]': ['ams', 'color', 'textmacros'] },
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    },
+    output: {
+      font: mathJaxFont,
+      scale: mathJaxScale,
+      mtextInheritFont: true,
+      merrorInheritFont: true,
+      unknownFamily: 'Quicksand, Segoe UI, sans-serif',
+    },
+    svg: { fontCache: 'global', blacker: 1.5 },
+  }), [mathJaxFont, mathJaxScale]);
+
+  React.useEffect(() => {
+    if (configuration.mathFont !== mathJaxFont) {
+      setConfiguration((current) => ({ ...current, mathFont: mathJaxFont }));
+    }
+  }, [configuration.mathFont, mathJaxFont, setConfiguration]);
 
   React.useEffect(() => {
     setWorksheets(prev => (Array.isArray(prev) && prev.length > 0 ? prev : [createDefaultWorksheet()]));
   }, [setWorksheets]);
+
+  // Les classes existent indépendamment des fiches : une classe vide reste donc
+  // visible dans l'arborescence et peut être préparée à l'avance.
+  React.useEffect(() => {
+    const classesFromWorksheets = worksheets
+      .map((worksheet) => worksheet.content.settings?.className?.trim())
+      .filter((className): className is string => Boolean(className));
+    if (classesFromWorksheets.length === 0) return;
+    setWorksheetClasses((current) => {
+      const next = Array.from(new Set([...current, ...classesFromWorksheets]));
+      return next.length === current.length ? current : next;
+    });
+  }, [setWorksheetClasses, worksheets]);
 
   React.useEffect(() => {
     const handleQuotaWarning = (event: Event) => {
@@ -138,6 +192,60 @@ const App: React.FC = () => {
         : ws
     ));
   };
+
+  const handleCreateClass = (name: string) => {
+    const normalizedName = name.trim();
+    if (!normalizedName) return;
+    setWorksheetClasses((current) => current.includes(normalizedName) ? current : [...current, normalizedName]);
+  };
+
+  const handleRenameClass = (previousName: string, nextName: string) => {
+    const normalizedName = nextName.trim();
+    if (!normalizedName || previousName === normalizedName) return;
+    setWorksheetClasses((current) => Array.from(new Set(current.map((name) => name === previousName ? normalizedName : name))));
+    setWorksheets((current) => current.map((worksheet) => (
+      worksheet.content.settings?.className === previousName
+        ? {
+            ...worksheet,
+            content: {
+              ...worksheet.content,
+              settings: { ...worksheet.content.settings, className: normalizedName },
+            },
+          }
+        : worksheet
+    )));
+  };
+
+  const handleDeleteClass = (className: string) => {
+    setWorksheetClasses((current) => current.filter((name) => name !== className));
+    setWorksheets((current) => current.map((worksheet) => (
+      worksheet.content.settings?.className === className
+        ? {
+            ...worksheet,
+            content: {
+              ...worksheet.content,
+              settings: { ...worksheet.content.settings, className: '' },
+            },
+          }
+        : worksheet
+    )));
+  };
+
+  const handleAssignWorksheetClass = (worksheetId: string, className: string) => {
+    const normalizedName = className.trim();
+    if (normalizedName) handleCreateClass(normalizedName);
+    setWorksheets((current) => current.map((worksheet) => (
+      worksheet.id === worksheetId
+        ? {
+            ...worksheet,
+            content: {
+              ...worksheet.content,
+              settings: { ...worksheet.content.settings, className: normalizedName },
+            },
+          }
+        : worksheet
+    )));
+  };
   
   /**
    * Applique `newProps` au nœud désigné par `path` en ne clonant que les nœuds
@@ -210,8 +318,14 @@ const App: React.FC = () => {
   const presentationMode = worksheetSettings.presentationMode ?? false;
   const oneQuestionPerPage = worksheetSettings.oneQuestionPerPage ?? false;
   const classNameLabel = (worksheetSettings.className ?? '').trim();
-  const defaultSchoolYear = computeDefaultSchoolYear();
+  const defaultSchoolYear = configuration.schoolYear || computeDefaultSchoolYear();
   const schoolYearLabel = (worksheetSettings.schoolYear ?? defaultSchoolYear).trim() || defaultSchoolYear;
+  const userNameLabel = (worksheetSettings.userName ?? configuration.userName).trim();
+  const textFont = worksheetSettings.textFont ?? configuration.textFont;
+  const mathFont = resolveMathJaxFont(worksheetSettings.mathFont ?? configuration.mathFont);
+  const handwritingFont = worksheetSettings.handwritingFont ?? configuration.handwritingFont ?? "'Playwrite FR Trad', 'Caveat', cursive";
+  const textScale = worksheetSettings.textScale ?? configuration.textScale;
+  const mathScale = worksheetSettings.mathScale ?? configuration.mathScale;
   const logoDataUrl = worksheetSettings.logoDataUrl ?? '';
   const hasExercises = exercises.length > 0;
   const firstExercise = hasExercises ? exercises[0] : null;
@@ -250,8 +364,14 @@ const App: React.FC = () => {
     </div>
   );
 
-  return (
-    <div className="min-h-screen bg-white font-sans">
+    return (
+      <MathJaxContext
+        key={`${mathFont}-${mathScale}`}
+        version={4}
+        src="https://cdn.jsdelivr.net/npm/mathjax@4/startup.js"
+        config={{ ...mathJaxConfig, output: { ...mathJaxConfig.output, font: mathFont, scale: Math.min(140, Math.max(80, mathScale)) / 100 } }}
+      >
+        <div className="min-h-screen bg-[#f2f0eb] font-sans">
       {importError && (
           <div className="sticky top-0 z-50">
             <ErrorMessage message={importError} onClose={() => setImportError(null)} />
@@ -265,46 +385,72 @@ const App: React.FC = () => {
       {activeView === 'dashboard' ? (
         <Dashboard
           worksheets={worksheets}
+          worksheetClasses={worksheetClasses}
           onSelectWorksheet={handleSelectWorksheet}
           onAddWorksheet={handleAddWorksheet}
           onDeleteWorksheet={handleDeleteWorksheet}
           onRenameWorksheet={handleRenameWorksheet}
           onUpdateWorksheet={handleUpdateWorksheetContent}
+          onCreateClass={handleCreateClass}
+          onRenameClass={handleRenameClass}
+          onDeleteClass={handleDeleteClass}
+          onAssignWorksheetClass={handleAssignWorksheetClass}
           onRestoreBackup={handleRestoreBackup}
           setImportError={setImportError}
           onOpenSyncPanel={() => setIsSyncPanelOpen(true)}
+          onOpenConfiguration={() => setIsConfigurationOpen(true)}
           cloudSyncStatus={cloudSync.status}
         />
       ) : selectedWorksheet ? (
         <>
-          <main className="max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-4 landscape:px-2 sm:landscape:px-4 py-8 landscape:py-4 mt-16 sm:mt-20 transition-all duration-300 print:mt-0 print:max-w-none print:p-0 print:py-0">
+          <main
+            className="worksheet-typography max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-4 landscape:px-2 sm:landscape:px-4 py-8 landscape:py-4 mt-16 sm:mt-20 transition-all duration-300 print:mt-0 print:max-w-none print:p-0 print:py-0"
+            style={{
+              fontFamily: textFont,
+              fontSize: `${Math.min(130, Math.max(80, textScale))}%`,
+              '--worksheet-text-font': textFont,
+              '--worksheet-handwriting-font': handwritingFont,
+              '--worksheet-math-scale': '100%',
+              '--worksheet-math-font': 'inherit',
+            } as React.CSSProperties}
+          >
             <div className="space-y-8 print:space-y-6">
               <div className="title-and-first-exercise-container space-y-6 print:space-y-4">
-                <div className="flex flex-wrap items-start justify-between text-xs font-semibold uppercase tracking-wider text-slate-500 print:text-[9pt] print:text-black">
-                  <span className="text-left break-words">
-                    Classe : {classNameLabel || '\u2014'}
-                  </span>
-                  <span className="text-right break-words">
-                    {schoolYearLabel}
-                  </span>
-                </div>
-
-                {selectedWorksheet.content.chapter && (
-                  <div className="text-center py-2 print:py-0">
-                    <div role="heading" aria-level={1} className="font-chapter text-[2.15rem] sm:text-4xl md:text-[2.75rem] font-medium leading-[1.12] text-slate-800 print:text-3xl print:mb-0 tracking-[-0.035em]">
-                      <EditableMathText 
-                        text={selectedWorksheet.content.chapter} 
-                        isEditMode={isEditMode} 
-                        onChange={(newTitle) => {
-                          handleUpdateWorksheetContent(selectedWorksheet.id, {
-                            ...selectedWorksheet.content,
-                            chapter: newTitle
-                          });
-                        }} 
-                      />
+                <div className="latex-document-header mb-8 mt-2 print:mb-6 print:mt-0 relative">
+                  <div className="flex items-start justify-between text-[11px] font-semibold uppercase tracking-widest text-[#697478] print:text-black mb-8">
+                    <div className="flex flex-col gap-1.5 text-left">
+                      {userNameLabel && <span className="text-[#172126] print:text-black">{userNameLabel}</span>}
+                      <span>Classe {classNameLabel || '\u2014'}</span>
+                    </div>
+                    <div className="flex flex-col gap-1.5 text-right">
+                      <span>{schoolYearLabel}</span>
                     </div>
                   </div>
-                )}
+
+                  {selectedWorksheet.content.chapter && (
+                    <div className="text-center">
+                      <div className="inline-flex items-center justify-center space-x-3 mb-4">
+                        <div className="h-px w-8 bg-[#19788c]/30 print:bg-black/30" />
+                        <span className="text-[#19788c] print:text-black text-[10px] font-bold uppercase tracking-[0.2em]">
+                          {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
+                        </span>
+                        <div className="h-px w-8 bg-[#19788c]/30 print:bg-black/30" />
+                      </div>
+                      <div role="heading" aria-level={1} className="font-chapter text-[2.25rem] sm:text-4xl md:text-5xl font-medium leading-tight text-[#172126] print:text-4xl tracking-tight">
+                        <EditableMathText 
+                          text={selectedWorksheet.content.chapter} 
+                          isEditMode={isEditMode} 
+                          onChange={(newTitle) => {
+                            handleUpdateWorksheetContent(selectedWorksheet.id, {
+                              ...selectedWorksheet.content,
+                              chapter: newTitle
+                            });
+                          }} 
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {firstExercise && (
                   <div className="first-exercise-wrapper">
@@ -344,9 +490,9 @@ const App: React.FC = () => {
               ))}
 
               {!hasExercises && (
-                <div className="text-center py-20 border-2 border-dashed border-slate-300 bg-slate-50">
-                  <h2 className="text-xl font-semibold text-slate-600">Cette fiche ne contient aucun exercice.</h2>
-                  <p className="text-slate-500 mt-2">Vous pouvez en ajouter en modifiant le fichier source JSON.</p>
+                <div className="rounded-[24px] border-2 border-dashed border-[#c9cdc8] bg-[#fffefa] py-20 text-center">
+                  <h2 className="text-xl font-semibold text-[#4f5a5d]">Cette fiche ne contient aucun exercice.</h2>
+                  <p className="mt-2 text-[#7a8385]">Vous pouvez en ajouter en modifiant le fichier source JSON.</p>
                 </div>
               )}
 
@@ -385,13 +531,23 @@ const App: React.FC = () => {
           )}
         </>
       ) : (
-        <div className="text-center py-16">
-            <h2 className="text-2xl font-semibold text-slate-500">Fiche non trouvée.</h2>
-            <button onClick={handleBackToDashboard} className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl transition shadow-sm hover:shadow-md font-medium">Retour au Dashboard</button>
+        <div className="py-16 text-center">
+            <h2 className="text-2xl font-semibold text-[#697478]">Fiche non trouvée.</h2>
+            <button onClick={handleBackToDashboard} className="mt-6 rounded-full bg-[#172126] px-6 py-2.5 font-medium text-white shadow-sm transition hover:bg-[#25363c] hover:shadow-md">Retour au Dashboard</button>
         </div>
       )}
+      <ConfigurationModal
+        isOpen={isConfigurationOpen}
+        onClose={() => setIsConfigurationOpen(false)}
+        configuration={configuration}
+        onSave={(nextConfiguration) => {
+          setConfiguration(nextConfiguration);
+          setIsConfigurationOpen(false);
+        }}
+      />
       <SyncPanel isOpen={isSyncPanelOpen} onClose={() => setIsSyncPanelOpen(false)} sync={cloudSync} />
-    </div>
+        </div>
+      </MathJaxContext>
   );
 };
 

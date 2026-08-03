@@ -159,6 +159,12 @@ export const useActiveCanvasSnapshot = (): CanvasSnapshot => {
   return getActiveSnapshot();
 };
 
+/** Réactualise une zone lorsqu'elle devient (ou cesse d'être) la cible des outils. */
+export const useCanvasIsActive = (id: string): boolean => {
+  useSyncExternalStore(subscribeActive, getVersion, getVersion);
+  return isActiveCanvas(id);
+};
+
 /** Vrai si la frappe vise un champ de saisie : les raccourcis doivent alors être ignorés. */
 export const isTypingTarget = (target: EventTarget | null): boolean => {
   const el = target as HTMLElement | null;

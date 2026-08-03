@@ -44,11 +44,11 @@ const badgeStyle = (level: number): React.CSSProperties => {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontFamily: 'Quicksand, sans-serif',
+    fontFamily: "'Fira Code', 'Lora', 'Plus Jakarta Sans', monospace, serif",
     height: QUESTION_LINE_BOX,
     minWidth: QUESTION_LINE_BOX,
-    padding: '0 0.4rem',
-    borderRadius: '0.5rem',
+    padding: '0 0.5rem',
+    borderRadius: '0.4rem',
     lineHeight: 1,
     whiteSpace: 'nowrap',
     marginTop: 0,
@@ -59,34 +59,34 @@ const badgeStyle = (level: number): React.CSSProperties => {
   if (level <= 0) {
     return {
       ...base,
-      fontSize: '0.9rem',
+      fontSize: '0.88rem',
       fontWeight: 700,
-      color: '#0f172a',
-      backgroundColor: '#ffffff',
-      border: '1px solid #cbd5e1',
-      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
+      color: '#ffffff',
+      backgroundColor: '#172126',
+      border: 'none',
+      boxShadow: '0 2px 5px rgba(23, 33, 38, 0.15)',
     };
   }
 
   if (level === 1) {
     return {
       ...base,
-      fontSize: '0.85rem',
-      fontWeight: 600,
-      color: '#475569',
-      backgroundColor: '#eef2f7',
-      border: '1px solid transparent',
+      fontSize: '0.84rem',
+      fontWeight: 700,
+      color: '#19788c',
+      backgroundColor: '#eef6f6',
+      border: 'none',
     };
   }
 
   return {
     ...base,
     fontSize: '0.8rem',
-    fontWeight: 500,
+    fontWeight: 600,
     fontStyle: 'italic',
-    color: '#94a3b8',
-    backgroundColor: 'transparent',
-    border: '1px solid transparent',
+    color: '#526065',
+    backgroundColor: '#f8f6f0',
+    border: 'none',
   };
 };
 
@@ -97,10 +97,10 @@ const slideBadgeStyle: React.CSSProperties = {
   fontFamily: 'Fredoka, Quicksand, sans-serif',
   lineHeight: 1,
   fontSize: '2rem',
-  color: '#1e293b',
+  color: '#19788c',
   fontWeight: 700,
   marginBottom: '1.5rem',
-  backgroundColor: '#f1f5f9',
+  backgroundColor: '#dceceb',
   borderRadius: '9999px',
   width: '4rem',
   height: '4rem',
@@ -284,7 +284,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                 }}
               >
                 <div
-                  className={`question-text-wrapper text-slate-800 print:text-black leading-relaxed font-beamer ${isPresentationSlide ? 'text-[1.5rem] print:!text-[24pt] text-center print:!leading-relaxed' : 'text-[1.05rem] print:!text-[11pt] pr-8'}`}
+                  className={`question-text-wrapper text-[#263337] print:text-black leading-relaxed font-beamer ${isPresentationSlide ? 'text-[1.5rem] print:!text-[24pt] text-center print:!leading-relaxed' : 'text-[1.05rem] print:!text-[11pt] pr-8'}`}
                   style={{ margin: 0, padding: 0 }}
                 >
                   {figure && q.image ? (
@@ -314,7 +314,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                 {/* Bouton d'ajout d'image (visible au survol) */}
                 <button
                   onClick={() => setActiveImageModal(index)}
-                  className="absolute top-0 right-0 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg opacity-0 group-hover/question:opacity-100 transition-opacity no-print"
+                  className="absolute top-0 right-0 rounded-lg p-1.5 text-[#8a9293] opacity-0 transition-opacity hover:bg-[#e7f0ef] hover:text-[#19788c] group-hover/question:opacity-100 no-print"
                   title="Image de la question — affichée au-dessus de la zone de réponse"
                   aria-label="Ajouter ou modifier l'image de la question hors canvas"
                 >
@@ -379,25 +379,24 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   return (
-    <div className={`exercise-card bg-white text-black p-4 sm:p-6 lg:p-10 landscape:px-4 landscape:py-5 sm:landscape:px-6 rounded-2xl shadow-sm mb-10 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border border-slate-200 print:border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
-      {/* En-tête : le numéro d'exercice, puis le titre en badge secondaire
-          juste en dessous — même famille de formes que les pastilles de
-          question, une seule teinte d'accent. */}
-      <h2 className="exercise-title flex flex-col items-start gap-4 mb-8 print:mb-5 pt-2">
+    <div className={`exercise-card bg-[#ffffff] text-black p-5 sm:p-7 lg:p-9 landscape:px-4 landscape:py-5 sm:landscape:px-6 rounded-2xl shadow-[0_4px_24px_rgba(23,33,38,0.04)] mb-10 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
+      {/* En-tête : Numéro d'exercice tcolorbox et titre */}
+      <h2 className="exercise-title flex flex-wrap items-center gap-3 mb-6 print:mb-4 pb-3 border-b border-[#ece8df]/60 print:border-black">
         <span
-          className="exercise-badge uppercase tracking-widest shrink-0"
+          className="exercise-badge uppercase tracking-wider shrink-0"
           style={{
-            backgroundColor: '#e0f2fe',
-            color: '#075985',
-            fontSize: '0.8rem',
-            padding: '0.4rem 0.9rem',
-            borderRadius: '0.6rem',
-            border: '1px solid #bae6fd',
+            backgroundColor: '#172126',
+            color: '#ffffff',
+            fontSize: '0.82rem',
+            padding: '0.45rem 0.9rem',
+            borderRadius: '0.45rem',
+            border: 'none',
             display: 'inline-flex',
             alignItems: 'center',
-            fontFamily: 'Fredoka, Quicksand, sans-serif',
-            fontWeight: 600,
-            letterSpacing: '0.1em',
+            fontFamily: "'Plus Jakarta Sans', 'Lora', sans-serif",
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            boxShadow: '0 2px 8px rgba(23, 33, 38, 0.08)',
             WebkitPrintColorAdjust: 'exact',
             printColorAdjust: 'exact' as any,
             lineHeight: 1,
@@ -409,13 +408,13 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
           <span
             className="exercise-subtitle-badge font-beamer"
             style={{
-              backgroundColor: '#ffffff',
-              color: '#0f172a',
-              fontSize: '0.78rem',
+              backgroundColor: '#f8f6f0',
+              color: '#526065',
+              fontSize: '0.82rem',
               fontWeight: 600,
-              padding: '0.18rem 0.55rem',
-              borderRadius: '0.4rem',
-              border: '1px solid #e2e8f0',
+              padding: '0.3rem 0.75rem',
+              borderRadius: '0.45rem',
+              border: 'none',
               display: 'inline-flex',
               alignItems: 'center',
               lineHeight: 1.3,
@@ -436,7 +435,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
       {/* Bouton d'ajout d'image pour l'énoncé (visible au survol) */}
       <button
         onClick={() => setIsImageModalOpen(true)}
-        className="absolute top-6 right-6 p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg opacity-0 group-hover/exercise:opacity-100 transition-opacity no-print"
+        className="absolute top-6 right-6 rounded-lg p-2 text-[#8a9293] opacity-0 transition-opacity hover:bg-[#e7f0ef] hover:text-[#19788c] group-hover/exercise:opacity-100 no-print"
         title="Image de l'énoncé — affichée au-dessus de la zone de réponse"
         aria-label="Ajouter ou modifier l'image de l'énoncé hors canvas"
       >
@@ -444,8 +443,8 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
       </button>
 
       {exercise.statement && (
-        <div className="exercise-statement prose prose-lg max-w-none text-slate-800 print:text-black mb-8 pl-1 font-beamer text-[1.1rem] print:!text-[11.5pt]">
-            <div className="text-slate-800 print:text-black leading-relaxed">
+        <div className="exercise-statement prose prose-lg mb-8 max-w-none pl-1 font-beamer text-[1.1rem] text-[#263337] print:text-black print:!text-[11.5pt]">
+            <div className="leading-relaxed text-[#263337] print:text-black">
               <EditableMathText
                 text={exercise.statement}
                 isEditMode={!!isEditMode}

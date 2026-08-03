@@ -244,7 +244,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 				onClick={e => e.stopPropagation()}
 			>
 				<header className="flex justify-between items-center px-6 py-4 border-b border-slate-200">
-					<h2 className="text-lg font-bold font-display text-slate-900">Paramètres</h2>
+					<h2 className="text-lg font-bold font-display text-slate-900">Configuration de la fiche</h2>
 					<button onClick={onClose} className="p-1.5 rounded-xl hover:bg-slate-100 transition" aria-label="Fermer">
 						<X className="h-5 w-5 text-slate-500" />
 					</button>

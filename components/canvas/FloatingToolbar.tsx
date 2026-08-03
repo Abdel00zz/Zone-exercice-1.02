@@ -164,10 +164,10 @@ const RailButton: React.FC<RailButtonProps> = ({ label, active, disabled, tone =
     aria-pressed={active}
     className={`canvas-rail-button relative grid h-10 w-10 shrink-0 place-items-center rounded-full transition active:scale-95 disabled:pointer-events-none disabled:opacity-25 ${
       active
-        ? tone === 'danger' ? 'bg-rose-100 text-rose-600' : 'bg-sky-100 text-sky-700'
+        ? tone === 'danger' ? 'bg-rose-100 text-rose-600' : 'bg-[#dceceb] text-[#19788c]'
         : tone === 'danger'
           ? 'text-rose-500 hover:bg-rose-50'
-          : 'text-slate-600 hover:bg-white hover:text-slate-900'
+          : 'text-[#5b676a] hover:bg-[#fffefa] hover:text-[#172126]'
     }`}
   >
     {children}
@@ -180,10 +180,10 @@ const Toggle: React.FC<{ label: string; checked: boolean; onChange: () => void }
     role="switch"
     aria-checked={checked}
     onClick={onChange}
-    className="flex min-h-10 w-full items-center justify-between gap-3 rounded-xl bg-slate-100/80 px-3 text-left text-[12px] font-semibold text-slate-800"
+    className="flex min-h-10 w-full items-center justify-between gap-3 rounded-xl bg-[#f4f1eb] px-3 text-left text-[12px] font-semibold text-[#263337]"
   >
     <span className="min-w-0 flex-1">{label}</span>
-    <span className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${checked ? 'bg-teal-700' : 'bg-slate-300'}`}>
+    <span className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${checked ? 'bg-[#19788c]' : 'bg-[#cfd4d1]'}`}>
       <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-1'}`} />
     </span>
   </button>
@@ -315,7 +315,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
           onClick={() => setToolState({ railCollapsed: false })}
           title="Afficher les outils"
           aria-label="Afficher les outils"
-          className="grid h-12 w-12 place-items-center rounded-full bg-slate-100/95 text-slate-700 shadow-[0_7px_22px_rgba(15,23,42,0.15)] backdrop-blur-xl transition active:scale-95"
+          className="grid h-12 w-12 place-items-center rounded-full bg-[#fbf8f2]/95 text-[#435054] shadow-[0_7px_22px_rgba(23,33,38,0.15)] backdrop-blur-xl transition active:scale-95"
         >
           {tools.tool === 'pen' ? <PenIcon src={activePen.image} size={29} />
             : tools.tool === 'highlighter' ? (
@@ -345,7 +345,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
 
   const panel = (title: string, body: React.ReactNode, width = 320) => (
     <div
-      className="canvas-rail-panel absolute flex flex-col overflow-y-auto overscroll-contain rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-[0_16px_42px_rgba(15,23,42,0.18)] backdrop-blur-xl"
+      className="canvas-rail-panel absolute flex flex-col overflow-y-auto overscroll-contain rounded-2xl border border-[#dedbd2] bg-[#fffefa]/95 p-3 shadow-[0_16px_42px_rgba(23,33,38,0.18)] backdrop-blur-xl"
       style={{ ...panelStyle, width: `min(${width}px, calc(100vw - 20px))` }}
     >
       <PanelHeader title={title} onClose={closeToolMenu} />
@@ -361,7 +361,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
       className="canvas-toolbar canvas-rail fixed left-1/2 top-2 z-40 w-[calc(100vw-16px)] max-w-fit -translate-x-1/2 print:hidden"
     >
       <div
-        className="flex h-[50px] max-w-full flex-row items-center gap-0 overflow-x-auto rounded-full bg-slate-100/95 p-1 shadow-[0_7px_24px_rgba(15,23,42,0.14)] backdrop-blur-xl"
+        className="flex h-[50px] max-w-full flex-row items-center gap-0 overflow-x-auto rounded-full bg-[#fbf8f2]/95 p-1 shadow-[0_7px_24px_rgba(23,33,38,0.14)] backdrop-blur-xl"
       >
         <RailButton label="Stylo" active={tools.tool === 'pen'} onClick={() => selectTool('pen', 'pen')}>
           <PenIcon src={activePen.image} size={30} />
@@ -398,7 +398,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
           <MousePointer2 size={22} strokeWidth={tools.tool === 'pointer' ? 2.3 : 1.7} />
         </RailButton>
 
-        <div className="mx-0.5 h-7 w-px shrink-0 bg-slate-300/80" />
+        <div className="mx-0.5 h-7 w-px shrink-0 bg-[#dedbd2]" />
 
         <RailButton label="Annuler" disabled={!canvas.canUndo} onClick={() => withActiveCanvas(handle => handle.undo())}>
           <PngIcon src={CANVAS_ICONS.undo} size={21} />
@@ -424,7 +424,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
           <ImageIcon size={21} />
         </RailButton>
 
-        <div className="mx-0.5 h-7 w-px shrink-0 bg-slate-300/80" />
+        <div className="mx-0.5 h-7 w-px shrink-0 bg-[#dedbd2]" />
 
         <RailButton label="Option" active={openMenu === 'more'} onClick={() => toggleMenu('more')}>
           <Settings2 size={21} />
@@ -707,7 +707,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
                 className="flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-slate-100 px-1.5 text-[11px] font-bold text-slate-600 transition hover:bg-sky-50 hover:text-sky-700 active:scale-[0.97]"
               >
                 <Settings2 size={18} strokeWidth={1.9} />
-                <span>Paramètres</span>
+                <span>Configuration</span>
               </button>
               <button
                 type="button"

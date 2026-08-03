@@ -50,6 +50,8 @@ export interface CorrectionToggle {
 }
 
 export interface DrawingCanvasProps {
+  /** Identifiant stable fourni par la zone de réponse pour la coordination avec la barre d'outils. */
+  instanceId?: string;
   height: number;
   styleName?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
   colorName?: 'black' | 'green' | 'blue' | 'white' | 'cream' | '';
