@@ -166,14 +166,14 @@ export const SolutionViewer: React.FC<SolutionViewerProps> = ({
 
   if (isEditing) {
     return (
-      <div className="p-3 bg-yellow-50/95 border border-yellow-300 rounded-xl space-y-2 text-slate-800 pointer-events-auto shadow-md">
-        <label className="text-xs font-bold text-yellow-800 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="p-3 bg-gray-100 border-2 border-gray-500 rounded-sm space-y-2 text-slate-800 pointer-events-auto shadow-md">
+        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
           <Edit2 className="w-3.5 h-3.5" /> Éditer la solution / corrigé (Code Beamer LaTeX)
         </label>
         <textarea
           value={editText}
           onChange={(e) => setEditText(e.target.value)}
-          className="w-full p-2.5 bg-white border border-yellow-400 rounded-lg font-mono text-xs text-slate-900 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          className="w-full p-2.5 bg-white border-2 border-gray-500 rounded-sm font-mono text-xs text-slate-900 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-gray-600"
           placeholder="\begin{block}{Corrigé}... \end{block}"
         />
         <div className="flex justify-end gap-2">

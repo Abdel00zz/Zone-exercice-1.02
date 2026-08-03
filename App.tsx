@@ -171,17 +171,9 @@ const App: React.FC = () => {
   };
 
   const handleRenameWorksheet = (id: string, newName: string) => {
+    // Ne renomme que la fiche : le chapitre reste indépendant pour permettre à plusieurs fiches de le partager.
     setWorksheets(prev => prev.map(ws =>
-      ws.id === id
-        ? {
-            ...ws,
-            name: newName,
-            content: {
-              ...ws.content,
-              chapter: newName
-            }
-          }
-        : ws
+      ws.id === id ? { ...ws, name: newName } : ws
     ));
   };
 

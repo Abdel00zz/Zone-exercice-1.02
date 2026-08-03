@@ -3,6 +3,37 @@
  * High-Resolution A4 Print — badges match screen exactly
  */
 
+/* Miniatures vectorielles : MathJax conserve son SVG natif et la composition
+   reste nette à tous les niveaux de zoom, sans marges de formule surdimensionnées. */
+.worksheet-thumbnail {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures;
+}
+
+.worksheet-thumbnail .math-display,
+.worksheet-thumbnail .math-center {
+  margin: 0.25em 0 !important;
+  overflow: visible;
+}
+
+.worksheet-thumbnail mjx-container[jax="SVG"] {
+  color: currentColor;
+  max-width: 100%;
+}
+
+.worksheet-thumbnail mjx-container[jax="SVG"][display="true"] {
+  margin: 0 !important;
+  overflow: visible;
+}
+
+.worksheet-thumbnail mjx-container[jax="SVG"] > svg {
+  max-width: 100%;
+  shape-rendering: geometricPrecision;
+  text-rendering: geometricPrecision;
+}
+
 @media print {
 
   /* ── Resolution & color fidelity ── */
@@ -102,27 +133,39 @@
     box-shadow: none !important;
   }
 
-  /* TITRE EXERCICE — numéro puis titre en cartouche, l'un sous l'autre */
+  /* TITRE EXERCICE — numéro puis titre de partie centré, sans badge */
   .exercise-title {
-    margin-bottom: 5mm !important;
+    margin-bottom: 2mm !important;
     font-size: 14pt !important;
     line-height: 1.2 !important;
     display: block !important;
-    padding-bottom: 0 !important;
-    border: none !important;
+    padding-bottom: 2mm !important;
+    border-bottom: 0.5pt solid #d8d3cc !important;
   }
 
-  .exercise-subtitle-badge {
-    display: inline-flex !important;
-    margin-top: 2mm !important;
-    font-size: 11pt !important;
-    font-weight: 600 !important;
-    color: #000 !important;
-    background-color: #fff !important;
-    border: 0.75pt solid #000 !important;
-    border-radius: 3pt !important;
-    padding: 1mm 3mm !important;
+  .exercise-part-title {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3mm !important;
+    width: 100% !important;
+    margin: 0 0 4mm !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    color: #403b37 !important;
+    font-family: 'Itim', 'Cormorant Garamond', 'Lora', serif !important;
+    font-size: 12pt !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.025em !important;
     line-height: 1.2 !important;
+    text-align: center !important;
+  }
+
+  .exercise-part-title > span {
+    width: 12mm !important;
+    height: 0.4pt !important;
+    background: #aaa39b !important;
   }
 
   /* ══════════════════════════════════════════════

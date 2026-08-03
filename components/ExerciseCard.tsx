@@ -380,8 +380,9 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
 
   return (
     <div className={`exercise-card bg-[#ffffff] text-black p-5 sm:p-7 lg:p-9 landscape:px-4 landscape:py-5 sm:landscape:px-6 rounded-2xl shadow-[0_4px_24px_rgba(23,33,38,0.04)] mb-10 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
-      {/* En-tête : Numéro d'exercice tcolorbox et titre */}
-      <h2 className="exercise-title flex flex-wrap items-center gap-3 mb-6 print:mb-4 pb-3 border-b border-[#ece8df]/60 print:border-black">
+      {/* En-tête : le numéro reste dans le repère sombre ; le titre de
+          partie vit sur sa propre ligne, centré dans l'exercice. */}
+      <h2 className="exercise-title flex items-center mb-3 print:mb-2 pb-3 border-b border-[#ece8df]/60 print:border-black">
         <span
           className="exercise-badge uppercase tracking-wider shrink-0"
           style={{
@@ -404,33 +405,29 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
         >
           Exercice {exerciseNumber}
         </span>
-        {(exercise.title || isEditMode) && (
-          <span
-            className="exercise-subtitle-badge font-beamer"
+      </h2>
+
+      {(exercise.title || isEditMode) && (
+        <div className="exercise-part-title mb-6 print:mb-4 flex w-full items-center justify-center gap-3 px-6 text-center">
+          <span aria-hidden="true" className="h-px w-8 bg-gradient-to-r from-transparent to-[#b8afa5]/70 sm:w-12" />
+          <div
+            className="min-w-0 max-w-[75%] text-[1.05rem] leading-snug text-[#71675f] print:text-black"
             style={{
-              backgroundColor: '#f8f6f0',
-              color: '#526065',
-              fontSize: '0.82rem',
-              fontWeight: 600,
-              padding: '0.3rem 0.75rem',
-              borderRadius: '0.45rem',
-              border: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              lineHeight: 1.3,
-              WebkitPrintColorAdjust: 'exact',
-              printColorAdjust: 'exact' as any,
+              fontFamily: "'Itim', 'Cormorant Garamond', 'Lora', serif",
+              fontWeight: 400,
+              letterSpacing: '0.025em',
             }}
           >
             <EditableMathText
               text={exercise.title || ""}
               isEditMode={!!isEditMode}
               onChange={(newTitle) => onExerciseUpdate(exercise.id, { title: newTitle })}
-              className={!exercise.title && isEditMode ? "min-w-[150px] text-slate-400 italic" : ""}
+              className={!exercise.title && isEditMode ? "min-w-[150px] text-[#aaa29b]" : ""}
             />
-          </span>
-        )}
-      </h2>
+          </div>
+          <span aria-hidden="true" className="h-px w-8 bg-gradient-to-l from-transparent to-[#b8afa5]/70 sm:w-12" />
+        </div>
+      )}
 
       {/* Bouton d'ajout d'image pour l'énoncé (visible au survol) */}
       <button

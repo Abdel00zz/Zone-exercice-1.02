@@ -78,7 +78,7 @@ const EditableMathTextImpl: React.FC<EditableMathTextProps> = ({ text, isEditMod
           value={currentText}
           onChange={handleChange}
           onBlur={handleBlur}
-          className={`w-full bg-yellow-50 border border-yellow-400 p-2 rounded-md font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-yellow-500 ${className}`}
+          className={`w-full bg-gray-100 border-2 border-gray-500 p-2 rounded-sm font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-600 ${className}`}
           style={{ minHeight: '60px', overflow: 'hidden' }}
         />
       </div>
@@ -88,7 +88,7 @@ const EditableMathTextImpl: React.FC<EditableMathTextProps> = ({ text, isEditMod
   return (
     <div
       onDoubleClick={handleDoubleClick}
-      className={`${isEditMode ? 'hover:bg-yellow-50/50 hover:outline-dashed hover:outline-2 hover:outline-yellow-400 cursor-text transition-colors' : ''} ${className}`}
+      className={`${isEditMode ? 'hover:bg-gray-100/60 hover:outline-dashed hover:outline-2 hover:outline-gray-500 cursor-text transition-colors' : ''} ${className}`}
       title={isEditMode ? "Double-cliquez pour modifier" : undefined}
     >
       <MathText text={text} revealFillBlanks={isEditMode} />
