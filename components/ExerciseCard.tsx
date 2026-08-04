@@ -52,13 +52,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
 
   return (
     <div 
-      className={`question-list ${level > 0 ? 'question-list-sub' : 'question-list-main'}`}
-      style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: level > 0 ? '0.75rem' : '1.5rem',
-        paddingLeft: level > 0 ? '0.75rem' : '0',
-      }}
+      className={`question-list ${level > 0 ? 'question-list-sub' : 'question-list-main'} flex flex-col ${level > 0 ? 'gap-3 pl-3' : 'gap-6'}`}
     >
       {questions.map((q, index) => {
         const currentPath = [...path, index];
@@ -80,21 +74,8 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                 bg-blue-50/40 rounded-xl p-3 sm:p-4 border border-blue-100/50 
                 print:bg-transparent print:border-transparent print:p-0
                 ${isPresentationSlide ? 'print:flex print:flex-col print:justify-center print:items-center print:min-h-[70vh] print:text-center' : ''}
+                ${isPresentationSlide ? 'flex flex-col justify-center items-center min-h-[40vh] text-center p-8' : 'grid grid-cols-[min-content_1fr] gap-3 items-baseline'}
               `}
-              style={isPresentationSlide ? {
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '40vh',
-                textAlign: 'center',
-                padding: '2rem'
-              } : { 
-                display: 'grid',
-                gridTemplateColumns: 'min-content 1fr',
-                gap: '0.75rem',
-                alignItems: 'baseline',
-              }}
             >
               {/* Badge */}
               <span 

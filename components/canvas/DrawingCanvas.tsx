@@ -237,20 +237,22 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   const isStylusEraser = (e: React.PointerEvent | PointerEvent) => {
     if (!e) return false;
+    // Détection native du type eraser (supporté par certains navigateurs/drivers)
     if (e.pointerType === 'eraser') return true;
     if (e.pointerType === 'pen') {
       const ne = (e as any).nativeEvent || e;
       const buttons = e.buttons ?? ne.buttons ?? 0;
       const button = e.button ?? ne.button ?? -1;
+      // Détection gomme latérale : bouton 2 (clic droit), bouton 5, barrel button, ou propriété eraser
       return (
-        (buttons & 2) !== 0 ||
-        (buttons & 4) !== 0 ||
-        (buttons & 32) !== 0 ||
-        button === 2 ||
-        button === 5 ||
-        Boolean((ne as any).barrelButton) ||
+        (buttons & 2) !== 0 ||  // Clic droit / bouton latéral
+        (buttons & 4) !== 0 ||  // Bouton supplémentaire
+        (buttons & 32) !== 0 || // Bouton stylus additionnel
+        button === 2 ||         // Bouton droit
+        button === 5 ||         // Bouton latéral stylet
+        Boolean((ne as any).barrelButton) || // Barrel button (Surface Pen)
         Boolean((e as any).barrelButton) ||
-        Boolean((ne as any).eraser) ||
+        Boolean((ne as any).eraser) || // Propriété eraser explicite
         Boolean((e as any).eraser)
       );
     }
