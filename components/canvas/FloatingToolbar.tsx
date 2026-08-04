@@ -16,7 +16,7 @@ import {
   Check, ChevronDown, ChevronUp, Circle, Crosshair, Diamond,
   Hexagon, Image as ImageIcon, Lasso, Minus, MousePointer2,
   MoveDiagonal2, MoveHorizontal, Palette, Pen, Pentagon, Plus, Ruler,
-  Settings2, Square, Trash2, Triangle, Type, X, ArrowRight, Pencil, Printer,
+  Settings2, Square, Trash2, Triangle, Type, X, ArrowRight, Pencil, Printer, MoreVertical,
 } from 'lucide-react';
 import type {
   HighlighterType, PenType, PressureCurve, ShapeType, ToolType,
@@ -308,7 +308,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
     return (
       <div
         ref={railRef}
-        className="canvas-toolbar canvas-rail fixed left-1/2 top-2 z-40 -translate-x-1/2 print:hidden"
+        className="canvas-toolbar canvas-rail fixed left-1/2 bottom-4 z-40 -translate-x-1/2 print:hidden"
       >
         <button
           type="button"
@@ -337,7 +337,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
   }
 
   const panelStyle: React.CSSProperties = {
-    top: TOOLBAR_HEIGHT + 6,
+    bottom: TOOLBAR_HEIGHT + 6,
     left: '50%',
     transform: 'translateX(-50%)',
     maxHeight: `calc(100vh - ${TOOLBAR_HEIGHT + 22}px)`,
@@ -358,10 +358,10 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
   return (
     <div
       ref={railRef}
-      className="canvas-toolbar canvas-rail fixed left-1/2 top-2 z-40 w-[calc(100vw-16px)] max-w-fit -translate-x-1/2 print:hidden"
+      className="canvas-toolbar canvas-rail fixed left-1/2 bottom-4 z-40 w-[calc(100vw-16px)] max-w-fit -translate-x-1/2 print:hidden"
     >
       <div
-        className="flex h-[50px] max-w-full flex-row items-center gap-0 overflow-x-auto rounded-full bg-[#fbf8f2]/95 p-1 shadow-[0_7px_24px_rgba(23,33,38,0.14)] backdrop-blur-xl"
+        className="flex h-[50px] max-w-full flex-row items-center gap-1 overflow-x-auto rounded-full bg-[#fbf8f2]/95 px-1.5 py-1 shadow-[0_7px_24px_rgba(23,33,38,0.14)] backdrop-blur-xl"
       >
         <RailButton label="Stylo" active={tools.tool === 'pen'} onClick={() => selectTool('pen', 'pen')}>
           <PenIcon src={activePen.image} size={30} />
@@ -420,14 +420,8 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
           <Trash2 size={21} />
         </RailButton>
 
-        <RailButton label="Insérer une image" onClick={() => withActiveCanvas(handle => handle.importImage())}>
-          <ImageIcon size={21} />
-        </RailButton>
-
-        <div className="mx-0.5 h-7 w-px shrink-0 bg-[#dedbd2]" />
-
         <RailButton label="Option" active={openMenu === 'more'} onClick={() => toggleMenu('more')}>
-          <Settings2 size={21} />
+          <MoreVertical size={21} />
         </RailButton>
 
         <button
@@ -627,7 +621,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
                   key={shape.value}
                   type="button"
                   onClick={() => setToolState({ shapeType: shape.value, tool: 'shape' })}
-                  className={`grid h-14 w-14 place-items-center rounded-full text-slate-900 transition-all active:scale-95 ${selected ? 'scale-105 bg-slate-900 text-white shadow-[0_7px_20px_rgba(15,23,42,0.24)]' : 'bg-slate-50 hover:bg-white hover:shadow-sm'}`}
+                  className={`grid h-14 w-14 place-items-center rounded-full text-slate-900 transition-all active:scale-95 ${selected ? 'scale-105 bg-[#19788c] text-white shadow-[0_7px_20px_rgba(25,120,140,0.3)]' : 'bg-slate-50 hover:bg-white hover:shadow-sm'}`}
                   title={shape.label}
                   aria-label={shape.label}
                   aria-pressed={selected}
@@ -670,7 +664,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
             type="button"
             disabled={!canvas.hasSelection}
             onClick={() => withActiveCanvas(handle => handle.duplicateSelection())}
-            className="min-h-12 rounded-xl bg-slate-900 px-3 text-[13px] font-bold text-white transition active:scale-[0.99] disabled:opacity-30"
+            className="min-h-12 rounded-xl bg-[#19788c] px-3 text-[13px] font-bold text-white transition active:scale-[0.99] disabled:opacity-30 hover:bg-[#11677a] shadow-[0_5px_15px_rgba(25,120,140,0.25)]"
           >
             Dupliquer la sélection
           </button>
@@ -723,6 +717,21 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
             </div>
           </section>
 
+          <button
+            type="button"
+            onClick={() => {
+              closeToolMenu();
+              withActiveCanvas(handle => handle.importImage());
+            }}
+            className="flex min-h-[50px] w-full items-center justify-between rounded-xl border border-slate-200/90 bg-white px-4 text-[14px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
+          >
+            <div className="flex items-center gap-3">
+              <ImageIcon size={20} className="text-emerald-600" />
+              <span>Insérer une image</span>
+            </div>
+            <Plus size={18} className="text-slate-400" />
+          </button>
+
           <Toggle label="Rejet de paume" checked={tools.palmRejection} onChange={() => setToolState({ palmRejection: !tools.palmRejection })} />
 
           <Section
@@ -769,7 +778,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
           </Section>
 
           <Section
-            title="Encre MathPlus"
+            title="Encre Interactive Maths"
             summary={`${tools.pressureCurve === 'balanced' ? 'Équilibrée' : tools.pressureCurve === 'soft' ? 'Souple' : 'Ferme'} · stabilisation ${Math.round(tools.penStabilization * 100)}%`}
             icon={<Pen size={17} />}
             open={expandedSection === 'ink'}

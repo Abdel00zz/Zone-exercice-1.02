@@ -58,67 +58,70 @@ const ConfigurationModal: React.FC<{
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#172126]/35 p-4 backdrop-blur-sm" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="configuration-title">
-      <div className="max-h-[90vh] w-full max-w-xl overflow-hidden rounded-[24px] border border-[#dedbd2] bg-[#fffefa] shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <header className="flex items-center justify-between border-b border-[#dedbd2] px-5 py-4 sm:px-6">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-[24px] border border-[#dedbd2] bg-[#fffefa] shadow-2xl flex flex-col" onClick={(event) => event.stopPropagation()}>
+        <header className="flex shrink-0 items-center justify-between border-b border-[#dedbd2] px-5 py-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#dceceb] text-[#19788c]"><Settings className="h-5 w-5" /></span>
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#dceceb] text-[#19788c]"><Settings className="h-5 w-5" /></span>
             <div><h2 id="configuration-title" className="font-serif text-xl font-semibold text-[#172126]">Configuration</h2><p className="text-xs font-medium text-[#697478]">Réglages utilisés par vos fiches.</p></div>
           </div>
-          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-[#697478] hover:bg-[#f4f1eb]" aria-label="Fermer"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full text-[#697478] hover:bg-[#f4f1eb]" aria-label="Fermer"><X className="h-5 w-5" /></button>
         </header>
-        <form onSubmit={(event) => { event.preventDefault(); onSave({ ...draft, userName: draft.userName.trim(), schoolYear: draft.schoolYear.trim() }); }} className="max-h-[calc(90vh-78px)] overflow-y-auto p-5 sm:p-6">
-          <div className="space-y-6">
+        <form onSubmit={(event) => { event.preventDefault(); onSave({ ...draft, userName: draft.userName.trim(), schoolYear: draft.schoolYear.trim() }); }} className="flex flex-col flex-grow overflow-hidden">
+          <div className="overflow-y-auto p-5 sm:p-6 space-y-5 flex-grow">
             <section className="grid gap-4 sm:grid-cols-2">
-              <label className="rounded-2xl border border-[#dedbd2] bg-[#fbf8f2] p-4"><span className="mb-2 flex items-center gap-2 text-xs font-bold text-[#435054]"><UserRound className="h-4 w-4 text-[#19788c]" />Nom utilisateur</span><input value={draft.userName} onChange={(event) => update('userName', event.target.value)} placeholder="Votre nom" className="w-full bg-transparent text-sm font-semibold text-[#172126] outline-none placeholder:text-[#9aa1a1]" /></label>
-              <label className="rounded-2xl border border-[#dedbd2] bg-[#fbf8f2] p-4"><span className="mb-2 flex items-center gap-2 text-xs font-bold text-[#435054]"><CalendarDays className="h-4 w-4 text-[#b88700]" />Année scolaire</span><input value={draft.schoolYear} onChange={(event) => update('schoolYear', event.target.value)} placeholder="2026-2027" className="w-full bg-transparent text-sm font-semibold text-[#172126] outline-none placeholder:text-[#9aa1a1]" /></label>
+              <label className="rounded-2xl border border-[#dedbd2] bg-[#fbf8f2] p-3 sm:p-4"><span className="mb-2 flex items-center gap-2 text-[13px] font-bold text-[#435054]"><UserRound className="h-4 w-4 text-[#19788c]" />Nom utilisateur</span><input value={draft.userName} onChange={(event) => update('userName', event.target.value)} placeholder="Votre nom" className="w-full bg-transparent text-sm font-semibold text-[#172126] outline-none placeholder:text-[#9aa1a1]" /></label>
+              <label className="rounded-2xl border border-[#dedbd2] bg-[#fbf8f2] p-3 sm:p-4"><span className="mb-2 flex items-center gap-2 text-[13px] font-bold text-[#435054]"><CalendarDays className="h-4 w-4 text-[#b88700]" />Année scolaire</span><input value={draft.schoolYear} onChange={(event) => update('schoolYear', event.target.value)} placeholder="2026-2027" className="w-full bg-transparent text-sm font-semibold text-[#172126] outline-none placeholder:text-[#9aa1a1]" /></label>
             </section>
             
-            <section className="rounded-2xl border border-[#cbe0df] bg-[#f1f8f7] p-4">
-              <div className="mb-4 flex items-center gap-2"><Type className="h-4 w-4 text-[#19788c]" /><div><h3 className="text-sm font-bold text-[#172126]">Texte de la fiche</h3><p className="text-xs text-[#697478]">Police et taille des énoncés, titres et questions.</p></div></div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="text-xs font-bold text-[#435054]">Police du texte
-                  <select value={draft.textFont} onChange={(event) => update('textFont', event.target.value)} className="mt-1.5 w-full rounded-xl border border-[#cbe0df] bg-white px-3 py-2 text-sm font-semibold text-[#172126] outline-none">
+            <section className="rounded-2xl border border-[#cbe0df] bg-[#f1f8f7] p-4 sm:p-5">
+              <div className="mb-4 flex items-center gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#dceceb] text-[#19788c]"><Type className="h-4 w-4" /></span><div><h3 className="text-sm font-bold text-[#172126]">Texte de la fiche</h3><p className="text-xs text-[#697478]">Police et taille des énoncés, titres et questions.</p></div></div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="text-[13px] font-bold text-[#435054] flex flex-col gap-1.5">Police du texte
+                  <select value={draft.textFont} onChange={(event) => update('textFont', event.target.value)} className="w-full rounded-xl border border-[#cbe0df] bg-white h-11 px-3 text-sm font-semibold text-[#172126] outline-none focus:ring-2 focus:ring-[#19788c]/20">
                     {TEXT_FONTS.map((font) => <option key={font.label} value={font.value}>{font.label}</option>)}
                   </select>
                 </label>
-                <label className="text-xs font-bold text-[#435054]">Taille : {draft.textScale}%
-                  <input type="range" min="80" max="130" step="5" value={draft.textScale} onChange={(event) => update('textScale', Number(event.target.value))} className="mt-3 w-full accent-[#19788c]" />
+                <label className="text-[13px] font-bold text-[#435054] flex flex-col gap-1.5">Taille : {draft.textScale}%
+                  <input type="range" min="80" max="130" step="5" value={draft.textScale} onChange={(event) => update('textScale', Number(event.target.value))} className="mt-2 w-full accent-[#19788c]" />
                 </label>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-[#e5dcb8] bg-[#fbf4dc] p-4">
-              <div className="mb-4 flex items-center gap-2"><Sigma className="h-4 w-4 text-[#b88700]" /><div><h3 className="text-sm font-bold text-[#172126]">MathJax 4</h3><p className="text-xs text-[#697478]">Choisissez la police de rendu des formules mathématiques TeX/LaTeX.</p></div></div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="text-xs font-bold text-[#435054]">Police MathJax
-                  <select value={resolveMathJaxFont(draft.mathFont)} onChange={(event) => update('mathFont', event.target.value)} className="mt-1.5 w-full rounded-xl border border-[#e5dcb8] bg-white px-3 py-2 text-sm font-semibold text-[#172126] outline-none">
+            <section className="rounded-2xl border border-[#e5dcb8] bg-[#fbf4dc] p-4 sm:p-5">
+              <div className="mb-4 flex items-center gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#f0e6c2] text-[#b88700]"><Sigma className="h-4 w-4" /></span><div><h3 className="text-sm font-bold text-[#172126]">MathJax 4</h3><p className="text-xs text-[#697478]">Choisissez la police de rendu des formules mathématiques TeX/LaTeX.</p></div></div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="text-[13px] font-bold text-[#435054] flex flex-col gap-1.5">Police MathJax
+                  <select value={resolveMathJaxFont(draft.mathFont)} onChange={(event) => update('mathFont', event.target.value)} className="w-full rounded-xl border border-[#e5dcb8] bg-white h-11 px-3 text-sm font-semibold text-[#172126] outline-none focus:ring-2 focus:ring-[#b88700]/20">
                     {MATHJAX_FONTS.map((font) => <option key={font.value} value={font.value}>{font.label}</option>)}
                   </select>
                 </label>
-                <label className="text-xs font-bold text-[#435054]">Taille des formules : {draft.mathScale}%
-                  <input type="range" min="80" max="140" step="5" value={draft.mathScale} onChange={(event) => update('mathScale', Number(event.target.value))} className="mt-3 w-full accent-[#b88700]" />
+                <label className="text-[13px] font-bold text-[#435054] flex flex-col gap-1.5">Taille des formules : {draft.mathScale}%
+                  <input type="range" min="80" max="140" step="5" value={draft.mathScale} onChange={(event) => update('mathScale', Number(event.target.value))} className="mt-2 w-full accent-[#b88700]" />
                 </label>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-[#e2d5ed] bg-[#f8f3fc] p-4">
-              <div className="mb-4 flex items-center gap-2"><PenTool className="h-4 w-4 text-[#7e3af2]" /><div><h3 className="text-sm font-bold text-[#172126]">Écriture Manuscrite (Indices & Corrigés)</h3><p className="text-xs text-[#697478]">Style d'écriture manuscrite pour les aides et rappels dans les zones de réponse.</p></div></div>
+            <section className="rounded-2xl border border-[#e2d5ed] bg-[#f8f3fc] p-4 sm:p-5">
+              <div className="mb-4 flex items-center gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#eadef5] text-[#7e3af2]"><PenTool className="h-4 w-4" /></span><div><h3 className="text-sm font-bold text-[#172126]">Écriture Manuscrite (Indices & Corrigés)</h3><p className="text-xs text-[#697478]">Style d'écriture manuscrite pour les aides et rappels.</p></div></div>
               <div>
-                <label className="text-xs font-bold text-[#435054]">Police manuscrite
-                  <select value={draft.handwritingFont || "'Playwrite FR Trad', 'Caveat', cursive"} onChange={(event) => update('handwritingFont', event.target.value)} className="mt-1.5 w-full rounded-xl border border-[#e2d5ed] bg-white px-3 py-2 text-sm font-semibold text-[#172126] outline-none">
+                <label className="text-[13px] font-bold text-[#435054] flex flex-col gap-1.5">Police manuscrite
+                  <select value={draft.handwritingFont || "'Playwrite FR Trad', 'Caveat', cursive"} onChange={(event) => update('handwritingFont', event.target.value)} className="w-full rounded-xl border border-[#e2d5ed] bg-white h-11 px-3 text-sm font-semibold text-[#172126] outline-none focus:ring-2 focus:ring-[#7e3af2]/20">
                     {HANDWRITING_FONTS.map((font) => <option key={font.label} value={font.value}>{font.label}</option>)}
                   </select>
                 </label>
-                <div className="mt-3 p-3 rounded-xl bg-white border border-[#e2d5ed]/80">
-                  <p className="text-xs font-semibold text-[#697478] mb-1">Aperçu du texte d'aide :</p>
-                  <p className="text-sm sm:text-base text-[#1e3a8a]" style={{ fontFamily: draft.handwritingFont || "'Playwrite FR Trad', 'Caveat', cursive" }}>
+                <div className="mt-4 p-3.5 rounded-xl bg-white border border-[#e2d5ed]/80 shadow-sm">
+                  <p className="text-[11px] font-semibold text-[#697478] mb-1.5 uppercase tracking-wide">Aperçu du texte d'aide</p>
+                  <p className="text-[15px] text-[#1e3a8a]" style={{ fontFamily: draft.handwritingFont || "'Playwrite FR Trad', 'Caveat', cursive" }}>
                     <MathText text="Rappel : Pour $x \neq 0$, la dérivée de $\ln(x)$ est $\frac{1}{x}$." />
                   </p>
                 </div>
               </div>
             </section>
           </div>
-          <footer className="mt-6 flex justify-end gap-2 border-t border-[#dedbd2] pt-4"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-bold text-[#697478] hover:bg-[#f4f1eb]">Annuler</button><button type="submit" className="rounded-xl bg-[#172126] px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-[#25363c]">Enregistrer</button></footer>
+          <footer className="shrink-0 flex justify-end gap-3 border-t border-[#dedbd2] px-5 py-4 bg-[#fffefa]">
+            <button type="button" onClick={onClose} className="rounded-xl px-5 h-11 text-sm font-bold text-[#697478] hover:bg-[#f4f1eb] transition-colors">Annuler</button>
+            <button type="submit" className="rounded-xl bg-[#172126] px-6 h-11 text-sm font-bold text-white shadow-md hover:bg-[#25363c] transition-colors active:scale-95">Enregistrer</button>
+          </footer>
         </form>
       </div>
     </div>

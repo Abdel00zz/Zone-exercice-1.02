@@ -368,17 +368,17 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
     >
       <div
         ref={containerRef}
-        className={`w-full relative rounded-none transition-[box-shadow] duration-200 print:rounded-none print:shadow-none box-border ${
+        className={`w-full relative rounded-none transition-all duration-200 print:rounded-none print:shadow-none print:border-none box-border ${
           isResizeActive
-            ? 'shadow-[0_0_0_3px_rgba(216,173,24,0.30),0_10px_28px_rgba(23,33,38,0.12)]'
+            ? 'shadow-md ring-4 ring-[#e2e8f0]'
             : isCanvasActive
-              ? 'shadow-[0_0_0_3px_rgba(216,173,24,0.22),0_8px_20px_rgba(23,33,38,0.08)]'
-              : 'hover:shadow-md'
+              ? 'shadow-sm ring-4 ring-[#f1f5f9]'
+              : 'hover:shadow-sm'
         }`}
         style={{
           height: `${height}px`,
           backgroundColor: theme.screen.bg,
-          border: isCanvasActive ? '2px solid #d8ad18' : `1px solid ${theme.screen.border}`,
+          border: isResizeActive ? '3px solid #64748b' : isCanvasActive ? '3px solid #94a3b8' : `1px solid ${theme.screen.border}`,
           boxSizing: 'border-box',
           // overflow: 'hidden', // Permet au menu déroulant de dépasser
         }}
@@ -500,10 +500,10 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
           <span
             className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${
               isResizeActive
-                ? 'h-1.5 w-16 bg-[#d8ad18] shadow-[0_2px_12px_rgba(117,89,0,0.4)] scale-105'
+                ? 'h-[3px] w-12 bg-[#64748b] shadow-[0_0_8px_rgba(100,116,139,0.5)]'
                 : isCanvasActive
-                  ? 'h-[4px] w-12 bg-[#d8ad18]'
-                  : 'h-[4px] w-10 bg-[#dedbd2] group-hover:w-14 group-hover:bg-[#c69800] group-focus-visible/handle:bg-[#d8ad18]'
+                  ? 'h-[2px] w-8 bg-[#94a3b8]'
+                  : 'h-[2px] w-6 bg-[#cbd5e1] group-hover:w-10 group-hover:bg-[#94a3b8]'
             }`}
           >
             <span

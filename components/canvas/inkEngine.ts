@@ -7,7 +7,7 @@ export interface PressureSample {
   tiltY?: number;
 }
 
-/** Calibrage repris du moteur MathPlus et adapté aux points de ce canvas. */
+/** Calibrage repris du moteur Interactive Maths et adapté aux points de ce canvas. */
 export function calibratePressure(
   event: PressureSample,
   curve: PressureCurve,

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { Worksheet, WorksheetContent } from '../types';
-import { GripVertical, Trash2, X, UploadCloud, ImageOff, Info, Image, LayoutTemplate, ListOrdered, Palette } from 'lucide-react';
+import { GripVertical, Trash2, X, UploadCloud, ImageOff, Info, Image, LayoutTemplate, ListOrdered, Palette, Settings } from 'lucide-react';
 
 const CLASS_OPTIONS = [
 	'Tronc Commun Scientifique',
@@ -234,23 +234,31 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 
 	return (
 		<div
-			className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 flex justify-center items-center p-4"
+			className="fixed inset-0 z-50 flex items-center justify-center bg-[#172126]/35 p-4 backdrop-blur-sm"
 			onClick={onClose}
 			role="dialog"
 			aria-modal="true"
 		>
 			<div
-				className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+				className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-[24px] border border-[#dedbd2] bg-[#fffefa] shadow-2xl"
 				onClick={e => e.stopPropagation()}
 			>
-				<header className="flex justify-between items-center px-6 py-4 border-b border-slate-200">
-					<h2 className="text-lg font-bold font-display text-slate-900">Configuration de la fiche</h2>
-					<button onClick={onClose} className="p-1.5 rounded-xl hover:bg-slate-100 transition" aria-label="Fermer">
-						<X className="h-5 w-5 text-slate-500" />
+				<header className="flex shrink-0 items-center justify-between border-b border-[#dedbd2] px-5 py-4 sm:px-6">
+					<div className="flex items-center gap-3">
+						<span className="grid h-10 w-10 place-items-center rounded-xl bg-[#dceceb] text-[#19788c]">
+							<Settings className="h-5 w-5" />
+						</span>
+						<div>
+							<h2 className="font-serif text-xl font-semibold text-[#172126]">Configuration de la fiche</h2>
+							<p className="text-xs font-medium text-[#697478]">Réglages spécifiques à cette fiche.</p>
+						</div>
+					</div>
+					<button onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full text-[#697478] hover:bg-[#f4f1eb] transition-colors" aria-label="Fermer">
+						<X className="h-5 w-5" />
 					</button>
 				</header>
 
-			<main className="p-6 overflow-y-auto text-gray-900 custom-scrollbar">
+				<main className="flex-grow overflow-y-auto p-5 sm:p-6 text-[#172126] custom-scrollbar">
 					<input
 						ref={logoInputRef}
 						type="file"
@@ -258,61 +266,59 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 						className="hidden"
 						onChange={handleLogoInputChange}
 					/>
-					<div className="space-y-10">
+					<div className="space-y-6">
 						{/* Informations Générales */}
-						<section className="space-y-4">
-							<div className="flex items-start gap-3">
-								<div className="p-2 bg-blue-50 text-blue-600 rounded-lg shrink-0">
-									<Info className="h-5 w-5" />
-								</div>
+						<section className="rounded-2xl border border-[#cbe0df] bg-[#f1f8f7] p-4 sm:p-5">
+							<div className="mb-4 flex items-center gap-3">
+								<span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#dceceb] text-[#19788c]">
+									<Info className="h-4 w-4" />
+								</span>
 								<div>
-									<h3 className="text-lg font-semibold text-gray-900">Informations générales</h3>
-									<p className="text-sm text-slate-500">Ces informations s'afficheront en haut de la fiche imprimée.</p>
+									<h3 className="text-sm font-bold text-[#172126]">Informations générales</h3>
+									<p className="text-xs text-[#697478]">Ces informations s'afficheront en haut de la fiche imprimée.</p>
 								</div>
 							</div>
-							<div className="grid gap-6 md:grid-cols-2 ml-0 md:ml-12">
-								<div>
-									  <label htmlFor="class-select" className="block text-sm font-medium text-gray-900 mb-2">Classe</label>
+							<div className="grid gap-5 sm:grid-cols-2">
+								<label className="flex flex-col gap-1.5 text-[13px] font-bold text-[#435054]">
+									Classe
 									<select
-										id="class-select"
 										value={selectedClass}
 										onChange={(e) => handleClassChange(e.target.value)}
-										className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition shadow-sm"
+										className="h-11 w-full rounded-xl border border-[#cbe0df] bg-white px-3 text-sm font-semibold text-[#172126] outline-none focus:ring-2 focus:ring-[#19788c]/20"
 									>
 										<option value="">— Sélectionner —</option>
 										{CLASS_OPTIONS.map(option => (
 											<option key={option} value={option}>{option}</option>
 										))}
 									</select>
-								</div>
-								<div>
-									  <label htmlFor="school-year" className="block text-sm font-medium text-gray-900 mb-2">Année scolaire</label>
+								</label>
+								<label className="flex flex-col gap-1.5 text-[13px] font-bold text-[#435054]">
+									Année scolaire
 									<input
-										id="school-year"
 										type="text"
 										placeholder="2025-2026"
 										value={selectedSchoolYear}
 										onChange={(e) => handleSchoolYearChange(e.target.value)}
-										className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition shadow-sm"
+										className="h-11 w-full rounded-xl border border-[#cbe0df] bg-white px-3 text-sm font-semibold text-[#172126] outline-none focus:ring-2 focus:ring-[#19788c]/20"
 									/>
-								</div>
+								</label>
 							</div>
 						</section>
 
 						{/* Identité Visuelle */}
-						<section className="space-y-4">
-							<div className="flex items-start gap-3">
-								<div className="p-2 bg-purple-50 text-purple-600 rounded-lg shrink-0">
-									<Image className="h-5 w-5" />
-								</div>
+						<section className="rounded-2xl border border-[#e2d5ed] bg-[#f8f3fc] p-4 sm:p-5">
+							<div className="mb-4 flex items-center gap-3">
+								<span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#eadef5] text-[#7e3af2]">
+									<Image className="h-4 w-4" />
+								</span>
 								<div>
-									<h3 className="text-lg font-semibold text-gray-900">Identité visuelle</h3>
-									<p className="text-sm text-slate-500">Personnalisez l'en-tête avec votre logo (PNG, JPG ou SVG).</p>
+									<h3 className="text-sm font-bold text-[#172126]">Identité visuelle</h3>
+									<p className="text-xs text-[#697478]">Personnalisez l'en-tête avec votre logo (PNG, JPG ou SVG).</p>
 								</div>
 							</div>
-							<div className="ml-0 md:ml-12">
+							<div>
 								<div
-									className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${isLogoDragOver ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-300 bg-gray-50 hover:border-blue-500 hover:bg-blue-50'}`}
+									className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition ${isLogoDragOver ? 'border-[#7e3af2] bg-[#7e3af2]/5 text-[#7e3af2]' : 'border-[#e2d5ed] bg-white hover:border-[#7e3af2]/50 hover:bg-[#7e3af2]/5'}`}
 									onClick={() => logoInputRef.current?.click()}
 									onDrop={handleLogoDrop}
 									onDragOver={handleLogoDragOver}
@@ -329,46 +335,44 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 								>
 									<UploadCloud className="h-8 w-8" />
 									<div>
-										<p className="text-sm font-semibold">Glissez-déposez votre logo ici</p>
-										<p className="text-xs text-gray-500 mt-1">ou cliquez pour parcourir vos fichiers</p>
+										<p className="text-[13px] font-bold text-[#172126]">Glissez-déposez votre logo ici</p>
+										<p className="mt-1 text-[11px] text-[#697478]">ou cliquez pour parcourir vos fichiers</p>
 									</div>
 									{logoPreview && (
-										<div className="mt-4 w-full max-w-xs rounded-md border border-gray-200 bg-white p-3 relative group">
-											<img src={logoPreview} alt="Logo téléchargé" className="mx-auto max-h-32 w-full object-contain" />
+										<div className="mt-4 w-full max-w-[200px] rounded-xl border border-[#dedbd2] bg-white p-3 shadow-sm">
+											<img src={logoPreview} alt="Logo téléchargé" className="mx-auto max-h-24 w-full object-contain" />
 										</div>
 									)}
 								</div>
-								{logoError && <p className="text-sm text-red-600 mt-2">{logoError}</p>}
+								{logoError && <p className="mt-2 text-[13px] font-bold text-red-600">{logoError}</p>}
 								{logoPreview && (
 									<button
 										type="button"
 										onClick={handleRemoveLogo}
-										className="mt-3 inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-red-600 hover:text-red-600 hover:bg-red-50 transition shadow-sm"
+										className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white border border-[#dedbd2] px-4 py-2 text-[13px] font-bold text-[#697478] shadow-sm hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors"
 									>
-										<ImageOff className="h-3.5 w-3.5" />
+										<ImageOff className="h-4 w-4" />
 										Retirer le logo
 									</button>
 								)}
 							</div>
 						</section>
 
-
-
 						{/* Affichage et Pagination */}
-						<section className="space-y-4">
-							<div className="flex items-start gap-3">
-								<div className="p-2 bg-purple-50 text-purple-600 rounded-lg shrink-0">
-									<LayoutTemplate className="h-5 w-5" />
-								</div>
+						<section className="rounded-2xl border border-[#e5dcb8] bg-[#fbf4dc] p-4 sm:p-5">
+							<div className="mb-4 flex items-center gap-3">
+								<span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#f0e6c2] text-[#b88700]">
+									<LayoutTemplate className="h-4 w-4" />
+								</span>
 								<div>
-									<h3 className="text-lg font-semibold text-gray-900">Affichage & Pagination</h3>
-									<p className="text-sm text-slate-500">Gérez la présentation des questions et l'impression.</p>
+									<h3 className="text-sm font-bold text-[#172126]">Affichage & Pagination</h3>
+									<p className="text-xs text-[#697478]">Gérez la présentation des questions et l'impression.</p>
 								</div>
 							</div>
 							
-							<div className="ml-0 md:ml-12 grid gap-4">
-								<label className="flex items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition shadow-sm">
-									<div className="flex items-center h-5">
+							<div className="grid gap-4">
+								<label className="flex items-start gap-4 rounded-xl border border-[#e5dcb8]/80 bg-white p-4 shadow-sm cursor-pointer hover:bg-[#fbf4dc]/20 transition-colors">
+									<div className="flex h-5 items-center">
 										<input
 											type="checkbox"
 											checked={editableContent.settings?.showCanvas !== false}
@@ -376,17 +380,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 												...prev,
 												settings: { ...prev.settings, showCanvas: e.target.checked }
 											}))}
-											className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+											className="h-4 w-4 rounded border-[#d4d8d5] text-[#b88700] focus:ring-[#b88700]"
 										/>
 									</div>
-									<div className="flex flex-col">
-										<span className="text-sm font-medium text-gray-900">Afficher les zones de réponse (Canevas)</span>
-										<span className="text-xs text-slate-500">Affiche ou masque les zones de réponse et le canevas de dessin sous les questions.</span>
+									<div className="flex flex-col gap-1">
+										<span className="text-[13px] font-bold text-[#172126]">Afficher les zones de réponse (Canevas)</span>
+										<span className="text-[11px] font-medium text-[#697478]">Affiche ou masque les zones de réponse et le canevas de dessin sous les questions.</span>
 									</div>
 								</label>
 
-								<label className="flex items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition shadow-sm">
-									<div className="flex items-center h-5">
+								<label className="flex items-start gap-4 rounded-xl border border-[#e5dcb8]/80 bg-white p-4 shadow-sm cursor-pointer hover:bg-[#fbf4dc]/20 transition-colors">
+									<div className="flex h-5 items-center">
 										<input
 											type="checkbox"
 											checked={editableContent.settings?.oneQuestionPerPage || false}
@@ -394,17 +398,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 												...prev,
 												settings: { ...prev.settings, oneQuestionPerPage: e.target.checked }
 											}))}
-											className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+											className="h-4 w-4 rounded border-[#d4d8d5] text-[#b88700] focus:ring-[#b88700]"
 										/>
 									</div>
-									<div className="flex flex-col">
-										<span className="text-sm font-medium text-gray-900">Une question par page</span>
-										<span className="text-xs text-slate-500">Ajoute un saut de page avant chaque question principale lors de l'impression.</span>
+									<div className="flex flex-col gap-1">
+										<span className="text-[13px] font-bold text-[#172126]">Une question par page</span>
+										<span className="text-[11px] font-medium text-[#697478]">Ajoute un saut de page avant chaque question principale lors de l'impression.</span>
 									</div>
 								</label>
 
-								<label className="flex items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition shadow-sm">
-									<div className="flex items-center h-5">
+								<label className="flex items-start gap-4 rounded-xl border border-[#e5dcb8]/80 bg-white p-4 shadow-sm cursor-pointer hover:bg-[#fbf4dc]/20 transition-colors">
+									<div className="flex h-5 items-center">
 										<input
 											type="checkbox"
 											checked={editableContent.settings?.presentationMode || false}
@@ -412,40 +416,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 												...prev,
 												settings: { ...prev.settings, presentationMode: e.target.checked }
 											}))}
-											className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+											className="h-4 w-4 rounded border-[#d4d8d5] text-[#b88700] focus:ring-[#b88700]"
 										/>
 									</div>
-									<div className="flex flex-col">
-										<span className="text-sm font-medium text-gray-900">Mode Diaporama (Questions avec sous-questions)</span>
-										<span className="text-xs text-slate-500">Affiche l'énoncé de la question centré sur une page séparée si elle contient des sous-questions.</span>
+									<div className="flex flex-col gap-1">
+										<span className="text-[13px] font-bold text-[#172126]">Mode Diaporama</span>
+										<span className="text-[11px] font-medium text-[#697478]">Affiche l'énoncé de la question centré sur une page séparée si elle contient des sous-questions.</span>
 									</div>
 								</label>
 							</div>
 						</section>
 
 						{/* Style & Fond des Zones de Réponse */}
-						<section className="space-y-4">
-							<div className="flex items-start gap-3">
-								<div className="p-2 bg-amber-50 text-amber-600 rounded-lg shrink-0">
-									<Palette className="h-5 w-5" />
-								</div>
+						<section className="rounded-2xl border border-[#dedbd2] bg-[#fbf8f2] p-4 sm:p-5">
+							<div className="mb-4 flex items-center gap-3">
+								<span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#e4e4e1] text-[#435054]">
+									<Palette className="h-4 w-4" />
+								</span>
 								<div>
-									<h3 className="text-lg font-semibold text-gray-900">Style & Fond des Zones de Réponse</h3>
-									<p className="text-sm text-slate-500">Personnalisez le quadrillage, la couleur de fond et la hauteur par défaut des canevas de réponse.</p>
+									<h3 className="text-sm font-bold text-[#172126]">Style & Fond des Zones de Réponse</h3>
+									<p className="text-xs text-[#697478]">Personnalisez le quadrillage, la couleur de fond et la hauteur.</p>
 								</div>
 							</div>
 
-							<div className="ml-0 md:ml-12 grid gap-6 md:grid-cols-2">
-								<div>
-									<label htmlFor="answer-space-style" className="block text-sm font-medium text-gray-900 mb-2">Style de lignes / quadrillage</label>
+							<div className="grid gap-5 sm:grid-cols-2">
+								<label className="flex flex-col gap-1.5 text-[13px] font-bold text-[#435054]">
+									Style de lignes / quadrillage
 									<select
-										id="answer-space-style"
 										value={editableContent.settings?.answerSpaceStyle || 'slate'}
 										onChange={(e) => setEditableContent(prev => ({
 											...prev,
 											settings: { ...prev.settings, answerSpaceStyle: e.target.value as any }
 										}))}
-										className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition shadow-sm"
+										className="h-11 w-full rounded-xl border border-[#dedbd2] bg-white px-3 text-sm font-semibold text-[#172126] outline-none focus:ring-2 focus:ring-[#19788c]/20"
 									>
 										<option value="slate">Ardoise (Lignes horizontales)</option>
 										<option value="seyes">Grands Carreaux (Seyes)</option>
@@ -453,18 +456,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 										<option value="dotted">Pointillés (Dotted)</option>
 										<option value="blank">Vierge (Sans lignes)</option>
 									</select>
-								</div>
+								</label>
 
-								<div>
-									<label htmlFor="answer-space-color" className="block text-sm font-medium text-gray-900 mb-2">Couleur de fond du canevas</label>
+								<label className="flex flex-col gap-1.5 text-[13px] font-bold text-[#435054]">
+									Couleur de fond du canevas
 									<select
-										id="answer-space-color"
 										value={editableContent.settings?.answerSpaceColor || ''}
 										onChange={(e) => setEditableContent(prev => ({
 											...prev,
 											settings: { ...prev.settings, answerSpaceColor: e.target.value as any }
 										}))}
-										className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition shadow-sm"
+										className="h-11 w-full rounded-xl border border-[#dedbd2] bg-white px-3 text-sm font-semibold text-[#172126] outline-none focus:ring-2 focus:ring-[#19788c]/20"
 									>
 										<option value="">Couleur par défaut du style</option>
 										<option value="black">Noir Sombre (#0F172A)</option>
@@ -473,14 +475,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 										<option value="white">Blanc Pur (#FFFFFF)</option>
 										<option value="cream">Crème Doux (#FEF3C7)</option>
 									</select>
-								</div>
+								</label>
 
-								<div className="md:col-span-2">
-									<label htmlFor="answer-space-height" className="block text-sm font-medium text-gray-900 mb-2">
-										Hauteur minimale des zones de réponse : <span className="font-bold text-blue-600">{editableContent.settings?.answerSpaceMinHeight || 120} px</span>
-									</label>
+								<label className="sm:col-span-2 flex flex-col gap-1.5 text-[13px] font-bold text-[#435054]">
+									Hauteur minimale des zones de réponse : <span className="text-[#19788c]">{editableContent.settings?.answerSpaceMinHeight || 120} px</span>
 									<input
-										id="answer-space-height"
 										type="range"
 										min="60"
 										max="600"
@@ -490,28 +489,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 											...prev,
 											settings: { ...prev.settings, answerSpaceMinHeight: parseInt(e.target.value, 10) }
 										}))}
-										className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+										className="mt-2 w-full accent-[#19788c]"
 									/>
-								</div>
+								</label>
 							</div>
 						</section>
 
 						{/* Organisation */}
-						<section className="space-y-4">
-							<div className="flex items-start gap-3">
-								<div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg shrink-0">
-									<ListOrdered className="h-5 w-5" />
-								</div>
+						<section className="rounded-2xl border border-[#cbe0df] bg-[#f1f8f7] p-4 sm:p-5">
+							<div className="mb-4 flex items-center gap-3">
+								<span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#dceceb] text-[#19788c]">
+									<ListOrdered className="h-4 w-4" />
+								</span>
 								<div>
-									<h3 className="text-lg font-semibold text-gray-900">Organisation des exercices</h3>
-									<p className="text-sm text-slate-500">Réordonnez ou supprimez des exercices.</p>
+									<h3 className="text-sm font-bold text-[#172126]">Organisation des exercices</h3>
+									<p className="text-xs text-[#697478]">Réordonnez ou supprimez des exercices.</p>
 								</div>
 							</div>
-							<div className="space-y-2 ml-0 md:ml-12">
+							<div className="space-y-2">
 								{editableContent.exercises.map((ex, index) => (
 									<div
 										key={ex.id || index}
-										className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-md transition group shadow-sm"
+										className="flex items-center justify-between p-3 bg-white border border-[#cbe0df]/60 rounded-xl hover:border-[#19788c]/40 hover:shadow-sm transition group"
 										draggable
 										onDragStart={(e) => handleDragStart(e, index)}
 										onDragEnter={(e) => handleDragEnter(e, index)}
@@ -520,14 +519,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 										onDragEnd={handleDragEnd}
 									>
 										<div className="flex items-center gap-3">
-											<div className="p-1 text-gray-300 group-hover:text-blue-600 cursor-move transition">
+											<div className="p-1 text-[#b9c4c2] group-hover:text-[#19788c] cursor-move transition">
 												<GripVertical className="h-5 w-5" />
 											</div>
-											<span className="font-medium text-slate-700 truncate">{index + 1}. {ex.title}</span>
+											<span className="text-[13px] font-bold text-[#172126] truncate">{index + 1}. {ex.title}</span>
 										</div>
 										<button
 											onClick={() => handleDeleteExercise(index)}
-											  className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition"
+											className="p-2 text-[#697478] hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
 											aria-label="Supprimer l'exercice"
 										>
 											<Trash2 className="h-4 w-4" />
@@ -539,11 +538,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 					</div>
 				</main>
 
-			<footer className="flex justify-end items-center gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50/50">
-					<button onClick={onClose} className="px-5 py-2.5 text-sm text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 font-medium transition shadow-sm">
+				<footer className="shrink-0 flex justify-end gap-3 border-t border-[#dedbd2] px-5 py-4 bg-[#fffefa]">
+					<button onClick={onClose} className="rounded-xl px-5 h-11 text-sm font-bold text-[#697478] hover:bg-[#f4f1eb] transition-colors">
 						Annuler
 					</button>
-					<button onClick={handleSave} className="px-5 py-2.5 text-sm text-white bg-blue-600 rounded-xl hover:bg-blue-700 font-medium transition shadow-sm hover:shadow-md">
+					<button onClick={handleSave} className="rounded-xl bg-[#172126] px-6 h-11 text-sm font-bold text-white shadow-md hover:bg-[#25363c] transition-colors active:scale-95">
 						Enregistrer
 					</button>
 				</footer>

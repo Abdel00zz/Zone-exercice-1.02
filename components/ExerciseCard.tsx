@@ -382,7 +382,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, s
     <div className={`exercise-card bg-[#ffffff] text-black p-5 sm:p-7 lg:p-9 landscape:px-4 landscape:py-5 sm:landscape:px-6 rounded-2xl shadow-[0_4px_24px_rgba(23,33,38,0.04)] mb-10 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
       {/* En-tête : le numéro reste dans le repère sombre ; le titre de
           partie vit sur sa propre ligne, centré dans l'exercice. */}
-      <h2 className="exercise-title flex items-center mb-3 print:mb-2 pb-3 border-b border-[#ece8df]/60 print:border-black">
+      <h2 className="exercise-title flex items-center mb-3 print:mb-2 pb-3">
         <span
           className="exercise-badge uppercase tracking-wider shrink-0"
           style={{

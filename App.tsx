@@ -396,7 +396,7 @@ const App: React.FC = () => {
       ) : selectedWorksheet ? (
         <>
           <main
-            className="worksheet-typography max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-4 landscape:px-2 sm:landscape:px-4 py-8 landscape:py-4 mt-16 sm:mt-20 transition-all duration-300 print:mt-0 print:max-w-none print:p-0 print:py-0"
+            className="worksheet-typography max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-4 landscape:px-2 sm:landscape:px-4 pb-8 pt-4 landscape:py-4 transition-all duration-300 print:max-w-none print:p-0 print:py-0"
             style={{
               fontFamily: textFont,
               fontSize: `${Math.min(130, Math.max(80, textScale))}%`,
@@ -408,7 +408,7 @@ const App: React.FC = () => {
           >
             <div className="space-y-8 print:space-y-6">
               <div className="title-and-first-exercise-container space-y-6 print:space-y-4">
-                <div className="latex-document-header mb-8 mt-2 print:mb-6 print:mt-0 relative">
+                <div className="latex-document-header mb-8 mt-0 print:mb-6 print:mt-0 relative">
                   <div className="flex items-start justify-between text-[11px] font-semibold uppercase tracking-widest text-[#697478] print:text-black mb-8">
                     <div className="flex flex-col gap-1.5 text-left">
                       {userNameLabel && <span className="text-[#172126] print:text-black">{userNameLabel}</span>}
@@ -422,11 +422,9 @@ const App: React.FC = () => {
                   {selectedWorksheet.content.chapter && (
                     <div className="text-center">
                       <div className="inline-flex items-center justify-center space-x-3 mb-4">
-                        <div className="h-px w-8 bg-[#19788c]/30 print:bg-black/30" />
                         <span className="text-[#19788c] print:text-black text-[10px] font-bold uppercase tracking-[0.2em]">
                           {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
                         </span>
-                        <div className="h-px w-8 bg-[#19788c]/30 print:bg-black/30" />
                       </div>
                       <div role="heading" aria-level={1} className="font-chapter text-[2.25rem] sm:text-4xl md:text-5xl font-medium leading-tight text-[#172126] print:text-4xl tracking-tight">
                         <EditableMathText 

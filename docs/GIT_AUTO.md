@@ -1,6 +1,6 @@
 # Git Auto - commit et push assistes
 
-Le mecanisme reprend le fonctionnement de MathPlus et l'adapte a ce projet.
+Le mecanisme reprend le fonctionnement de Interactive Maths et l'adapte a ce projet.
 Il diagnostique le depot, inspecte les changements, lance les controles qualite,
 cree un message Conventional Commit, synchronise la branche courante et pousse
 le commit sans changer automatiquement de branche.

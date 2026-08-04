@@ -96,11 +96,11 @@ const ThumbnailQuestion: React.FC<{
   const label = level === 0 ? `${number}.` : `(${number})`;
 
   return (
-    <li className={`relative grid grid-cols-[15px_minmax(0,1fr)] gap-0.5 ${level > 0 ? 'mt-0.5' : 'mt-1'}`}>
-      <span className="pt-px text-right text-[6.5px] font-normal leading-[1.3] text-black">
+    <li className={`relative grid grid-cols-[auto_1fr] gap-0.5 ${level > 0 ? 'mt-0.5' : 'mt-1'}`}>
+      <span className="pt-px text-right text-[6.5px] font-semibold leading-[1.3] text-[#334155] shrink-0 min-w-[7px]">
         {label}
       </span>
-      <div className="min-w-0 pl-0.5 text-[6.5px] leading-[1.3] text-black">
+      <div className="min-w-0 text-[6.5px] font-normal leading-[1.3] text-[#334155]">
         <ThumbnailMath text={question.text} />
         <ThumbnailImage image={question.image} />
         {!!question.subquestions?.length && (
@@ -128,62 +128,73 @@ const WorksheetThumbnail: React.FC<WorksheetThumbnailProps> = ({ worksheet }) =>
 
   return (
     <div
-      className="worksheet-thumbnail relative h-full w-full overflow-hidden bg-white text-black"
-      style={{ fontFamily: "'Times New Roman', Times, serif" }}
+      className="worksheet-thumbnail relative h-full w-full overflow-hidden bg-white text-[#334155] font-latex font-normal"
+      style={{ fontWeight: 400 }}
       aria-hidden="true"
     >
-      <div className="h-full px-[5.5%] pb-[5%] pt-[4.5%]">
-        <header className="mb-2">
-          <div className="mb-1 flex items-center justify-between gap-2 font-sans text-[4.5px] font-extrabold uppercase tracking-[0.18em] text-[#19788c]">
-            <span>Fiche d'exercices</span>
-            {className && <span className="max-w-[42%] truncate text-[#607074]">{className}</span>}
+      <div className="h-full px-[8%] pb-[8%] pt-[8%]">
+        <header className="mb-3.5 text-center flex flex-col items-center">
+          <h4 className="text-[10px] font-semibold leading-[1.3] text-[#19788c] w-4/5">
+            <ThumbnailMath text={title} />
+          </h4>
+          <div className="mt-1 flex items-center justify-center w-full gap-1">
+            <div className="h-[0.5px] w-8 bg-gradient-to-r from-transparent to-[#19788c]/40" />
+            <div className="h-0.5 w-0.5 rotate-45 bg-[#19788c]/60" />
+            <div className="h-[0.5px] w-8 bg-gradient-to-l from-transparent to-[#19788c]/40" />
           </div>
-          <div className="flex items-stretch gap-1.5">
-            <span className="w-[2px] shrink-0 rounded-full bg-[#19788c]" />
-            <h4 className="min-w-0 flex-1 text-[9.5px] font-bold leading-[1.08] tracking-[-0.015em] text-[#111719]">
-              <ThumbnailMath text={title} />
-            </h4>
-          </div>
-          <div className="mt-1.5 h-px bg-gradient-to-r from-[#19788c]/55 via-[#9fb8b8]/35 to-transparent" />
         </header>
 
-        <div>
-          {worksheet.content.exercises?.length ? worksheet.content.exercises.map((exercise, exerciseIndex) => (
-            <section key={exercise.id || exerciseIndex} className={exerciseIndex > 0 ? 'mt-2.5' : ''}>
-              <div className="flex items-baseline gap-1.5 border-l-2 border-[#19788c]/75 pl-1.5 text-[8px] leading-none text-black">
-                <span className="shrink-0 font-bold tracking-[-0.01em]">Exercice {exerciseIndex + 1}</span>
-                {exercise.title && (
-                  <span className="min-w-0 truncate text-[6px] italic text-[#465357]">
-                    —{' '}
-                    <ThumbnailMath text={exercise.title} />
-                  </span>
+        <div className="text-[6.5px] font-normal leading-[1.4] text-justify text-[#334155]">
+          {worksheet.content.exercises?.length ? worksheet.content.exercises.map((exercise, exerciseIndex) => {
+            const isPartie = exercise.title && exercise.title.toLowerCase().includes('partie');
+            return (
+              <section key={exercise.id || exerciseIndex} className={exerciseIndex > 0 ? 'mt-3' : ''}>
+                {isPartie ? (
+                   <div className="mb-1.5 mt-2.5 text-center">
+                      <span className="text-[7px] font-semibold text-[#1e293b] uppercase tracking-wider">
+                        <ThumbnailMath text={exercise.title || `Partie ${exerciseIndex + 1}`} />
+                      </span>
+                   </div>
+                ) : (
+                  <div className="mb-0.5 text-[7px] font-semibold text-[#1e293b] flex items-baseline gap-1">
+                    <span className="shrink-0">Exercice {exerciseIndex + 1}.</span>
+                    {exercise.title && (
+                      <span className="font-normal text-[#334155]">
+                         <ThumbnailMath text={exercise.title} />
+                      </span>
+                    )}
+                  </div>
                 )}
-              </div>
-              {exercise.statement && (
-                <div className="mt-0.5 text-[6.5px] font-normal leading-[1.3] text-black">
-                  <ThumbnailMath text={exercise.statement} />
-                </div>
-              )}
-              <ThumbnailImage image={exercise.image} />
-              <ol className="mt-0.5 pl-2">
-                {(exercise.questions ?? []).map((question, questionIndex) => (
-                  <ThumbnailQuestion
-                    key={`${exercise.id}-${questionIndex}-${question.text.slice(0, 12)}`}
-                    question={question}
-                    index={questionIndex}
-                  />
-                ))}
-              </ol>
-            </section>
-          )) : (
+                
+                {exercise.statement && (
+                  <div className="mt-0.5 mb-1 font-normal">
+                    <ThumbnailMath text={exercise.statement} />
+                  </div>
+                )}
+                
+                <ThumbnailImage image={exercise.image} />
+                
+                {(!isPartie || (exercise.questions && exercise.questions.length > 0)) && (
+                  <ol className="mt-0.5 pl-0.5">
+                    {(exercise.questions ?? []).map((question, questionIndex) => (
+                      <ThumbnailQuestion
+                        key={`${exercise.id}-${questionIndex}-${question.text.slice(0, 12)}`}
+                        question={question}
+                        index={questionIndex}
+                      />
+                    ))}
+                  </ol>
+                )}
+              </section>
+            );
+          }) : (
             <div className="grid min-h-32 place-items-center text-center text-[6.5px] text-[#777]">
               Cette fiche ne contient aucun exercice.
             </div>
           )}
         </div>
       </div>
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white via-white/75 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white via-white/80 to-transparent" />
     </div>
   );
 };

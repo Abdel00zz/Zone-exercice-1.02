@@ -1205,18 +1205,12 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   return (
     <div className="absolute inset-0 flex flex-col pointer-events-none group/canvas z-10">
-      {isCanvasActive && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-20 rounded-[3px] border-2 border-[#d8ad18] shadow-[0_0_0_3px_rgba(246,234,202,0.72)] transition-all duration-200"
-        />
-      )}
       {/*
         Le corrigé est propre à CETTE question : il reste donc dans la zone, à
         l'inverse des réglages d'outils désormais portés par la barre unique.
       */}
       {correctionToggle?.available && (
-          <div className="absolute -bottom-6 right-3 z-30 flex items-center gap-1.5 pointer-events-auto no-print">
+          <div className="absolute bottom-2 right-2 z-30 flex items-center gap-1.5 pointer-events-auto no-print">
           {correctionProgress && correctionToggle.visible && (
             <CorrectionProgressControl progress={correctionProgress} />
           )}
@@ -1224,10 +1218,10 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             type="button"
             aria-pressed={correctionToggle.visible}
             onClick={correctionToggle.toggle}
-            className={`min-h-10 rounded-full border px-4 text-xs font-bold shadow-[0_5px_14px_rgba(23,33,38,0.14)] transition active:scale-95 ${
+            className={`flex items-center justify-center h-7 px-3 text-[11px] font-semibold rounded-md backdrop-blur-md border transition-all duration-300 active:scale-95 ${
               correctionToggle.visible
-                ? 'border-[#19788c] bg-[#19788c] text-white'
-                : 'border-[#dedbd2] bg-[#fffefa] text-[#435054] backdrop-blur-sm hover:border-[#19788c] hover:bg-[#e7f0ef] hover:text-[#19788c]'
+                ? 'border-slate-400 bg-slate-500 text-white shadow-sm'
+                : 'border-slate-200 bg-white/80 text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 shadow-sm'
             }`}
             title={correctionToggle.visible ? 'Masquer le rappel de cours' : 'Afficher le rappel de cours'}
           >
