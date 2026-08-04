@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import type { Worksheet, WorksheetContent } from '../types';
 import { GripVertical, Trash2, X, UploadCloud, ImageOff, Info, Image, LayoutTemplate, ListOrdered, Palette } from 'lucide-react';
 
@@ -29,28 +29,37 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, worksheet, onSave }) => {
-	const [editableContent, setEditableContent] = useState<WorksheetContent>(JSON.parse(JSON.stringify(worksheet.content)));
+	const [editableContent, setEditableContent] = useState<WorksheetContent>(() => {
+		const cloned: WorksheetContent = structuredClone(worksheet.content);
+		const defaultYear = computeDefaultSchoolYear();
+		const settings = { ...(cloned.settings ?? {}) };
+		if (!settings.schoolYear) {
+			settings.schoolYear = defaultYear;
+		}
+		cloned.settings = settings;
+		return cloned;
+	});
 	const [logoError, setLogoError] = useState<string | null>(null);
 	const [isLogoDragOver, setIsLogoDragOver] = useState(false);
 	const draggedItem = useRef<number | null>(null);
 	const draggedOverItem = useRef<number | null>(null);
 	const logoInputRef = useRef<HTMLInputElement>(null);
 
-		useEffect(() => {
-			if (!isOpen) {
-				return;
-			}
-			const cloned: WorksheetContent = JSON.parse(JSON.stringify(worksheet.content));
-			const defaultYear = computeDefaultSchoolYear();
-			const settings = { ...(cloned.settings ?? {}) };
-			if (!settings.schoolYear) {
-				settings.schoolYear = defaultYear;
-			}
-			cloned.settings = settings;
-			setEditableContent(cloned);
-			setLogoError(null);
-			setIsLogoDragOver(false);
-		}, [worksheet, isOpen]);
+	useEffect(() => {
+		if (!isOpen) {
+			return;
+		}
+		const cloned: WorksheetContent = structuredClone(worksheet.content);
+		const defaultYear = computeDefaultSchoolYear();
+		const settings = { ...(cloned.settings ?? {}) };
+		if (!settings.schoolYear) {
+			settings.schoolYear = defaultYear;
+		}
+		cloned.settings = settings;
+		setEditableContent(cloned);
+		setLogoError(null);
+		setIsLogoDragOver(false);
+	}, [worksheet, isOpen]);
 
 	if (!isOpen) {
 		return null;

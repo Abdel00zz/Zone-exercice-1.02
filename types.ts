@@ -27,21 +27,23 @@ export interface Exercise {
   image?: ImageConfig;
 }
 
+export interface WorksheetSettings {
+  showCanvas?: boolean;
+  answerSpaceMinHeight?: number;
+  answerSpaceStyle?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
+  answerSpaceColor?: 'black' | 'green' | 'blue' | 'white' | 'cream';
+  presentationMode?: boolean;
+  oneQuestionPerPage?: boolean;
+  className?: string;
+  schoolYear?: string;
+  logoDataUrl?: string;
+}
+
 export interface WorksheetContent {
   chapter: string;
   exercises: Exercise[];
   version?: string;
-  settings?: {
-    showCanvas?: boolean;
-    answerSpaceMinHeight?: number;
-    answerSpaceStyle?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
-    answerSpaceColor?: 'black' | 'green' | 'blue' | 'white' | 'cream';
-    presentationMode?: boolean;
-    oneQuestionPerPage?: boolean;
-    className?: string;
-    schoolYear?: string;
-    logoDataUrl?: string;
-  };
+  settings?: WorksheetSettings;
 }
 
 export interface Worksheet {

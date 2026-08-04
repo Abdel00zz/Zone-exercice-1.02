@@ -1,5 +1,6 @@
 import React, { useRef, useState, useMemo } from 'react';
 import type { Worksheet, WorksheetContent } from '../types';
+import { validateWorksheet, validateWorksheetContent } from '../lib/validation';
 import { FileJson, FileUp, Trash2, Pencil, Search, Code, Calendar, ChevronRight, FileText, Plus, Download, Menu } from 'lucide-react';
 import JSONManagerModal from './JSONManagerModal';
 
@@ -48,11 +49,19 @@ const Dashboard: React.FC<DashboardProps> = ({
                 }
                 const jsonData = JSON.parse(text);
                 
-                // Check if it's a backup (array of worksheets)
+                // Validation avec Zod
                 if (Array.isArray(jsonData) && jsonData.length > 0 && jsonData[0].id && jsonData[0].content) {
+                    const validation = validateWorksheet(jsonData[0]);
+                    if (!validation.success) {
+                        throw new Error(`Validation échouée: ${validation.error}`);
+                    }
                     onRestoreBackup(jsonData as Worksheet[]);
                 } else {
-                    processImport(jsonData as WorksheetContent, file.name);
+                    const validation = validateWorksheetContent(jsonData);
+                    if (!validation.success) {
+                        throw new Error(`Validation échouée: ${validation.error}`);
+                    }
+                    processImport(validation.data!, file.name);
                 }
             } catch (error) {
                 console.error("Erreur d'importation JSON:", error);

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Worksheet, WorksheetContent, QuestionPart, Exercise } from './types';
+import { validateWorksheetContent } from './lib/validation';
 import useLocalStorage from './hooks/useLocalStorage';
 import Dashboard from './components/Dashboard';
 import WorksheetHeader from './components/WorksheetHeader';
@@ -202,7 +203,8 @@ const App: React.FC = () => {
   const handleQuestionUpdate = (exerciseId: string, questionPath: (string | number)[], newProps: Partial<QuestionPart>) => {
     if (!selectedWorksheet) return;
 
-    const newContent = JSON.parse(JSON.stringify(selectedWorksheet.content));
+    // Utiliser structuredClone au lieu de JSON.parse(JSON.stringify())
+    const newContent = structuredClone(selectedWorksheet.content);
     
     const exercise = newContent.exercises.find((ex: Exercise) => ex.id === exerciseId);
     if (!exercise) return;
@@ -222,7 +224,8 @@ const App: React.FC = () => {
   const handleExerciseUpdate = (exerciseId: string, newProps: Partial<Exercise>) => {
     if (!selectedWorksheet) return;
 
-    const newContent = JSON.parse(JSON.stringify(selectedWorksheet.content));
+    // Utiliser structuredClone au lieu de JSON.parse(JSON.stringify())
+    const newContent = structuredClone(selectedWorksheet.content);
     const exerciseIndex = newContent.exercises.findIndex((ex: Exercise) => ex.id === exerciseId);
 
     if (exerciseIndex > -1) {
