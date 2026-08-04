@@ -1,33 +1,92 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+```
+# Dependencies
+node_modules/
 
-node_modules
-dist
-dist-ssr
-*.local
+# Build outputs
+dist/
+build/
+coverage/
+htmlcov/
+
+# Environment variables
 .env
+.env.local
 .env.*
-.vercel
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+*.tmp
+
+# Compiled and binary files
+*.class
+*.o
+*.so
+*.a
+*.obj
+*.out
+*.dll
+*.exe
+*.swp
+*.swo
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
 
-# Fichiers de travail archivés (codemods ponctuels déjà appliqués)
-_archive
+# Testing
+.mypy_cache/
+.pytest_cache/
+.hypothesis/
 
-# Configuration locale des assistants
-.claude/settings.local.json
+# Distribution / packaging
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Coverage
+.coverage*
+```
