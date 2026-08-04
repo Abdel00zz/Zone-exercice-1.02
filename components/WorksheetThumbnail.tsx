@@ -93,18 +93,18 @@ const ThumbnailQuestion: React.FC<{
   level?: number;
 }> = ({ question, index, level = 0 }) => {
   const number = formatNumbering(index, level);
-  const label = level === 0 ? `${number}.` : `(${number})`;
+  const label = `${number}.`;
 
   return (
-    <li className={`relative grid grid-cols-[auto_1fr] gap-0.5 ${level > 0 ? 'mt-0.5' : 'mt-1'}`}>
-      <span className="pt-px text-right text-[6.5px] font-semibold leading-[1.3] text-[#334155] shrink-0 min-w-[7px]">
+    <li className={`relative grid grid-cols-[auto_1fr] gap-1 items-baseline ${level > 0 ? 'mt-0.5' : 'mt-1'}`}>
+      <span className={`text-right font-bold text-[#1e293b] shrink-0 select-none ${level === 0 ? 'text-[5.5px] min-w-[7px]' : 'text-[5px] min-w-[6px]'}`}>
         {label}
       </span>
-      <div className="min-w-0 text-[6.5px] font-normal leading-[1.3] text-[#334155]">
+      <div className="min-w-0 text-[5.8px] font-normal leading-[1.3] text-[#334155]">
         <ThumbnailMath text={question.text} />
         <ThumbnailImage image={question.image} />
         {!!question.subquestions?.length && (
-          <ol className="mt-0.5 pl-1">
+          <ol className="mt-0.5 pl-0.5 space-y-0.5">
             {question.subquestions.map((subquestion, subIndex) => (
               <ThumbnailQuestion
                 key={`${level}-${subIndex}-${subquestion.text.slice(0, 12)}`}

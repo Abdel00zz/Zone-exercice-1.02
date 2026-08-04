@@ -4,7 +4,7 @@
   "settings": {
     "showCanvas": true,
     "showSolutions": false,
-    "presentationMode": true,
+    "presentationMode": false,
     "oneQuestionPerPage": false,
     "answerSpaceMinHeight": 240,
     "answerSpaceStyle": "grid",

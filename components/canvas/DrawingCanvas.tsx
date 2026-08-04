@@ -72,6 +72,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const selectionMode = useToolValue(snapshot => snapshot.selectionMode);
   const showMeasurements = useToolValue(snapshot => snapshot.showMeasurements);
   const palmRejection = useToolValue(snapshot => snapshot.palmRejection);
+  const penOnly = useToolValue(snapshot => snapshot.penOnly);
   // Couleur de repli de la couche texte DOM (le canvas 2D ne rend pas le LaTeX).
   const color = useToolValue(snapshot => snapshot.color);
 
@@ -539,28 +540,15 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   }, [isEditMode, openTextEditorByIndex]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const settings = getToolState();
+    // Le doigt est toujours totalement bloqué sur le canvas (seuls stylet et souris dessinent)
+    if (e.pointerType === 'touch') return;
     if (e.pointerType === 'pen') lastPenInputAtRef.current = Date.now();
-    // Sur Android, un rejet permanent rendait le canvas inutilisable au doigt.
-    // On ne rejette le toucher que dans la courte fenêtre qui suit le stylet.
-    if (settings.palmRejection && e.pointerType === 'touch' && Date.now() - lastPenInputAtRef.current < 900) return;
+    const settings = getToolState();
     closeToolMenu();
     setActiveCanvas(instanceId);
 
     const coords = getCoordinates(e);
     if (!coords) return;
-
-    if (e.pointerType === 'touch' && isEditMode) {
-      const previousTap = lastTouchTapRef.current;
-      const isDoubleTap = previousTap
-        && Date.now() - previousTap.at < 450
-        && Math.hypot(coords.x - previousTap.x, coords.y - previousTap.y) < 28;
-      lastTouchTapRef.current = { at: Date.now(), x: coords.x, y: coords.y };
-      if (isDoubleTap && openTextEditorAt(coords.x, coords.y)) {
-        e.preventDefault();
-        return;
-      }
-    }
 
     const stylusEraser = isStylusEraser(e);
     const activeTool: ToolType = stylusEraser ? 'eraser' : settings.tool;
@@ -716,9 +704,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing.current) return;
-    const settings = getToolState();
+    if (e.pointerType === 'touch') return;
     if (e.pointerType === 'pen') lastPenInputAtRef.current = Date.now();
-    if (settings.palmRejection && e.pointerType === 'touch' && Date.now() - lastPenInputAtRef.current < 900) return;
+    const settings = getToolState();
 
     const nativeE = e.nativeEvent as any;
     const events = nativeE.getCoalescedEvents ? nativeE.getCoalescedEvents() : [nativeE];

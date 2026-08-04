@@ -11,6 +11,8 @@ import { computeQuestionLayout, joinAroundFigure } from '../utils/questionLayout
 interface ExerciseCardProps {
   exercise: Exercise;
   exerciseNumber: number;
+  totalExercisesCount?: number;
+  hideExerciseBadge?: boolean;
   showCanvas?: boolean;
   answerSpaceMinHeight?: number;
   answerSpaceStyle?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
@@ -375,37 +377,41 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
 };
 
 
-const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onExerciseUpdate }) => {
+const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, totalExercisesCount, hideExerciseBadge, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onExerciseUpdate }) => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
+  // Mécanisme intelligent : si la fiche ne contient qu'un seul exercice, masquer le badge "Exercice 1"
+  const shouldHideBadge = hideExerciseBadge || totalExercisesCount === 1 || exercise.hideBadge === true;
 
   return (
     <div className={`exercise-card bg-[#ffffff] text-black p-5 sm:p-7 lg:p-9 landscape:px-4 landscape:py-5 sm:landscape:px-6 rounded-2xl shadow-[0_4px_24px_rgba(23,33,38,0.04)] mb-10 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
-      {/* En-tête : le numéro reste dans le repère sombre ; le titre de
-          partie vit sur sa propre ligne, centré dans l'exercice. */}
-      <h2 className="exercise-title flex items-center mb-3 print:mb-2 pb-3">
-        <span
-          className="exercise-badge uppercase tracking-wider shrink-0"
-          style={{
-            backgroundColor: '#172126',
-            color: '#ffffff',
-            fontSize: '0.82rem',
-            padding: '0.45rem 0.9rem',
-            borderRadius: '0.45rem',
-            border: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            fontFamily: "'Plus Jakarta Sans', 'Lora', sans-serif",
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            boxShadow: '0 2px 8px rgba(23, 33, 38, 0.08)',
-            WebkitPrintColorAdjust: 'exact',
-            printColorAdjust: 'exact' as any,
-            lineHeight: 1,
-          }}
-        >
-          Exercice {exerciseNumber}
-        </span>
-      </h2>
+      {/* En-tête : Badge "Exercice X" affiché uniquement lorsqu'il y a plusieurs exercices */}
+      {!shouldHideBadge && (
+        <h2 className="exercise-title flex items-center mb-3 print:mb-2 pb-3">
+          <span
+            className="exercise-badge uppercase tracking-wider shrink-0"
+            style={{
+              backgroundColor: '#172126',
+              color: '#ffffff',
+              fontSize: '0.82rem',
+              padding: '0.45rem 0.9rem',
+              borderRadius: '0.45rem',
+              border: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              fontFamily: "'Plus Jakarta Sans', 'Lora', sans-serif",
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              boxShadow: '0 2px 8px rgba(23, 33, 38, 0.08)',
+              WebkitPrintColorAdjust: 'exact',
+              printColorAdjust: 'exact' as any,
+              lineHeight: 1,
+            }}
+          >
+            Exercice {exerciseNumber}
+          </span>
+        </h2>
+      )}
 
       {(exercise.title || isEditMode) && (
         <div className="exercise-part-title mb-6 print:mb-4 flex w-full items-center justify-center gap-3 px-6 text-center">

@@ -1,4 +1,4 @@
-import type { Worksheet } from '../types';
+import type { Worksheet, WorksheetContent, Exercise } from '../types';
 
 export type TreeFilter = 
     | { type: 'class'; className: string } 
@@ -16,6 +16,78 @@ export interface WorksheetTreeClass {
     worksheetCount: number;
     chapters: WorksheetTreeChapter[];
 }
+
+/**
+ * Traite et normalise intelligemment tout JSON de fiche ou d'exercice.
+ * - Supporte le paramètre unique "exercise" ou le tableau/objet "exercises".
+ * - Si le JSON ne contient qu'un seul exercice, masque le badge "Exercice 1".
+ */
+export const normalizeWorksheetJson = (jsonData: any): WorksheetContent => {
+    if (!jsonData || typeof jsonData !== 'object') {
+        throw new Error('Le JSON fourni est invalide ou vide.');
+    }
+
+    let rawExercises: any[] = [];
+    let chapter = jsonData.chapter || jsonData.title || '';
+
+    // Si le JSON contient la clé "exercise" (un seul exercice sous forme d'objet)
+    if (jsonData.exercise && typeof jsonData.exercise === 'object') {
+        rawExercises = [jsonData.exercise];
+        if (!chapter) {
+            chapter = jsonData.exercise.title || 'Exercice';
+        }
+    } 
+    // Si le JSON contient la clé "exercises" (tableau ou objet unique)
+    else if (jsonData.exercises) {
+        if (Array.isArray(jsonData.exercises)) {
+            rawExercises = jsonData.exercises;
+        } else if (typeof jsonData.exercises === 'object') {
+            rawExercises = [jsonData.exercises];
+        }
+    } 
+    // Si le JSON est directement un objet exercice (possède 'questions', 'statement' ou 'title')
+    else if (Array.isArray(jsonData.questions) || jsonData.statement || jsonData.title) {
+        rawExercises = [jsonData];
+        if (!chapter) {
+            chapter = jsonData.title || 'Exercice';
+        }
+    }
+
+    if (!Array.isArray(rawExercises) || rawExercises.length === 0) {
+        throw new Error('Le JSON doit contenir au moins un exercice ("exercises" ou "exercise").');
+    }
+
+    const isSingleExercise = rawExercises.length === 1;
+
+    const normalizedExercises: Exercise[] = rawExercises.map((ex, index) => {
+        return {
+            id: ex.id || `ex_${index + 1}`,
+            title: ex.title || '',
+            statement: ex.statement || '',
+            answer: ex.answer,
+            solution: ex.solution,
+            guidance: ex.guidance,
+            questions: Array.isArray(ex.questions) ? ex.questions : [],
+            statementAnswerHeight: ex.statementAnswerHeight,
+            statementAnswerStyle: ex.statementAnswerStyle,
+            statementAnswerColor: ex.statementAnswerColor,
+            image: ex.image,
+            statementStrokes: ex.statementStrokes,
+            // Si le JSON ne contient qu'un seul exercice, masquer automatiquement le badge "Exercice 1"
+            hideBadge: ex.hideBadge !== undefined ? ex.hideBadge : isSingleExercise,
+        };
+    });
+
+    if (!chapter || typeof chapter !== 'string') {
+        chapter = normalizedExercises[0]?.title || 'Fiche d\'Exercices';
+    }
+
+    return {
+        ...jsonData,
+        chapter,
+        exercises: normalizedExercises,
+    };
+};
 
 export const getWorksheetClassName = (worksheet: Worksheet): string => {
     return worksheet.content?.settings?.className?.trim() || 'Non classé';

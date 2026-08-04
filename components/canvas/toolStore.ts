@@ -46,6 +46,7 @@ export interface CanvasToolState {
   includePartialSelection: boolean;
   alignWithShapes: boolean;
   palmRejection: boolean;
+  penOnly: boolean;
   pressureCurve: PressureCurve;
   penStabilization: number;
   shapeRecognition: boolean;
@@ -90,6 +91,7 @@ const DEFAULTS: CanvasToolState = {
   includePartialSelection: true,
   alignWithShapes: true,
   palmRejection: true,
+  penOnly: true,
   pressureCurve: 'balanced',
   penStabilization: 0.35,
   shapeRecognition: true,

@@ -92,7 +92,7 @@ function renderFormattedSegment(text: string, keyPrefix: string = 'fmt', revealF
 
   while (remaining.length > 0) {
     // Find next LaTeX text command
-    const match = remaining.match(/\\(textbf|textit|emph|underline|textsf|texttt|quad|qquad|textcolor|Large|large|small)\b/);
+    const match = remaining.match(/\\(textbf|textit|emph|underline|textsf|texttt|quad|qquad|textcolor|highlight|hl|Large|large|small)\b/);
 
     if (!match || match.index === undefined) {
       // No formatting command found in remaining string
@@ -178,6 +178,8 @@ function renderFormattedSegment(text: string, keyPrefix: string = 'fmt', revealF
           nodes.push(<code key={`${keyPrefix}-${idxCounter++}`} className="font-mono text-sm bg-black/5 dark:bg-white/10 px-1 rounded">{children}</code>);
         } else if (cmd === 'textcolor') {
           nodes.push(<span key={`${keyPrefix}-${idxCounter++}`} style={{ color: textColor }}>{children}</span>);
+        } else if (cmd === 'highlight' || cmd === 'hl') {
+          nodes.push(<mark key={`${keyPrefix}-${idxCounter++}`} className="math-highlight-rounded">{children}</mark>);
         } else {
           nodes.push(<span key={`${keyPrefix}-${idxCounter++}`}>{children}</span>);
         }
@@ -545,12 +547,88 @@ const ProgressiveContent: React.FC<{ text: string; step: number; revealFillBlank
   );
 };
 
+const handleMathDoubleClick = (e: React.MouseEvent<HTMLSpanElement>) => {
+  const target = e.target as HTMLElement | null;
+  if (!target) return;
+
+  // 1. Double-clic sur une formule MathJax ou un bloc d'équation centrée
+  const mathJaxContainer = target.closest('mjx-container, .math-display, .math-center, [jax="SVG"]');
+  if (mathJaxContainer) {
+    e.preventDefault();
+    e.stopPropagation();
+    mathJaxContainer.classList.toggle('math-highlight-rounded');
+    return;
+  }
+
+  // 2. Double-clic sur un mot ou élément déjà surligné -> retrait fluide du surlignage
+  const existingHighlight = target.closest('.math-highlight-rounded, mark');
+  if (existingHighlight) {
+    e.preventDefault();
+    e.stopPropagation();
+    existingHighlight.classList.remove('math-highlight-rounded');
+    if (existingHighlight.tagName.toLowerCase() === 'mark') {
+      const parent = existingHighlight.parentNode;
+      if (parent) {
+        while (existingHighlight.firstChild) {
+          parent.insertBefore(existingHighlight.firstChild, existingHighlight);
+        }
+        parent.removeChild(existingHighlight);
+      }
+    }
+    return;
+  }
+
+  // 3. Double-clic sur un mot du texte courant
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount > 0) {
+    const selectedText = selection.toString().trim();
+    if (selectedText) {
+      const range = selection.getRangeAt(0);
+      const parentNode = range.commonAncestorContainer.parentElement;
+
+      if (parentNode && parentNode.classList.contains('math-highlight-rounded')) {
+        e.preventDefault();
+        e.stopPropagation();
+        parentNode.classList.remove('math-highlight-rounded');
+        if (parentNode.tagName.toLowerCase() === 'mark') {
+          const grandParent = parentNode.parentNode;
+          if (grandParent) {
+            while (parentNode.firstChild) {
+              grandParent.insertBefore(parentNode.firstChild, parentNode);
+            }
+            grandParent.removeChild(parentNode);
+          }
+        }
+        selection.removeAllRanges();
+        return;
+      }
+
+      try {
+        const mark = document.createElement('mark');
+        mark.className = 'math-highlight-rounded';
+        mark.title = 'Double-cliquez pour retirer le surlignage';
+        range.surroundContents(mark);
+        selection.removeAllRanges();
+        e.preventDefault();
+        e.stopPropagation();
+      } catch (err) {
+        if (parentNode && parentNode !== e.currentTarget) {
+          parentNode.classList.toggle('math-highlight-rounded');
+          selection.removeAllRanges();
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    }
+  }
+};
+
 const MathTextImpl: React.FC<MathTextProps> = ({ text, className = '', revealFillBlanks = false }) => {
   const { step } = useBeamerPresentation();
   if (!text) return null;
 
   return (
-    <span className={`inline-block w-full ${className}`}>
+    <span className={`inline-block w-full ${className}`} onDoubleClick={handleMathDoubleClick}>
       <ProgressiveContent text={text} step={step} revealFillBlanks={revealFillBlanks} />
     </span>
   );

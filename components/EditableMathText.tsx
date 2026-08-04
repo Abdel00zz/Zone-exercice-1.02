@@ -26,7 +26,12 @@ const EditableMathTextImpl: React.FC<EditableMathTextProps> = ({ text, isEditMod
     }
   }, [isEditing]);
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target && target.closest('mjx-container, .math-display, .math-center, .math-highlight-rounded, mark')) {
+      return;
+    }
+
     if (isEditMode) {
       setIsEditing(true);
     }

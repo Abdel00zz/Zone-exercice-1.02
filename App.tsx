@@ -448,6 +448,7 @@ const App: React.FC = () => {
                       key={firstExercise.id || 0}
                       exercise={firstExercise}
                       exerciseNumber={1}
+                      totalExercisesCount={exercises.length}
                       showCanvas={showCanvas}
                       answerSpaceMinHeight={answerSpaceMinHeight}
                       answerSpaceStyle={answerSpaceStyle}
@@ -467,6 +468,7 @@ const App: React.FC = () => {
                   key={exercise.id || `exercise-${index + 2}`}
                   exercise={exercise}
                   exerciseNumber={index + 2}
+                  totalExercisesCount={exercises.length}
                   showCanvas={showCanvas}
                   answerSpaceMinHeight={answerSpaceMinHeight}
                   answerSpaceStyle={answerSpaceStyle}

@@ -41,6 +41,7 @@ export interface Exercise {
   statementAnswerColor?: 'black' | 'green' | 'blue' | 'white' | 'cream';
   image?: ImageConfig;
   statementStrokes?: any[];
+  hideBadge?: boolean;
 }
 
 export interface WorksheetContent {

@@ -137,6 +137,43 @@
         margin: 0.4em 0;
       }
 
+      /* Highlighting moderne, doux et respirant pour mots et formules par double-clic */
+      .math-highlight-rounded,
+      mark.math-highlight-rounded {
+        background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%) !important;
+        color: #713f12 !important;
+        border-radius: 0.375rem !important; /* moins arrondi (6px) */
+        padding: 0.15rem 0.45rem !important; /* respirant */
+        margin: 0 0.15rem !important;
+        box-shadow: 0 1px 4px rgba(234, 179, 8, 0.18), inset 0 0 0 1px rgba(250, 204, 21, 0.5) !important;
+        transition: all 0.2s ease-out !important; /* grande fluidité */
+        display: inline-block !important;
+        cursor: pointer !important;
+        animation: popHighlight 0.22s ease-out !important;
+        vertical-align: baseline !important;
+      }
+
+      .math-highlight-rounded:hover,
+      mark.math-highlight-rounded:hover {
+        background: linear-gradient(135deg, #fef08a 0%, #fde047 100%) !important;
+        transform: translateY(-1px) scale(1.015) !important;
+        box-shadow: 0 3px 8px rgba(234, 179, 8, 0.25), inset 0 0 0 1px rgba(234, 179, 8, 0.6) !important;
+      }
+
+      @keyframes popHighlight {
+        0% {
+          transform: scale(0.9) translateY(2px);
+          opacity: 0.5;
+        }
+        60% {
+          transform: scale(1.05) translateY(-1px);
+        }
+        100% {
+          transform: scale(1) translateY(0);
+          opacity: 1;
+        }
+      }
+
       /* Une formule qui ouvre ou termine l'énoncé ne double pas la marge. */
       .math-display:first-child { margin-top: 0; }
       .math-display:last-child { margin-bottom: 0; }

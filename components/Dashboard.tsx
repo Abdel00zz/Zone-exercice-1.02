@@ -12,6 +12,7 @@ import {
     getWorksheetChapterName, 
     buildWorksheetTree, 
     generateDynamicSubtitle,
+    normalizeWorksheetJson,
     type TreeFilter 
 } from '../utils/worksheetUtils';
 
@@ -76,16 +77,14 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    const processImport = (jsonData: WorksheetContent, fallbackName: string = 'Nouvelle Fiche') => {
-        if (!jsonData.chapter || typeof jsonData.chapter !== 'string' || !jsonData.exercises || !Array.isArray(jsonData.exercises)) {
-            throw new Error('Le JSON est invalide. Il doit contenir une cle "chapter" (texte) et une cle "exercises" (tableau).');
-        }
+    const processImport = (jsonData: any, fallbackName: string = 'Nouvelle Fiche') => {
+        const normalized = normalizeWorksheetJson(jsonData);
         
         const newWorksheet: Worksheet = {
             id: `ws_${Date.now()}`,
-            name: jsonData.chapter || fallbackName.replace('.json', '') || 'Nouvelle Fiche',
+            name: normalized.chapter || fallbackName.replace('.json', '') || 'Nouvelle Fiche',
             createdAt: new Date().toISOString(),
-            content: jsonData,
+            content: normalized,
         };
         onAddWorksheet(newWorksheet);
     };
@@ -245,7 +244,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <button
                     type="button"
                     onClick={() => setSidebarCollapsed((current) => !current)}
-                    className={`absolute top-4 z-20 hidden h-10 w-10 place-items-center bg-transparent text-[#19788c] transition hover:-translate-y-0.5 hover:text-[#11677a] focus:outline-none lg:grid ${sidebarCollapsed ? 'left-4' : 'left-[228px] xl:left-[258px]'}`}
+                    className={`absolute top-2.5 z-20 hidden h-8 w-8 place-items-center bg-transparent text-[#19788c] transition hover:-translate-y-0.5 hover:text-[#11677a] focus:outline-none lg:grid ${sidebarCollapsed ? 'left-3' : 'left-[225px] xl:left-[255px]'}`}
                     title={sidebarCollapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
                     aria-label={sidebarCollapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
                 >
@@ -289,8 +288,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                 />
 
                 {/* ── Bibliothèque de fiches ── */}
-                <main className="min-w-0 px-5 pt-4 pb-7 sm:px-8 sm:pt-5 sm:pb-9 lg:px-12 xl:px-14 xl:pt-6 xl:pb-12 2xl:px-16">
-                    <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <main className="min-w-0 px-4 pt-6 pb-7 sm:px-6 sm:pt-7 sm:pb-9 lg:pl-6 lg:pr-8 xl:pl-8 xl:pr-10 xl:pt-8 xl:pb-12 2xl:pl-9 2xl:pr-12">
+                    <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-1 sm:mt-2">
                         <div className="block min-w-0">
                             <h2 className="font-serif text-lg font-semibold tracking-[-0.02em] text-[#111719] sm:text-xl md:text-2xl">
                                 Mes Fiches d'Exercices
@@ -312,9 +311,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                         </div>
 
-                        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center h-[46px] justify-end">
+                        <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center h-[38px] justify-end">
                             <div 
-                                className={`relative flex items-center transition-all duration-300 ease-in-out ${isSearchExpanded || searchQuery ? 'w-full sm:w-[280px] lg:w-[320px]' : 'w-[46px]'}`}
+                                className={`relative flex items-center transition-all duration-300 ease-in-out ${isSearchExpanded || searchQuery ? 'w-full sm:w-[210px] lg:w-[240px]' : 'w-[38px]'}`}
                             >
                                 <button
                                     type="button"
@@ -322,11 +321,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         setIsSearchExpanded(true); 
                                         setTimeout(() => searchInputRef.current?.focus(), 100); 
                                     }}
-                                    className={`absolute left-0 z-10 grid h-[46px] w-[46px] place-items-center rounded-full text-[#19788c] transition-colors ${isSearchExpanded || searchQuery ? 'pointer-events-none' : 'cursor-pointer bg-[#faf9f6] border border-[#d5d8d4] hover:bg-[#19788c]/5'}`}
+                                    className={`absolute left-0 z-10 grid h-[38px] w-[38px] place-items-center rounded-full text-[#19788c] transition-colors ${isSearchExpanded || searchQuery ? 'pointer-events-none' : 'cursor-pointer bg-[#faf9f6] border border-[#d5d8d4] hover:bg-[#19788c]/5'}`}
                                     title="Rechercher"
                                     aria-label="Rechercher"
                                 >
-                                    <Search className="h-5 w-5" />
+                                    <Search className="h-4 w-4" />
                                 </button>
                                 
                                 <input
@@ -336,18 +335,18 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     value={searchQuery}
                                     onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(6); }}
                                     onBlur={() => { if (!searchQuery) setIsSearchExpanded(false); }}
-                                    className={`h-[46px] w-full rounded-full border border-[#d5d8d4] bg-[#faf9f6] py-3 pl-11 pr-5 text-[15px] font-semibold text-[#172126] outline-none transition-all placeholder:text-[#8a9293] hover:border-[#b9c8c8] focus:border-[#19788c] focus:ring-4 focus:ring-[#19788c]/10 ${isSearchExpanded || searchQuery ? 'opacity-100 cursor-text' : 'opacity-0 cursor-default pointer-events-none'}`}
+                                    className={`h-[38px] w-full rounded-full border border-[#d5d8d4] bg-[#faf9f6] py-1.5 pl-9 pr-3 text-xs font-semibold text-[#172126] outline-none transition-all placeholder:text-[#8a9293] hover:border-[#b9c8c8] focus:border-[#19788c] focus:ring-4 focus:ring-[#19788c]/10 ${isSearchExpanded || searchQuery ? 'opacity-100 cursor-text' : 'opacity-0 cursor-default pointer-events-none'}`}
                                     aria-label="Rechercher une fiche par nom"
                                 />
                             </div>
                             <button
                                 type="button"
                                 onClick={handleOpenManager}
-                                className="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full bg-[#172126] text-white shadow-[0_8px_18px_rgba(23,33,38,0.14)] transition hover:-translate-y-0.5 hover:bg-[#25363c] focus:outline-none focus:ring-4 focus:ring-[#19788c]/20"
+                                className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full bg-[#172126] text-white shadow-[0_4px_12px_rgba(23,33,38,0.12)] transition hover:-translate-y-0.5 hover:bg-[#25363c] focus:outline-none focus:ring-4 focus:ring-[#19788c]/20"
                                 title="Créer une nouvelle fiche"
                                 aria-label="Créer une nouvelle fiche"
                             >
-                                <Plus className="h-5 w-5" />
+                                <Plus className="h-4 w-4" />
                             </button>
                         </div>
                     </header>
@@ -359,16 +358,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 <WorksheetCard
                                     key={ws.id}
                                     worksheet={ws}
-                                    isActionMenuOpen={activeActionMenuId === ws.id}
                                     renamingId={renamingId}
                                     newName={newName}
                                     onSelectWorksheet={onSelectWorksheet}
-                                    onToggleActionMenu={setActiveActionMenuId}
-                                    onRename={handleRename}
                                     onSaveRename={handleSaveRename}
                                     onNewNameChange={setNewName}
-                                    onEditJson={handleEditJson}
-                                    onDeleteWorksheet={handleDeleteWorksheet}
                                     onShowInfo={setInfoModalWorksheet}
                                 />
                             ))}
@@ -431,9 +425,15 @@ const Dashboard: React.FC<DashboardProps> = ({
             />
 
             <WorksheetInfoModal
-                worksheet={infoModalWorksheet}
+                worksheet={infoModalWorksheet ? (worksheets.find(w => w.id === infoModalWorksheet.id) || infoModalWorksheet) : null}
+                worksheetClasses={worksheetClasses}
                 onClose={() => setInfoModalWorksheet(null)}
                 getClassName={getWorksheetClassName}
+                onRenameWorksheet={onRenameWorksheet}
+                onEditJson={handleEditJson}
+                onDeleteWorksheet={handleDeleteWorksheet}
+                onSelectWorksheet={onSelectWorksheet}
+                onAssignWorksheetClass={onAssignWorksheetClass}
             />
 
             <HelpModal 

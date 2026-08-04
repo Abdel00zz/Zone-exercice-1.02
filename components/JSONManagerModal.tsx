@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, FileUp, Download, Code, Save, AlertCircle, CheckCircle2, AlignLeft, AlignJustify, HelpCircle, BookOpen, UploadCloud, Terminal } from 'lucide-react';
 import type { WorksheetContent, Worksheet } from '../types';
+import { normalizeWorksheetJson } from '../utils/worksheetUtils';
 
 // [NOTE: Ported from original JSONEditorModal for editor functionality]
 const BRACKET_PAIRS: Record<string, string> = { '{': '}', '[': ']', '"': '"' };
@@ -49,16 +50,12 @@ const JSONManagerModal: React.FC<JSONManagerModalProps> = ({
     const validate = useCallback((value: string) => {
       try {
         const parsed = JSON.parse(value);
-        if (!parsed.chapter || !Array.isArray(parsed.exercises)) {
-            setIsValid(false);
-            setError({ message: "La structure doit contenir un 'chapter' et un tableau 'exercises'.", line: null });
-            return;
-        }
+        normalizeWorksheetJson(parsed);
         setIsValid(true);
         setError({ message: '', line: null });
       } catch (e: any) {
         setIsValid(false);
-        setError({ message: e.message, line: getErrorLine(value, e.message) });
+        setError({ message: e.message || "Structure JSON non valide.", line: getErrorLine(value, e.message || "") });
       }
     }, []);
 
@@ -82,9 +79,10 @@ const JSONManagerModal: React.FC<JSONManagerModalProps> = ({
     const handleSave = () => {
         try {
             const parsed = JSON.parse(code);
-            onSaveWorksheet(parsed);
+            const normalized = normalizeWorksheetJson(parsed);
+            onSaveWorksheet(normalized);
             onClose();
-        } catch (e) { alert("JSON invalide"); }
+        } catch (e: any) { alert(e instanceof Error ? e.message : "JSON invalide"); }
     };
 
     const handleExport = () => {
@@ -100,13 +98,19 @@ const JSONManagerModal: React.FC<JSONManagerModalProps> = ({
         const file = e.target.files?.[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = (event) => {
             try {
-                const jsonData = JSON.parse(e.target?.result as string);
-                if (Array.isArray(jsonData)) onRestoreBackup(jsonData);
-                else onSaveWorksheet(jsonData);
+                const raw = JSON.parse(event.target?.result as string);
+                if (Array.isArray(raw)) {
+                    onRestoreBackup(raw);
+                } else {
+                    const normalized = normalizeWorksheetJson(raw);
+                    onSaveWorksheet(normalized);
+                }
                 onClose();
-            } catch (err) { alert("Erreur importation"); }
+            } catch (err: any) { 
+                alert(err instanceof Error ? err.message : "Erreur lors de l'importation"); 
+            }
         };
         reader.readAsText(file);
     };

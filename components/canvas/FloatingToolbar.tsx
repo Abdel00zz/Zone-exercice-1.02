@@ -732,7 +732,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
             <Plus size={18} className="text-slate-400" />
           </button>
 
-          <Toggle label="Rejet de paume" checked={tools.palmRejection} onChange={() => setToolState({ palmRejection: !tools.palmRejection })} />
+          <Toggle label="Rejet de paume (anti-affleurement)" checked={tools.palmRejection} onChange={() => setToolState({ palmRejection: !tools.palmRejection })} />
 
           <Section
             title="Fond du canvas"
