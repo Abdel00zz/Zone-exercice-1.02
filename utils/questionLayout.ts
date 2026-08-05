@@ -58,18 +58,24 @@ const toRoman = (value: number): string => {
 
 /** Étiquette affichée devant une question, quelle que soit la profondeur. */
 export const formatNumbering = (index: number, level: number): string => {
+  let raw = '';
   switch (numberingStyleForLevel(level)) {
     case 'decimal':
-      return `${index + 1}`;
+      raw = `${index + 1}`;
+      break;
     case 'alpha':
-      return `${toAlpha(index)}`;
+      raw = `${toAlpha(index)}`;
+      break;
     case 'roman':
-      return `${toRoman(index + 1)}`;
+      raw = `${toRoman(index + 1)}`;
+      break;
     case 'greek':
-      return `${GREEK_LETTERS[index % GREEK_LETTERS.length]}`;
+      raw = `${GREEK_LETTERS[index % GREEK_LETTERS.length]}`;
+      break;
     default:
       return '•';
   }
+  return raw.endsWith('.') ? raw : `${raw}.`;
 };
 
 /**

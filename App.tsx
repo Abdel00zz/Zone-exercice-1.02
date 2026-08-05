@@ -427,7 +427,7 @@ const App: React.FC = () => {
         src="https://cdn.jsdelivr.net/npm/mathjax@4/startup.js"
         config={{ ...mathJaxConfig, output: { ...mathJaxConfig.output, font: mathFont, scale: Math.min(140, Math.max(80, mathScale)) / 100 } }}
       >
-        <div className={`min-h-screen font-sans ${activeView !== 'dashboard' && selectedWorksheet ? 'bg-[radial-gradient(circle_at_center,#4a3b32_0%,#2c221d_100%)] print:bg-white' : 'bg-[#f2f0eb]'}`}>
+        <div className={`min-h-screen font-sans ${activeView !== 'dashboard' && selectedWorksheet ? 'bg-[#e8e4dc] print:bg-white' : 'bg-[#f2f0eb]'}`}>
       {importError && (
           <div className="sticky top-0 z-50">
             <ErrorMessage message={importError} onClose={() => setImportError(null)} />
@@ -460,7 +460,7 @@ const App: React.FC = () => {
       ) : selectedWorksheet ? (
         <>
           <main
-            className="worksheet-typography max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-4 landscape:px-2 sm:landscape:px-4 pb-16 pt-8 landscape:py-8 transition-all duration-300 print:max-w-none print:p-0 print:py-0"
+            className="worksheet-typography max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 transition-all duration-300 print:max-w-none print:p-0 print:py-0"
             style={{
               fontFamily: textFont,
               fontSize: `${Math.min(130, Math.max(80, textScale))}%`,
@@ -470,7 +470,7 @@ const App: React.FC = () => {
               '--worksheet-math-font': 'inherit',
             } as React.CSSProperties}
           >
-            <div className="bg-[#f4f1ea] rounded-[2px] w-full px-6 sm:px-12 md:px-16 pt-12 pb-12 shadow-[-15px_20px_35px_rgba(0,0,0,0.4),inset_0_0_60px_rgba(139,122,94,0.1)] print:shadow-none print:bg-transparent print:p-0" style={{ backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.5), rgba(255,255,255,0) 20%), url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.04"/></svg>')` }}>
+            <div className="bg-[#f4f1ea] rounded-xl w-full px-6 sm:px-12 md:px-16 pt-10 pb-12 border border-[#e2ddd0] shadow-[0_4px_20px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] print:shadow-none print:bg-transparent print:p-0 print:border-none" style={{ backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.5), rgba(255,255,255,0) 20%), url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.04"/></svg>')` }}>
               <div className="space-y-8 print:space-y-6">
                 <div className="title-and-first-exercise-container space-y-6 print:space-y-4">
                 <div className="latex-document-header mb-8 mt-0 print:mb-6 print:mt-0 relative">
@@ -486,22 +486,9 @@ const App: React.FC = () => {
 
                   <div className="mb-10 flex flex-col items-center">
                     <div className="text-center">
-                      <div className="inline-flex items-center justify-center space-x-3 mb-4">
+                      <div className="inline-flex items-center justify-center mb-4">
                         <span className="text-[#19788c] print:text-black text-[10px] font-bold uppercase tracking-[0.2em]">
-                          <EditableMathText 
-                            text={selectedWorksheet.content.chapter || "Sans chapitre"} 
-                            isEditMode={isEditMode}
-                            onChange={(newChap) => {
-                              handleUpdateWorksheetContent(selectedWorksheet.id, {
-                                ...selectedWorksheet.content,
-                                chapter: newChap
-                              });
-                            }}
-                          />
-                        </span>
-                        <span className="w-1 h-1 rounded-full bg-[#19788c] print:bg-black opacity-50" />
-                        <span className="text-[#19788c] print:text-black text-[10px] font-bold uppercase tracking-[0.2em]">
-                          {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
+                          Le {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
                         </span>
                       </div>
                       <div role="heading" aria-level={1} className="font-chapter text-[2.25rem] sm:text-4xl md:text-5xl font-medium leading-tight text-[#172126] print:text-4xl tracking-tight">

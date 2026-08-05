@@ -173,7 +173,7 @@
   ══════════════════════════════════════════════ */
   .question-number-badge,
   .question-lead-badge {
-    font-family: 'Quicksand', sans-serif !important;
+    font-family: 'Roboto Slab', serif !important;
     display: inline-block !important;
     text-align: right !important;
     white-space: nowrap !important;
@@ -194,8 +194,8 @@
     line-height: var(--print-question-line-box) !important;
     text-align: right !important;
     font-size: 11pt !important;
-    font-weight: 600 !important;
-    font-family: 'Quicksand', sans-serif !important;
+    font-weight: 700 !important;
+    font-family: 'Roboto Slab', serif !important;
     padding: 0 !important;
     margin-top: 0 !important;
   }
@@ -215,8 +215,8 @@
     text-align: right !important;
     font-size: 10pt !important;
     font-style: normal !important;
-    font-weight: 500 !important;
-    font-family: 'Quicksand', sans-serif !important;
+    font-weight: 700 !important;
+    font-family: 'Roboto Slab', serif !important;
     justify-content: flex-end !important;
     padding: 0 !important;
     margin-top: 0 !important;
@@ -238,9 +238,9 @@
     line-height: var(--print-question-line-box) !important;
     text-align: right !important;
     font-size: 9.5pt !important;
-    font-style: italic !important;
-    font-weight: 500 !important;
-    font-family: 'Quicksand', sans-serif !important;
+    font-style: normal !important;
+    font-weight: 700 !important;
+    font-family: 'Roboto Slab', serif !important;
     justify-content: flex-end !important;
     padding: 0 !important;
     margin-top: 0 !important;

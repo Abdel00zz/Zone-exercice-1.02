@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback, useId } from 'react';
-import { Minus, Plus, Trash2 } from 'lucide-react';
+import { Minus, Plus, Trash2, Lightbulb, HelpCircle, Sparkles } from 'lucide-react';
 import { Stroke, DrawingCanvasProps, Point, ToolType } from './types';
 import { drawStroke } from './renderUtils';
 import { pointInPolygon, strokeIntersectsPoint, isPointInImage, isPointOnImageResizeHandle } from './utils';
@@ -12,6 +12,8 @@ import { calibratePressure, constrainShapePoint, recognizeStrokeShape, StrokeSmo
 import CanvasTextLayer from './CanvasTextLayer';
 import CanvasTextEditor, { CanvasTextDraft } from './CanvasTextEditor';
 import CorrectionProgressControl from './CorrectionProgressControl';
+import { useCanvasHistory, HistoryAction } from './hooks/useCanvasHistory';
+import { useSelection } from './hooks/useSelection';
 
 /**
  * Résolution du canvas. Le bitmap est dimensionné en pixels physiques pour que
@@ -22,10 +24,6 @@ import CorrectionProgressControl from './CorrectionProgressControl';
  * une dizaine de canvas simultanément.
  */
 const getRenderScale = () => Math.min(2, Math.max(1, window.devicePixelRatio || 1));
-
-type HistoryAction =
-  | { type: 'add'; stroke: Stroke }
-  | { type: 'erase'; items: { index: number; stroke: Stroke }[] };
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   instanceId: providedInstanceId,
@@ -49,17 +47,56 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const strokesRef = useRef<Stroke[]>(initialStrokes);
   const currentStrokeRef = useRef<Stroke | null>(null);
   // Force le re-rendu de la Toolbar quand le nombre de traits change
-  // (l'état « Annuler » se lisait auparavant depuis une ref, donc jamais à jour).
   const [strokeCount, setStrokeCount] = useState(initialStrokes.length);
   const [renderRevision, setRenderRevision] = useState(0);
 
-  // Historique unifié (ajout de trait ET gomme par trait) pour que Ctrl+Z
-  // annule toujours la dernière action réelle, y compris un effacement.
-  const historyRef = useRef<HistoryAction[]>([]);
-  // Traits supprimés pendant le geste de gomme en cours (du pointerDown au
-  // pointerUp), regroupés en une seule action d'historique à la fin du geste.
-  const eraseGestureRef = useRef<{ index: number; stroke: Stroke }[]>([]);
-  const [redoStack, setRedoStack] = useState<HistoryAction[]>([]);
+  const onStrokesChangeRef = useRef(onStrokesChange);
+  onStrokesChangeRef.current = onStrokesChange;
+
+  const redrawAllRef = useRef<() => void>(() => {});
+
+  const {
+    historyRef,
+    eraseGestureRef,
+    redoStack,
+    setRedoStack,
+    commitStrokes,
+    recordAdd,
+    recordEraseGesture,
+    undo,
+    redo,
+    clearHistory,
+  } = useCanvasHistory({
+    strokesRef,
+    setStrokeCount,
+    setRenderRevision,
+    onStrokesChangeRef,
+    redrawAll: () => redrawAllRef.current(),
+    setSelectedStrokeIndexes: (val) => setSelectedStrokeIndexes(val),
+  });
+
+  const {
+    selectedStrokeIndexes,
+    setSelectedStrokeIndexes,
+    lassoPathRef,
+    selectionBoxRef,
+    dragStartRef,
+    originalSelectedStrokesRef,
+    draggedIndexesRef,
+    isDraggingSelectionRef,
+    beginSelectionDrag,
+    moveSelectionBy,
+    clearSelection,
+    deleteSelection,
+    duplicateSelection,
+    changeSelectionColor,
+    changeSelectionWidth,
+    bringSelectionToFront,
+  } = useSelection({
+    strokesRef,
+    redrawAll: () => redrawAllRef.current(),
+    commitStrokes,
+  });
 
   /**
    * Les réglages d'outil sont partagés par toute la fiche (`toolStore`) et pilotés
@@ -95,16 +132,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   // width/height en pixels CSS, scale = facteur de densité du bitmap.
   const dimensionsRef = useRef({ width: 0, height: 0, scale: 1 });
 
-  const lassoPathRef = useRef<Point[]>([]);
-  const [selectedStrokeIndexes, setSelectedStrokeIndexes] = useState<Set<number>>(new Set());
-  
-  const isDraggingSelectionRef = useRef(false);
-  const dragStartRef = useRef<{x: number, y: number} | null>(null);
-  const selectionBoxRef = useRef<{x: number, y: number, w: number, h: number} | null>(null);
-  const originalSelectedStrokesRef = useRef<Stroke[]>([]);
-  // Ordre des index au moment où le déplacement commence : il doit correspondre
-  // position par position à `originalSelectedStrokesRef`.
-  const draggedIndexesRef = useRef<number[]>([]);
+
 
   // Image manipulation state
   const dragModeRef = useRef<'move' | 'resize' | 'select' | null>(null);
@@ -235,23 +263,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   // `redrawAll` change d'identité à chaque changement de sélection/outil ; passer
   // par une ref évite de recréer le ResizeObserver et les abonnements à chaque fois.
-  const redrawAllRef = useRef(redrawAll);
   redrawAllRef.current = redrawAll;
-
-  const onStrokesChangeRef = useRef(onStrokesChange);
-  onStrokesChangeRef.current = onStrokesChange;
-
-  /**
-   * Remonte les traits vers la fiche. À n'appeler qu'aux points de validation
-   * (fin de tracé, action de barre d'outils). Appelé à chaque `pointermove`
-   * comme auparavant, il déclenchait un clone complet de la fiche et une
-   * écriture localStorage synchrone par point tracé.
-   */
-  const commitStrokes = useCallback(() => {
-    setStrokeCount(strokesRef.current.length);
-    setRenderRevision(revision => revision + 1);
-    onStrokesChangeRef.current?.([...strokesRef.current]);
-  }, []);
 
   const commitTextInput = useCallback(() => {
     if (!textInput) return;
@@ -263,7 +275,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           text: textInput.text,
         };
       } else {
-        strokesRef.current.push({
+        const newTextStroke: Stroke = {
           points: [{ x: textInput.x, y: textInput.y, pressure: 0.5 }],
           color,
           width: lineWidth,
@@ -271,45 +283,15 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           text: textInput.text,
           font: 'Caveat',
           fontSize: 24,
-        });
+        };
+        strokesRef.current.push(newTextStroke);
+        recordAdd(newTextStroke);
       }
-      setRedoStack([]);
       redrawAllRef.current();
       commitStrokes();
     }
     setTextInput(null);
-  }, [commitStrokes, textInput]);
-
-  /** Mémorise la position de départ des traits sélectionnés avant un déplacement. */
-  const beginSelectionDrag = useCallback((selection: Set<number>) => {
-    const indexes = Array.from(selection);
-    draggedIndexesRef.current = indexes;
-    originalSelectedStrokesRef.current = indexes.map(idx => {
-      const stroke = strokesRef.current[idx];
-      return { ...stroke, points: stroke.points.map(p => ({ ...p })) };
-    });
-  }, []);
-
-  /**
-   * Déplace la sélection depuis sa position d'origine.
-   *
-   * L'ancienne version itérait avec `Set.forEach((idx, i) => ...)` en croyant
-   * que `i` était un rang : le callback d'un Set reçoit deux fois la valeur.
-   * `originalSelectedStrokesRef[i]` était donc indexé par le numéro du trait et
-   * valait presque toujours `undefined` — le déplacement de sélection ne
-   * fonctionnait tout simplement pas.
-   */
-  const moveSelectionBy = useCallback((dx: number, dy: number) => {
-    draggedIndexesRef.current.forEach((strokeIndex, position) => {
-      const stroke = strokesRef.current[strokeIndex];
-      const original = originalSelectedStrokesRef.current[position];
-      if (!stroke || !original) return;
-      for (let j = 0; j < stroke.points.length && j < original.points.length; j++) {
-        stroke.points[j].x = original.points[j].x + dx;
-        stroke.points[j].y = original.points[j].y + dy;
-      }
-    });
-  }, []);
+  }, [commitStrokes, recordAdd, textInput]);
 
   useEffect(() => {
     const resizeCanvas = () => {
@@ -346,10 +328,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         strokesRef.current.forEach(stroke => {
           stroke.points.forEach(point => {
             point.x *= ratio;
-            point.y *= ratio;
           });
-          if (stroke.width) stroke.width *= ratio;
-          if (stroke.fontSize) stroke.fontSize *= ratio;
         });
       }
 
@@ -979,140 +958,20 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       }
       const committedStroke = currentStrokeRef.current;
       strokesRef.current.push(committedStroke);
-      historyRef.current.push({ type: 'add', stroke: committedStroke });
+      recordAdd(committedStroke);
       currentStrokeRef.current = null;
       recognizedStrokeRef.current = null;
-      setRedoStack([]); 
     }
 
-    if (eraseGestureRef.current.length > 0) {
-      historyRef.current.push({ type: 'erase', items: eraseGestureRef.current });
-      eraseGestureRef.current = [];
-      setRedoStack([]);
-    }
+    recordEraseGesture();
 
-    redrawAll(); commitStrokes();
-  };
-
-  const undo = () => {
-    const lastAction = historyRef.current.pop();
-    if (!lastAction) return;
-    if (lastAction.type === 'add') {
-      strokesRef.current.pop();
-    } else {
-      // Reconstitue l'ordre d'origine en réinsérant du plus récemment effacé au plus ancien.
-      for (let i = lastAction.items.length - 1; i >= 0; i--) {
-        const { index, stroke } = lastAction.items[i];
-        strokesRef.current.splice(index, 0, stroke);
-      }
-    }
-    setRedoStack(prev => [...prev, lastAction]);
-    setSelectedStrokeIndexes(new Set());
-    redrawAll(); commitStrokes();
-  };
-
-  const redo = () => {
-    if (redoStack.length === 0) return;
-    const newRedoStack = [...redoStack];
-    const actionToRedo = newRedoStack.pop();
-    if (actionToRedo) {
-      if (actionToRedo.type === 'add') {
-        strokesRef.current.push(actionToRedo.stroke);
-      } else {
-        const erasedSet = new Set(actionToRedo.items.map(item => item.stroke));
-        strokesRef.current = strokesRef.current.filter(s => !erasedSet.has(s));
-      }
-      historyRef.current.push(actionToRedo);
-      setRedoStack(newRedoStack);
-    }
     redrawAll(); commitStrokes();
   };
 
   const clear = () => {
     strokesRef.current = [];
-    historyRef.current = [];
-    eraseGestureRef.current = [];
-    setRedoStack([]);
-    setSelectedStrokeIndexes(new Set());
-    redrawAll(); commitStrokes();
-  };
-  
-  const deleteSelection = () => {
-    if (selectedStrokeIndexes.size === 0) return;
-    strokesRef.current = strokesRef.current.filter((_, idx) => !selectedStrokeIndexes.has(idx));
-    setSelectedStrokeIndexes(new Set());
-    redrawAll(); commitStrokes();
-  };
-
-  const duplicateSelection = () => {
-    if (selectedStrokeIndexes.size === 0) return;
-    const newStrokes = [...strokesRef.current];
-    const newIndexes = new Set<number>();
-    
-    selectedStrokeIndexes.forEach(idx => {
-      const orig = strokesRef.current[idx];
-      if (!orig) return;
-      const duplicated: Stroke = {
-        ...orig,
-        points: orig.points.map(p => ({ x: p.x + 20, y: p.y + 20, pressure: p.pressure }))
-      };
-      if (orig.isImage && orig.imgSrc) {
-        const img = new window.Image();
-        img.src = orig.imgSrc;
-        duplicated.imgElement = img;
-      }
-      newStrokes.push(duplicated);
-      newIndexes.add(newStrokes.length - 1);
-    });
-    
-    strokesRef.current = newStrokes;
-    setSelectedStrokeIndexes(newIndexes);
-    redrawAll(); commitStrokes();
-  };
-
-  const changeSelectionColor = (newColor: string) => {
-    if (selectedStrokeIndexes.size === 0) return;
-    selectedStrokeIndexes.forEach(idx => {
-      const s = strokesRef.current[idx];
-      if (s && !s.isImage) {
-        s.color = newColor;
-      }
-    });
-    redrawAll(); commitStrokes();
-  };
-
-  const changeSelectionWidth = (delta: number) => {
-    if (selectedStrokeIndexes.size === 0) return;
-    selectedStrokeIndexes.forEach(idx => {
-      const s = strokesRef.current[idx];
-      if (s && !s.isImage) {
-        s.width = Math.max(1, (s.width || 3) + delta);
-      }
-    });
-    redrawAll(); commitStrokes();
-  };
-
-  const bringSelectionToFront = () => {
-    if (selectedStrokeIndexes.size === 0) return;
-    const selectedStrokes: Stroke[] = [];
-    const nonSelectedStrokes: Stroke[] = [];
-    
-    strokesRef.current.forEach((s, idx) => {
-      if (selectedStrokeIndexes.has(idx)) {
-        selectedStrokes.push(s);
-      } else {
-        nonSelectedStrokes.push(s);
-      }
-    });
-
-    const newStrokes = [...nonSelectedStrokes, ...selectedStrokes];
-    const newIndexes = new Set<number>();
-    for (let i = nonSelectedStrokes.length; i < newStrokes.length; i++) {
-      newIndexes.add(i);
-    }
-    
-    strokesRef.current = newStrokes;
-    setSelectedStrokeIndexes(newIndexes);
+    clearHistory();
+    clearSelection();
     redrawAll(); commitStrokes();
   };
 
@@ -1193,26 +1052,36 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   return (
     <div className="absolute inset-0 flex flex-col pointer-events-none group/canvas z-10">
       {/*
-        Le corrigé est propre à CETTE question : il reste donc dans la zone, à
-        l'inverse des réglages d'outils désormais portés par la barre unique.
+        Bouton de rappel de cours / aide : badge d'aide parfaitement fusionné sur la bordure supérieure du cadre.
       */}
       {correctionToggle?.available && (
-          <div className="absolute bottom-2 right-2 z-30 flex items-center gap-1.5 pointer-events-auto no-print">
+        <div className="absolute -top-3.5 right-6 z-30 flex items-center gap-1.5 pointer-events-auto no-print">
           {correctionProgress && correctionToggle.visible && (
-            <CorrectionProgressControl progress={correctionProgress} />
+            <div className="animate-in fade-in slide-in-from-right-2 duration-200">
+              <CorrectionProgressControl progress={correctionProgress} />
+            </div>
           )}
           <button
             type="button"
+            aria-label={correctionToggle.visible ? 'Masquer la correction et rappel de cours' : 'Afficher la correction et rappel de cours'}
             aria-pressed={correctionToggle.visible}
             onClick={correctionToggle.toggle}
-            className={`flex items-center justify-center h-7 px-3 text-[11px] font-semibold rounded-md backdrop-blur-md border transition-all duration-300 active:scale-95 ${
+            className={`group/helpbtn relative inline-flex items-center gap-1.5 h-7 px-3 rounded-full border text-xs font-bold tracking-wide transition-all duration-200 ease-out active:scale-95 shadow-2xs ${
               correctionToggle.visible
-                ? 'border-slate-400 bg-slate-500 text-white shadow-sm'
-                : 'border-slate-200 bg-white/80 text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 shadow-sm'
+                ? 'border-amber-500 bg-amber-500 text-white shadow-xs shadow-amber-500/20 ring-2 ring-amber-200/60'
+                : 'border-slate-300/90 bg-[#fdfbf7] backdrop-blur-md text-slate-700 hover:border-amber-400 hover:bg-amber-50/90 hover:text-amber-800 shadow-2xs'
             }`}
             title={correctionToggle.visible ? 'Masquer le rappel de cours' : 'Afficher le rappel de cours'}
           >
-            Aide
+            <HelpCircle
+              size={13}
+              className={`transition-transform duration-200 ease-out stroke-[2.5] ${
+                correctionToggle.visible
+                  ? 'text-white'
+                  : 'text-amber-600 group-hover/helpbtn:scale-110'
+              }`}
+            />
+            <span className="text-[11px] font-bold tracking-tight">Aide</span>
           </button>
         </div>
       )}

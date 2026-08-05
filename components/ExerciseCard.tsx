@@ -46,16 +46,17 @@ const QUESTION_LINE_BOX = '1.70625rem';
 const badgeStyle = (level: number): React.CSSProperties => {
   const base: React.CSSProperties = {
     display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontFamily: "'Inter', sans-serif",
-    height: '1.5rem',
-    minWidth: '1.5rem',
-    padding: '0 0.4rem',
-    borderRadius: '6px',
-    lineHeight: 1,
+    alignItems: 'baseline',
+    justifyContent: 'flex-start',
+    fontFamily: "'Roboto Slab', serif",
+    lineHeight: QUESTION_LINE_BOX,
     whiteSpace: 'nowrap',
-    marginTop: '0.15rem',
+    letterSpacing: '0.01em',
+    padding: '0 0.15rem 0 0',
+    margin: 0,
+    backgroundColor: 'transparent',
+    border: 'none',
+    boxShadow: 'none',
     WebkitPrintColorAdjust: 'exact',
     printColorAdjust: 'exact' as any,
   };
@@ -63,39 +64,26 @@ const badgeStyle = (level: number): React.CSSProperties => {
   if (level <= 0) {
     return {
       ...base,
-      fontSize: '0.95rem',
-      fontWeight: 600,
-      color: '#334155',
-      backgroundColor: '#f1f5f9',
-      border: '1px solid #cbd5e1',
-      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+      fontSize: '1.08rem',
+      fontWeight: 700,
+      color: '#0f172a',
     };
   }
 
   if (level === 1) {
     return {
       ...base,
-      height: '1.4rem',
-      minWidth: '1.4rem',
-      fontSize: '0.85rem',
-      fontWeight: 600,
-      color: '#475569',
-      backgroundColor: '#f8fafc',
-      border: '1px solid #e2e8f0',
-      borderRadius: '5px',
+      fontSize: '1.02rem',
+      fontWeight: 700,
+      color: '#0369a1',
     };
   }
 
   return {
     ...base,
-    height: '1.3rem',
-    minWidth: '1.3rem',
-    fontSize: '0.8rem',
-    fontWeight: 500,
-    color: '#64748b',
-    backgroundColor: '#ffffff',
-    border: '1px solid #f1f5f9',
-    borderRadius: '4px',
+    fontSize: '0.95rem',
+    fontWeight: 700,
+    color: '#334155',
   };
 };
 
@@ -257,7 +245,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
               } : {
                 display: 'grid',
                 gridTemplateColumns: hasLead ? 'min-content min-content 1fr' : 'min-content 1fr',
-                gap: '0.75rem',
+                gap: '0.45rem',
                 /* `start` et non `baseline` : la ligne de base d'un bloc
                    terminé par une formule centrée est celle de la DERNIÈRE
                    ligne, ce qui faisait tomber le numéro en bas du bloc. */
@@ -273,7 +261,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                   style={index === 0 ? badgeStyle(leadLevel) : { ...badgeStyle(leadLevel), visibility: 'hidden' }}
                   aria-hidden={index > 0}
                 >
-                  {leadLabel}
+                  {leadLabel && (leadLabel.endsWith('.') ? leadLabel : `${leadLabel}.`)}
                 </span>
               )}
 
@@ -282,7 +270,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                 className={`question-number-badge ${isPresentationSlide ? '' : `question-badge-level-${level}`} ${isPresentationSlide ? 'print:!mx-auto print:!mb-6 print:!text-[2rem] print:!bg-gray-100 print:!rounded-full print:!p-4 print:!w-[4rem] print:!h-[4rem] print:!flex print:!items-center print:!justify-center' : ''}`}
                 style={isPresentationSlide ? slideBadgeStyle : badgeStyle(level)}
               >
-                {layout.label}
+                {layout.label && (layout.label.endsWith('.') ? layout.label : `${layout.label}.`)}
               </span>
 
               {/* Contenu de la question */}
@@ -392,12 +380,13 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
 const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, totalExercisesCount, hideExerciseBadge, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onExerciseUpdate, onExerciseMergeUp, onQuestionMergeUp }) => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
-  // Mécanisme intelligent : si la fiche ne contient qu'un seul exercice, masquer le badge "Exercice 1"
-  const shouldHideBadge = hideExerciseBadge || totalExercisesCount === 1 || exercise.hideBadge === true;
+  // Mécanisme intelligent : si la fiche ne contient qu'un seul exercice ou si le titre indique "Partie X", masquer le badge "Exercice 1"
+  const isPartieTitle = Boolean(exercise.title && exercise.title.toLowerCase().includes('partie'));
+  const shouldHideBadge = hideExerciseBadge || totalExercisesCount === 1 || exercise.hideBadge === true || isPartieTitle;
 
   return (
     <div className={`exercise-card bg-transparent text-black py-4 mb-8 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
-      {/* En-tête : Badge "Exercice X" affiché uniquement lorsqu'il y a plusieurs exercices */}
+      {/* En-tête : Badge "Exercice X" affiché uniquement lorsqu'il y a plusieurs exercices et pas de "Partie X" */}
       {!shouldHideBadge && (
         <h2 className="exercise-title flex items-center mb-6 print:mb-4">
           <div className="relative inline-flex items-center justify-center bg-[linear-gradient(135deg,#e6e6e6_0%,#a0a0a0_100%)] px-5 py-2 rounded-[4px_8px_8px_4px] font-sans font-bold text-[0.85rem] text-[#333] uppercase tracking-[1px] shadow-[4px_6px_10px_rgba(0,0,0,0.3),inset_1px_1px_2px_rgba(255,255,255,0.9),inset_-1px_-1px_2px_rgba(0,0,0,0.2)] border border-[#999] [text-shadow:1px_1px_0px_rgba(255,255,255,0.6)] -ml-[calc(1.5rem+8px)] sm:-ml-[calc(3rem+8px)] md:-ml-[calc(4rem+8px)] print:-ml-0 print:border-none print:shadow-none print:bg-none print:text-black">
@@ -408,18 +397,17 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
       )}
 
       {(exercise.title || isEditMode) && (
-        <div className="exercise-part-title mb-10 print:mb-6 flex w-full items-center justify-center text-center">
-          <div className="flex-1 border-b border-[#cfc6b6] h-[1px] mr-4" />
-          <div className="text-[1.15rem] italic text-[#5c5953] tracking-[0.5px] print:text-black">
+        <div className={`exercise-part-title flex w-full items-center justify-center text-center ${isPartieTitle ? 'my-2 mb-4' : 'mb-6 print:mb-4'}`}>
+          <div className={`flex-1 border-b border-[#cbd5e1] h-[1px] mr-2.5 ${isPartieTitle ? 'max-w-[50px] sm:max-w-[110px]' : 'max-w-[80px] sm:max-w-[160px]'}`} />
+          <div className={`print:text-black ${isPartieTitle ? "text-[0.7rem] sm:text-[0.76rem] font-bold uppercase tracking-[0.16em] text-[#0f172a] bg-[#f1f5f9] px-3 py-0.5 rounded-md border border-[#cbd5e1] shadow-2xs" : "text-[1.15rem] italic text-[#5c5953] tracking-[0.5px]"}`}>
             <EditableMathText
-              text={exercise.title || ""}
+              text={exercise.title ? (exercise.title.toLowerCase().startsWith('partie') ? exercise.title.replace(/^partie\b/i, 'Partie') : exercise.title) : ""}
               isEditMode={!!isEditMode}
-              onChange={(newTitle) => onExerciseUpdate(exercise.id, { title: newTitle })}
-              onDeleteEmpty={() => onExerciseMergeUp && onExerciseMergeUp(exercise.id)}
+              onChange={(newTitle) => onExerciseUpdate && onExerciseUpdate(exercise.id, { title: newTitle })}
               className={!exercise.title && isEditMode ? "min-w-[150px] text-[#aaa29b]" : ""}
             />
           </div>
-          <div className="flex-1 border-b border-[#cfc6b6] h-[1px] ml-4" />
+          <div className={`flex-1 border-b border-[#cbd5e1] h-[1px] ml-2.5 ${isPartieTitle ? 'max-w-[50px] sm:max-w-[110px]' : 'max-w-[80px] sm:max-w-[160px]'}`} />
         </div>
       )}
 

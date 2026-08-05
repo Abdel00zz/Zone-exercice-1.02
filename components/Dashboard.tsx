@@ -239,7 +239,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     };
 
     return (
-        <div className="min-h-screen bg-[#f2f0eb] text-[#172126]">
+        <div className="min-h-screen bg-dash-bg text-dash-main">
             <div className={`relative mx-auto grid min-h-screen w-full max-w-[1680px] content-start transition-[grid-template-columns] duration-300 lg:content-normal ${sidebarCollapsed ? 'lg:grid-cols-[0px_minmax(0,1fr)]' : 'lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)]'}`}>
                 {/* ── Navigation / outils & Arborescence des classes ── */}
                 <DashboardSidebar 
@@ -281,29 +281,29 @@ const Dashboard: React.FC<DashboardProps> = ({
                 {/* ── Bibliothèque de fiches ── */}
                 <main className="min-w-0 px-3.5 pt-3.5 pb-7 sm:px-5 sm:pt-3.5 sm:pb-8 lg:pl-3 lg:pr-6 xl:pl-4 xl:pr-8 2xl:pl-4 2xl:pr-8">
                     <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex items-start gap-3 min-w-0">
                             <button
                                 type="button"
                                 onClick={() => setSidebarCollapsed((current) => !current)}
-                                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#19788c]/10 text-[#19788c] transition hover:bg-[#19788c]/20 hover:text-[#11677a] focus:outline-none"
+                                className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-dash-teal-light text-dash-teal transition hover:bg-dash-teal-hover focus:outline-none"
                                 title={sidebarCollapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
                                 aria-label={sidebarCollapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
                             >
                                 {sidebarCollapsed ? <PanelLeftOpen className="h-4.5 w-4.5" /> : <PanelLeftClose className="h-4.5 w-4.5" />}
                             </button>
                             <div className="block min-w-0">
-                                <h2 className="font-serif text-lg font-semibold tracking-[-0.02em] text-[#111719] sm:text-xl md:text-2xl">
+                                <h2 className="font-serif text-lg font-semibold leading-snug tracking-[-0.02em] text-dash-main sm:text-xl md:text-2xl">
                                     Mes Fiches d'Exercices
                                 </h2>
                                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                                    <p className="text-xs font-semibold text-[#697478]">
+                                    <p className="text-xs font-semibold leading-normal text-dash-muted">
                                         {dynamicSubtitle}
                                     </p>
                                     {(treeFilter || searchQuery) && (
                                         <button 
                                             type="button" 
                                             onClick={() => { setTreeFilter(null); setSearchQuery(''); setVisibleCount(6); }} 
-                                            className="rounded-full bg-[#19788c]/10 px-2 py-0.5 text-[11px] font-bold text-[#19788c] transition hover:bg-[#19788c]/20 hover:text-[#11677a]" 
+                                            className="rounded-full bg-dash-teal-light px-2.5 py-0.5 text-[11px] font-bold text-dash-teal transition hover:bg-dash-teal-hover" 
                                             title="Réinitialiser le filtre"
                                         >
                                             Tout afficher
@@ -323,7 +323,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         setIsSearchExpanded(true); 
                                         setTimeout(() => searchInputRef.current?.focus(), 100); 
                                     }}
-                                    className={`absolute left-0 z-10 grid h-[38px] w-[38px] place-items-center rounded-full text-[#19788c] transition-colors ${isSearchExpanded || searchQuery ? 'pointer-events-none' : 'cursor-pointer bg-[#faf9f6] border border-[#d5d8d4] hover:bg-[#19788c]/5'}`}
+                                    className={`absolute left-0 z-10 grid h-[38px] w-[38px] place-items-center rounded-full text-dash-teal transition-colors ${isSearchExpanded || searchQuery ? 'pointer-events-none' : 'cursor-pointer bg-dash-card border border-dash-border hover:bg-dash-teal-light'}`}
                                     title="Rechercher"
                                     aria-label="Rechercher"
                                 >
@@ -337,14 +337,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     value={searchQuery}
                                     onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(6); }}
                                     onBlur={() => { if (!searchQuery) setIsSearchExpanded(false); }}
-                                    className={`h-[38px] w-full rounded-full border border-[#d5d8d4] bg-[#faf9f6] py-1.5 pl-9 pr-3 text-xs font-semibold text-[#172126] outline-none transition-all placeholder:text-[#8a9293] hover:border-[#b9c8c8] focus:border-[#19788c] focus:ring-4 focus:ring-[#19788c]/10 ${isSearchExpanded || searchQuery ? 'opacity-100 cursor-text' : 'opacity-0 cursor-default pointer-events-none'}`}
+                                    className={`h-[38px] w-full rounded-full border border-dash-border bg-dash-card py-1.5 pl-9 pr-3 text-xs font-semibold text-dash-main outline-none transition-all placeholder:text-dash-muted hover:border-dash-teal/40 focus:border-dash-teal focus:ring-4 focus:ring-dash-teal/10 ${isSearchExpanded || searchQuery ? 'opacity-100 cursor-text' : 'opacity-0 cursor-default pointer-events-none'}`}
                                     aria-label="Rechercher une fiche par nom"
                                 />
                             </div>
                             <button
                                 type="button"
                                 onClick={handleOpenManager}
-                                className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full bg-[#172126] text-white shadow-[0_4px_12px_rgba(23,33,38,0.12)] transition hover:-translate-y-0.5 hover:bg-[#25363c] focus:outline-none focus:ring-4 focus:ring-[#19788c]/20"
+                                className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full bg-dash-main text-white shadow-[0_4px_12px_rgba(23,33,38,0.12)] transition hover:-translate-y-0.5 hover:bg-[oklch(0.28_0.03_240)] focus:outline-none focus:ring-4 focus:ring-dash-teal/20"
                                 title="Créer une nouvelle fiche"
                                 aria-label="Créer une nouvelle fiche"
                             >
@@ -375,7 +375,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => setVisibleCount(prev => prev + 6)}
-                                        className="rounded-full border border-[#cfd4d1] bg-[#faf9f6] px-8 py-3 text-sm font-bold text-[#364246] transition hover:border-[#19788c] hover:bg-[#e7f0ef] hover:text-[#19788c] focus:outline-none focus:ring-4 focus:ring-[#19788c]/10"
+                                        className="rounded-full border border-dash-border bg-dash-card px-8 py-3 text-sm font-bold text-dash-main transition hover:border-dash-teal hover:bg-dash-teal-light hover:text-dash-teal focus:outline-none focus:ring-4 focus:ring-dash-teal/10"
                                     >
                                         Voir plus
                                     </button>
@@ -383,28 +383,28 @@ const Dashboard: React.FC<DashboardProps> = ({
                             )}
                         </>
                     ) : (
-                        <div className="rounded-[28px] border border-dashed border-[#c9cdc8] bg-[#faf9f6] px-6 py-20 text-center">
+                        <div className="rounded-[28px] border border-dashed border-dash-border bg-dash-card px-6 py-20 text-center">
                             {searchQuery ? (
                                 <>
-                                    <Search className="mx-auto mb-4 h-10 w-10 text-[#a6aeae]" />
-                                    <h2 className="font-display text-xl font-bold text-[#4f5a5d]">Aucun résultat</h2>
-                                    <p className="mt-2 text-base font-semibold text-[#7a8385]">Essayez avec d'autres mots-clés.</p>
+                                    <Search className="mx-auto mb-4 h-10 w-10 text-dash-muted" />
+                                    <h2 className="font-display text-xl font-bold text-dash-main">Aucun résultat</h2>
+                                    <p className="mt-2 text-base font-semibold text-dash-muted">Essayez avec d'autres mots-clés.</p>
                                 </>
                             ) : treeFilter ? (
                                 <>
-                                    <Folder className="mx-auto mb-4 h-10 w-10 text-[#a6aeae]" />
-                                    <h2 className="font-display text-xl font-bold text-[#4f5a5d]">Aucune fiche dans cette sélection</h2>
-                                    <button type="button" onClick={() => { setTreeFilter(null); setVisibleCount(6); }} className="mt-5 text-sm font-bold text-[#19788c] transition hover:text-[#11677a]">Tout afficher</button>
+                                    <Folder className="mx-auto mb-4 h-10 w-10 text-dash-muted" />
+                                    <h2 className="font-display text-xl font-bold text-dash-main">Aucune fiche dans cette sélection</h2>
+                                    <button type="button" onClick={() => { setTreeFilter(null); setVisibleCount(6); }} className="mt-5 text-sm font-bold text-dash-teal transition hover:underline">Tout afficher</button>
                                 </>
                             ) : (
                                 <>
-                                    <FileText className="mx-auto mb-4 h-10 w-10 text-[#a6aeae]" />
-                                    <h2 className="font-display text-xl font-bold text-[#4f5a5d]">Aucune fiche</h2>
-                                    <p className="mt-2 text-base font-semibold text-[#7a8385]">Importez un fichier JSON ou créez une nouvelle fiche pour commencer.</p>
+                                    <FileText className="mx-auto mb-4 h-10 w-10 text-dash-muted" />
+                                    <h2 className="font-display text-xl font-bold text-dash-main">Aucune fiche</h2>
+                                    <p className="mt-2 text-base font-semibold text-dash-muted">Importez un fichier JSON ou créez une nouvelle fiche pour commencer.</p>
                                     <button
                                         type="button"
                                         onClick={handleOpenManager}
-                                        className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#172126] px-6 py-3 font-bold text-white transition hover:bg-[#25363c] focus:outline-none focus:ring-4 focus:ring-[#19788c]/20"
+                                        className="mt-6 inline-flex items-center gap-2 rounded-full bg-dash-main px-6 py-3 font-bold text-white transition hover:bg-[oklch(0.28_0.03_240)] focus:outline-none focus:ring-4 focus:ring-dash-teal/20"
                                     >
                                         <Plus className="h-5 w-5" />
                                         Créer une fiche

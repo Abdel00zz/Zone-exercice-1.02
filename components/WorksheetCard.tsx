@@ -35,10 +35,10 @@ export const WorksheetCard: React.FC<WorksheetCardProps> = ({
             tabIndex={0}
             title={`${worksheet.name} — Cliquez pour ouvrir, ou cliquez sur 'i' pour les options`}
         >
-            <div className="relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[#d4d8d5] bg-[#f7f6f2] shadow-sm transition-all duration-200 group-hover:shadow-md group-hover:border-[#b8c6c3] group-focus-visible:ring-4 group-focus-visible:ring-[#19788c]/20">
+            <div className="relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-dash-border bg-dash-card shadow-sm transition-all duration-200 group-hover:shadow-md group-hover:border-dash-teal/40 group-focus-visible:ring-4 group-focus-visible:ring-dash-teal/20">
                 {/* Surface de prévisualisation */}
-                <div className="relative bg-[#e4e4e1] p-2.5">
-                    <div className="aspect-[210/297] overflow-hidden rounded-lg bg-white shadow-[0_2px_8px_rgba(23,33,38,0.12)] transition-transform duration-200 group-hover:scale-[1.01]">
+                <div className="relative bg-dash-preview p-2.5">
+                    <div className="aspect-[210/297] overflow-hidden rounded-lg bg-white shadow-[0_2px_8px_rgba(23,33,38,0.08)] transition-transform duration-200 group-hover:scale-[1.01]">
                         <WorksheetThumbnail worksheet={worksheet} />
                     </div>
                 </div>
@@ -54,12 +54,12 @@ export const WorksheetCard: React.FC<WorksheetCardProps> = ({
                                     onChange={(e) => onNewNameChange(e.target.value)}
                                     onBlur={onSaveRename}
                                     autoFocus
-                                    className="w-full border-b-2 border-[#19788c] bg-transparent pb-1 font-sans text-sm font-bold tracking-tight text-[#172126] outline-none"
+                                    className="w-full border-b-2 border-dash-teal bg-transparent pb-1 font-sans text-sm font-bold tracking-tight text-dash-main outline-none"
                                 />
                             </form>
                         ) : (
                             <div className="flex items-center justify-between gap-1.5">
-                                <h3 className="line-clamp-2 font-sans text-xs font-bold leading-snug tracking-tight text-[#172126] group-hover:text-[#19788c] transition-colors">
+                                <h3 className="line-clamp-2 font-sans text-xs font-bold leading-snug tracking-tight text-dash-main group-hover:text-dash-teal transition-colors">
                                     {worksheet.name}
                                 </h3>
                                 <button
@@ -68,7 +68,7 @@ export const WorksheetCard: React.FC<WorksheetCardProps> = ({
                                         e.stopPropagation();
                                         onShowInfo(worksheet);
                                     }}
-                                    className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[#697478] bg-[#f2f0eb] transition hover:bg-[#19788c] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#19788c]/20"
+                                    className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-dash-muted bg-dash-bg transition hover:bg-dash-teal hover:text-white focus:outline-none focus:ring-2 focus:ring-dash-teal/20"
                                     title="Détails & Actions"
                                     aria-label="Options de la fiche"
                                 >

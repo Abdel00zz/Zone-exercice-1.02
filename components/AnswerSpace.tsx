@@ -368,19 +368,18 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
     >
       <div
         ref={containerRef}
-        className={`w-full relative rounded-none transition-all duration-200 print:rounded-none print:shadow-none print:border-none box-border ${
+        className={`w-full relative rounded-md transition-all duration-200 print:rounded-none print:shadow-none print:border-none box-border ${
           isResizeActive
-            ? 'shadow-md ring-4 ring-[#e2e8f0]'
+            ? 'shadow-md ring-2 ring-slate-400'
             : isCanvasActive
-              ? 'shadow-sm ring-4 ring-[#f1f5f9]'
-              : 'hover:shadow-sm'
+              ? 'shadow-xs ring-2 ring-sky-500/40 border-sky-600'
+              : 'hover:shadow-xs'
         }`}
         style={{
           height: `${height}px`,
           backgroundColor: theme.screen.bg,
-          border: isResizeActive ? '3px solid #64748b' : isCanvasActive ? '3px solid #94a3b8' : `1px solid ${theme.screen.border}`,
+          border: isResizeActive ? '2px solid #64748b' : isCanvasActive ? '2px solid #0284c7' : `1px solid ${theme.screen.border}`,
           boxSizing: 'border-box',
-          // overflow: 'hidden', // Permet au menu déroulant de dépasser
         }}
       >
         <svg

@@ -80,72 +80,72 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     onSelectWorksheet,
 }) => {
     return (
-        <aside className={`min-w-0 bg-[#fffefa] px-3.5 pt-3.5 pb-5 sm:px-4 sm:pt-3.5 sm:pb-6 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:pt-3.5 lg:pb-6 ${sidebarCollapsed ? 'lg:w-0 lg:overflow-hidden lg:p-0 lg:opacity-0 lg:pointer-events-none' : 'lg:px-3.5 xl:px-4'}`}>
+        <aside className={`min-w-0 bg-dash-sidebar border-r border-dash-border/40 px-3.5 pt-3.5 pb-5 sm:px-4 sm:pt-3.5 sm:pb-6 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:pt-3.5 lg:pb-6 ${sidebarCollapsed ? 'lg:w-0 lg:overflow-hidden lg:p-0 lg:opacity-0 lg:pointer-events-none' : 'lg:px-3.5 xl:px-4'}`}>
             <div className="flex flex-col xl:h-full">
                 <nav className="grid gap-2 grid-cols-1" aria-label="Actions du tableau de bord">
                     <button
                         type="button"
                         onClick={onOpenSyncPanel}
-                        className={`relative flex rounded-xl bg-[#dceceb] text-left text-[#19788c] transition hover:bg-[#cbe4e3] focus:outline-none focus:ring-4 focus:ring-[#19788c]/15 ${sidebarCollapsed ? 'h-11 items-center justify-center' : 'h-[46px] items-center gap-3 px-4'}`}
+                        className={`relative flex items-center rounded-xl bg-dash-card border border-dash-border/60 text-left text-dash-main transition hover:bg-dash-teal-light hover:text-dash-teal hover:border-dash-teal/30 focus:outline-none focus:ring-4 focus:ring-dash-teal/10 ${sidebarCollapsed ? 'h-11 justify-center' : 'h-[44px] gap-3 px-3.5'}`}
                         title="Synchronisation PC / Tablette"
                         aria-label="Synchronisation PC / Tablette"
                     >
-                        <span className="relative text-[#19788c] shrink-0">
-                            <Cloud className="h-5 w-5" />
+                        <span className="relative text-dash-teal shrink-0">
+                            <Cloud className="h-4.5 w-4.5" />
                             {cloudSyncStatus !== 'disconnected' && (
                                 <span
-                                    className={`absolute -right-1.5 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#dceceb] ${
+                                    className={`absolute -right-1 -top-0.5 h-2 w-2 rounded-full border border-white ${
                                         cloudSyncStatus === 'error' ? 'bg-red-500' : cloudSyncStatus === 'syncing' ? 'bg-amber-400' : 'bg-emerald-500'
                                     }`}
                                 />
                             )}
                         </span>
-                        <span className={sidebarCollapsed ? 'sr-only' : 'text-[13px] font-bold text-[#435054] truncate'}>Sync PC / Tablette</span>
+                        <span className={sidebarCollapsed ? 'sr-only' : 'text-xs font-bold text-dash-main truncate'}>Sync PC / Tablette</span>
                     </button>
 
                     <button
                         type="button"
                         onClick={onOpenConfiguration}
-                        className={`flex rounded-xl bg-[#f4f1eb] text-left text-[#435054] transition hover:bg-[#e7f0ef] hover:text-[#19788c] focus:outline-none focus:ring-4 focus:ring-[#19788c]/10 ${sidebarCollapsed ? 'h-11 items-center justify-center' : 'h-[46px] items-center gap-3 px-4'}`}
+                        className={`flex items-center rounded-xl bg-dash-card border border-dash-border/60 text-left text-dash-main transition hover:bg-dash-teal-light hover:text-dash-teal hover:border-dash-teal/30 focus:outline-none focus:ring-4 focus:ring-dash-teal/10 ${sidebarCollapsed ? 'h-11 justify-center' : 'h-[44px] gap-3 px-3.5'}`}
                         title="Configuration"
                         aria-label="Configuration"
                     >
-                        <Settings className="h-5 w-5 shrink-0" />
-                        <span className={sidebarCollapsed ? 'sr-only' : 'text-[13px] font-bold truncate'}>Configuration</span>
+                        <Settings className="h-4.5 w-4.5 text-dash-muted shrink-0" />
+                        <span className={sidebarCollapsed ? 'sr-only' : 'text-xs font-bold truncate'}>Configuration</span>
                     </button>
 
                     <button
                         type="button"
                         onClick={onOpenHelp}
-                        className={`flex rounded-xl bg-[#eef6f5] text-left text-[#19788c] transition hover:bg-[#dceceb] hover:text-[#146070] focus:outline-none focus:ring-4 focus:ring-[#19788c]/10 ${sidebarCollapsed ? 'h-11 items-center justify-center' : 'h-[46px] items-center gap-3 px-4'}`}
+                        className={`flex items-center rounded-xl bg-dash-card border border-dash-border/60 text-left text-dash-main transition hover:bg-dash-teal-light hover:text-dash-teal hover:border-dash-teal/30 focus:outline-none focus:ring-4 focus:ring-dash-teal/10 ${sidebarCollapsed ? 'h-11 justify-center' : 'h-[44px] gap-3 px-3.5'}`}
                         title="Aide & Guide / Help & Guide / المساعدة والدليل"
                         aria-label="Aide & Guide / Help"
                     >
-                        <HelpCircle className="h-5 w-5 shrink-0" />
-                        <span className={sidebarCollapsed ? 'sr-only' : 'text-[13px] font-bold truncate'}>Aide & Guide</span>
+                        <HelpCircle className="h-4.5 w-4.5 text-dash-teal shrink-0" />
+                        <span className={sidebarCollapsed ? 'sr-only' : 'text-xs font-bold truncate'}>Aide & Guide</span>
                     </button>
                 </nav>
 
                 {worksheetTree.length > 0 && (
-                    <section className="mt-7 hidden lg:block" aria-labelledby="class-tree-title">
+                    <section className="mt-6 hidden lg:block" aria-labelledby="class-tree-title">
                         {sidebarCollapsed ? (
                             <div className="flex flex-col items-center gap-2" aria-label="Classes réduites">
-                                <button type="button" onClick={() => { setSidebarCollapsed(false); setIsCreatingClass(true); }} className="grid h-10 w-10 place-items-center rounded-xl text-[#81983f] transition hover:bg-[#f4f2ec] focus:outline-none focus:ring-2 focus:ring-[#81983f]/20" title="Créer une classe" aria-label="Créer une classe"><FolderPlus className="h-4 w-4" /></button>
+                                <button type="button" onClick={() => { setSidebarCollapsed(false); setIsCreatingClass(true); }} className="grid h-10 w-10 place-items-center rounded-xl text-dash-sage transition hover:bg-dash-sage-light focus:outline-none focus:ring-2 focus:ring-dash-sage/20" title="Créer une classe" aria-label="Créer une classe"><FolderPlus className="h-4 w-4" /></button>
                                 {worksheetTree.map(({ className, worksheetCount }) => (
-                                    <button key={className} type="button" onClick={() => setSidebarCollapsed(false)} className="relative grid h-10 w-10 place-items-center rounded-xl text-[#19788c] transition hover:bg-[#f4f2ec] focus:outline-none focus:ring-2 focus:ring-[#19788c]/20" title={`${className} — ${worksheetCount} fiche${worksheetCount !== 1 ? 's' : ''}`} aria-label={`${className} — ${worksheetCount} fiche${worksheetCount !== 1 ? 's' : ''}`}><Folder className="h-4 w-4" /><span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#172126] px-1 text-[8px] font-bold text-white">{worksheetCount}</span></button>
+                                    <button key={className} type="button" onClick={() => setSidebarCollapsed(false)} className="relative grid h-10 w-10 place-items-center rounded-xl text-dash-teal transition hover:bg-dash-teal-light focus:outline-none focus:ring-2 focus:ring-dash-teal/20" title={`${className} — ${worksheetCount} fiche${worksheetCount !== 1 ? 's' : ''}`} aria-label={`${className} — ${worksheetCount} fiche${worksheetCount !== 1 ? 's' : ''}`}><Folder className="h-4 w-4" /><span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-dash-main px-1 text-[8px] font-bold text-white">{worksheetCount}</span></button>
                                 ))}
                             </div>
                         ) : (
                         <>
-                        <div className="mb-3 flex items-center justify-between gap-2">
-                            <h2 id="class-tree-title" className="flex items-center gap-2 font-serif text-xl font-semibold tracking-[-0.025em] text-[#172126]">
-                                <Folder className="h-4 w-4 text-[#19788c]" />
+                        <div className="mb-3 flex items-center justify-between gap-2 px-1">
+                            <h2 id="class-tree-title" className="flex items-center gap-2 font-serif text-lg font-semibold tracking-[-0.025em] text-dash-main">
+                                <Folder className="h-4 w-4 text-dash-teal" />
                                 Mes Classes
                             </h2>
                             <button
                                 type="button"
                                 onClick={() => setIsCreatingClass(true)}
-                                className="grid h-7 w-7 place-items-center rounded-full bg-[#e9f0df] text-[#81983f] transition hover:bg-[#dce8ca] focus:outline-none focus:ring-2 focus:ring-[#81983f]/20"
+                                className="grid h-7 w-7 place-items-center rounded-lg bg-dash-sage-light text-dash-sage transition hover:bg-dash-sage-light/80 focus:outline-none focus:ring-2 focus:ring-dash-sage/20"
                                 title="Créer une classe"
                                 aria-label="Créer une classe"
                             >
@@ -154,39 +154,42 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                         </div>
 
                         {isCreatingClass && (
-                            <form onSubmit={handleCreateClass} className="mb-2 flex items-center gap-1.5 rounded-lg bg-[#e9f0df] p-1.5">
+                            <form onSubmit={handleCreateClass} className="mb-2.5 flex items-center gap-1.5 rounded-xl border border-dash-sage/30 bg-dash-sage-light/70 p-2 shadow-xs">
                                 <input
                                     autoFocus
                                     value={newClassName}
                                     onChange={(event) => setNewClassName(event.target.value)}
                                     onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); setIsCreatingClass(false); setNewClassName(''); } }}
-                                    placeholder="Classe A"
-                                    className="min-w-0 flex-1 bg-transparent px-1 text-xs font-bold text-[#364246] outline-none placeholder:text-[#8a9a71]"
+                                    placeholder="Nom de la classe (ex: 3ème A)"
+                                    className="min-w-0 flex-1 bg-transparent px-1 text-xs font-bold text-dash-main outline-none placeholder:text-dash-sage/70"
                                     aria-label="Nom de la nouvelle classe"
                                 />
-                                <button type="submit" className="rounded-md bg-[#81983f] px-2 py-1 text-[10px] font-bold text-white">Créer</button>
+                                <button type="submit" className="rounded-lg bg-dash-sage px-2.5 py-1 text-[11px] font-bold text-white shadow-xs hover:bg-dash-sage/90">Créer</button>
                             </form>
                         )}
 
-                        <div className="space-y-0.5" role="tree" aria-label="Classe, chapitre et fiche">
+                        <div className="space-y-1" role="tree" aria-label="Classe, chapitre et fiche">
                             {worksheetTree.map(({ className, worksheetCount, chapters }) => {
-                                const classCollapsed = collapsedClasses[className] === true;
+                                const isClassSelected = treeFilter?.type === 'class' && treeFilter.className === className;
+                                // Réduit par défaut à la connexion, sauf si sélectionné explicitement
+                                const classCollapsed = collapsedClasses[className] !== undefined 
+                                    ? collapsedClasses[className] 
+                                    : !isClassSelected;
                                 const isClassRenaming = treeRename?.type === 'class' && treeRename.className === className;
                                 const isUnclassified = className === 'Non classé';
-                                const isClassSelected = treeFilter?.type === 'class' && treeFilter.className === className;
 
                                 return (
                                     <div key={className} role="treeitem" aria-expanded={!classCollapsed} className="group/class">
-                                        <div className={`flex items-center gap-1 rounded-lg px-1.5 py-1.5 transition ${isClassSelected ? 'bg-[#eef4f3] text-[#19788c]' : 'hover:bg-[#f4f2ec]'}`}>
+                                        <div className={`flex items-center gap-1.5 rounded-xl px-2 py-1.5 transition-all ${isClassSelected ? 'bg-dash-teal-light text-dash-teal font-bold border-l-2 border-dash-teal shadow-xs' : 'hover:bg-dash-card border-l-2 border-transparent'}`}>
                                             <button
                                                 type="button"
                                                 onClick={() => setCollapsedClasses((current) => ({ ...current, [className]: !classCollapsed }))}
-                                                className="grid h-6 w-5 shrink-0 place-items-center rounded-md text-[#788284] focus:outline-none focus:ring-2 focus:ring-[#19788c]/15"
+                                                className="grid h-6 w-5 shrink-0 place-items-center rounded-md text-dash-muted hover:text-dash-teal focus:outline-none focus:ring-2 focus:ring-dash-teal/15 transition-colors"
                                                 aria-label={`${classCollapsed ? 'Afficher' : 'Masquer'} ${className}`}
                                             >
-                                                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 ${classCollapsed ? '-rotate-90' : ''}`} />
+                                                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${classCollapsed ? '-rotate-90' : 'rotate-0'}`} />
                                             </button>
-                                            <Folder className="h-3.5 w-3.5 shrink-0 text-[#19788c]" />
+                                            <Folder className="h-4 w-4 shrink-0 text-dash-teal" />
                                             {isClassRenaming ? (
                                                 <form onSubmit={(event) => { event.preventDefault(); saveTreeRename(); }} className="min-w-0 flex-1">
                                                     <input
@@ -195,7 +198,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                                                         onChange={(event) => setTreeRenameValue(event.target.value)}
                                                         onBlur={saveTreeRename}
                                                         onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); cancelTreeRename(); } }}
-                                                        className="w-full border-b border-[#19788c] bg-transparent text-xs font-bold text-[#364246] outline-none"
+                                                        className="w-full border-b border-dash-teal bg-transparent text-xs font-bold text-dash-main outline-none"
                                                         aria-label="Renommer la classe"
                                                     />
                                                 </form>
@@ -204,82 +207,85 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                                                     type="button"
                                                     onClick={() => selectTreeClass(className)}
                                                     onDoubleClick={() => !isUnclassified && startTreeRename({ type: 'class', className }, className)}
-                                                    className="min-w-0 flex-1 truncate text-left text-xs font-bold text-[#364246] outline-none"
+                                                    className="min-w-0 flex-1 truncate text-left text-xs font-bold text-dash-main outline-none hover:text-dash-teal transition-colors"
                                                     title={isUnclassified ? className : 'Double-cliquez pour renommer'}
                                                 >
                                                     {className}
                                                 </button>
                                             )}
-                                            <span className="grid h-5 min-w-5 place-items-center rounded-full px-1 text-[10px] font-bold text-[#9aa3a5]">{worksheetCount}</span>
+                                            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-dash-bg px-1.5 text-[10px] font-bold text-dash-muted">{worksheetCount}</span>
                                             {!isUnclassified && (
                                                 <div className="flex items-center opacity-0 transition-opacity group-hover/class:opacity-100 group-focus-within/class:opacity-100">
-                                                    <button type="button" onClick={() => startTreeRename({ type: 'class', className }, className)} className="grid h-5 w-5 place-items-center rounded text-[#788284] hover:bg-[#e7f0ef] hover:text-[#19788c]" aria-label="Renommer la classe"><Pencil className="h-3 w-3" /></button>
-                                                    <button type="button" onClick={() => handleDeleteClass(className)} className="grid h-5 w-5 place-items-center rounded text-[#788284] hover:bg-red-50 hover:text-red-600" aria-label="Supprimer la classe"><Trash2 className="h-3 w-3" /></button>
+                                                    <button type="button" onClick={() => startTreeRename({ type: 'class', className }, className)} className="grid h-5 w-5 place-items-center rounded text-dash-muted hover:bg-dash-teal-light hover:text-dash-teal" aria-label="Renommer la classe"><Pencil className="h-3 w-3" /></button>
+                                                    <button type="button" onClick={() => handleDeleteClass(className)} className="grid h-5 w-5 place-items-center rounded text-dash-muted hover:bg-red-50 hover:text-red-600" aria-label="Supprimer la classe"><Trash2 className="h-3 w-3" /></button>
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div className={`grid transition-all duration-300 ease-out ${classCollapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}>
+                                        <div className={`grid transition-all duration-200 ease-out ${classCollapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}>
                                             <div className="overflow-hidden">
-                                                <div className="ml-4 mt-0.5 space-y-0.5 pl-2" role="group">
+                                                <div className="ml-3 my-1 pl-2.5 border-l-2 border-dash-border/50 space-y-1" role="group">
                                                     {chapters.map(({ chapterName, worksheets: chapterWorksheets }) => {
                                                         const chapterKey = `${className}::${chapterName}`;
-                                                        const chapterExpanded = expandedChapters[chapterKey] ?? chapters.length === 1;
-                                                        const isChapterRenaming = treeRename?.type === 'chapter' && treeRename.className === className && treeRename.chapterName === chapterName;
                                                         const isChapterSelected = treeFilter?.type === 'chapter' && treeFilter.className === className && treeFilter.chapterName === chapterName;
+                                                        // Réduit par défaut à la connexion sauf si sélectionné
+                                                        const chapterExpanded = expandedChapters[chapterKey] !== undefined 
+                                                            ? expandedChapters[chapterKey] 
+                                                            : isChapterSelected;
+                                                        const isChapterRenaming = treeRename?.type === 'chapter' && treeRename.className === className && treeRename.chapterName === chapterName;
 
                                                         return (
                                                             <div key={chapterKey} role="treeitem" aria-expanded={chapterExpanded} className="group/chapter">
-                                                                <div className={`flex items-center gap-1 rounded-lg px-1.5 transition ${isChapterSelected ? 'bg-[#eef4f3] text-[#19788c]' : 'hover:bg-[#f4f2ec]'}`}>
+                                                                <div className={`flex items-center gap-1.5 rounded-lg px-2 py-1 transition-all ${isChapterSelected ? 'bg-dash-teal-light/80 text-dash-teal font-bold' : 'hover:bg-dash-card'}`}>
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => setExpandedChapters((current) => ({
                                                                             ...current,
                                                                             [chapterKey]: !chapterExpanded,
                                                                         }))}
-                                                                        className="grid h-7 w-6 shrink-0 place-items-center rounded-md text-[#788284] focus:outline-none focus:ring-2 focus:ring-[#19788c]/15"
+                                                                        className="grid h-6 w-5 shrink-0 place-items-center rounded-md text-dash-muted hover:text-dash-teal focus:outline-none focus:ring-2 focus:ring-dash-teal/15 transition-colors"
                                                                         aria-label={`${chapterExpanded ? 'Masquer' : 'Afficher'} les fiches de ${chapterName}`}
                                                                     >
-                                                                        <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 ${chapterExpanded ? '' : '-rotate-90'}`} />
+                                                                        <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${chapterExpanded ? 'rotate-0' : '-rotate-90'}`} />
                                                                     </button>
-                                                                    <BookOpen className="h-3.5 w-3.5 shrink-0 text-[#81983f]" />
+                                                                    <BookOpen className="h-3.5 w-3.5 shrink-0 text-dash-sage" />
                                                                     {isChapterRenaming ? (
                                                                         <form onSubmit={(event) => { event.preventDefault(); saveTreeRename(); }} className="min-w-0 flex-1">
-                                                                            <input autoFocus value={treeRenameValue} onChange={(event) => setTreeRenameValue(event.target.value)} onBlur={saveTreeRename} onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); cancelTreeRename(); } }} className="w-full border-b border-[#19788c] bg-transparent text-xs font-bold text-[#4c585b] outline-none" aria-label="Renommer le chapitre" />
+                                                                            <input autoFocus value={treeRenameValue} onChange={(event) => setTreeRenameValue(event.target.value)} onBlur={saveTreeRename} onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); cancelTreeRename(); } }} className="w-full border-b border-dash-teal bg-transparent text-xs font-bold text-dash-main outline-none" aria-label="Renommer le chapitre" />
                                                                         </form>
                                                                     ) : (
-                                                                        <button type="button" onClick={() => selectTreeChapter(className, chapterName)} onDoubleClick={() => startTreeRename({ type: 'chapter', className, chapterName }, chapterName)} className="min-w-0 flex-1 truncate py-1.5 text-left text-xs font-bold text-[#4c585b] outline-none" title="Double-cliquez pour renommer">
+                                                                        <button type="button" onClick={() => selectTreeChapter(className, chapterName)} onDoubleClick={() => startTreeRename({ type: 'chapter', className, chapterName }, chapterName)} className="min-w-0 flex-1 truncate py-1 text-left text-xs font-semibold text-dash-main hover:text-dash-teal transition-colors outline-none" title="Double-cliquez pour renommer">
                                                                             {chapterName}
                                                                         </button>
                                                                     )}
-                                                                    <span className="grid h-5 min-w-5 place-items-center rounded-full px-1 text-[10px] font-bold text-[#9aa3a5]">{chapterWorksheets.length}</span>
+                                                                    <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-dash-bg px-1 text-[9px] font-bold text-dash-muted">{chapterWorksheets.length}</span>
                                                                     <div className="flex items-center opacity-0 transition-opacity group-hover/chapter:opacity-100 group-focus-within/chapter:opacity-100">
-                                                                        <button type="button" onClick={() => startTreeRename({ type: 'chapter', className, chapterName }, chapterName)} className="grid h-5 w-5 place-items-center rounded text-[#788284] hover:bg-[#e7f0ef] hover:text-[#19788c]" aria-label="Renommer le chapitre"><Pencil className="h-3 w-3" /></button>
+                                                                        <button type="button" onClick={() => startTreeRename({ type: 'chapter', className, chapterName }, chapterName)} className="grid h-5 w-5 place-items-center rounded text-dash-muted hover:bg-dash-teal-light hover:text-dash-teal" aria-label="Renommer le chapitre"><Pencil className="h-3 w-3" /></button>
                                                                     </div>
                                                                 </div>
 
-                                                                <div className={`grid transition-all duration-300 ease-out ${chapterExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                                                                <div className={`grid transition-all duration-200 ease-out ${chapterExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                                                                     <div className="overflow-hidden">
-                                                                        <div className="ml-6 mt-0.5 space-y-0.5 py-0.5 pl-2" role="group">
+                                                                        <div className="ml-3 my-0.5 pl-2.5 border-l-2 border-dash-border/30 space-y-0.5" role="group">
                                                                             {chapterWorksheets.map((worksheet) => {
                                                                                 const isWorksheetRenaming = treeRename?.type === 'worksheet' && treeRename.worksheetId === worksheet.id;
                                                                                 const isWorksheetSelected = treeFilter?.type === 'worksheet' && treeFilter.worksheetId === worksheet.id;
 
                                                                                 return (
-                                                                                    <div key={worksheet.id} className={`group/fiche relative flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#717b7d] transition hover:bg-[#f4f2ec] hover:text-[#19788c] ${isWorksheetSelected ? 'bg-[#eef4f3] text-[#19788c]' : ''}`}>
+                                                                                    <div key={worksheet.id} className={`group/fiche relative flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-dash-muted transition hover:bg-dash-card hover:text-dash-teal ${isWorksheetSelected ? 'bg-dash-teal-light text-dash-teal font-bold' : ''}`}>
                                                                                         <FileText className="h-3.5 w-3.5 shrink-0" />
                                                                                         {isWorksheetRenaming ? (
                                                                                             <form onSubmit={(event) => { event.preventDefault(); saveTreeRename(); }} className="min-w-0 flex-1">
-                                                                                                <input autoFocus value={treeRenameValue} onChange={(event) => setTreeRenameValue(event.target.value)} onBlur={saveTreeRename} onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); cancelTreeRename(); } }} className="w-full border-b border-[#19788c] bg-transparent text-[11px] font-semibold text-[#4c585b] outline-none" aria-label="Renommer la fiche" />
+                                                                                                <input autoFocus value={treeRenameValue} onChange={(event) => setTreeRenameValue(event.target.value)} onBlur={saveTreeRename} onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); cancelTreeRename(); } }} className="w-full border-b border-dash-teal bg-transparent text-[11px] font-semibold text-dash-main outline-none" aria-label="Renommer la fiche" />
                                                                                             </form>
                                                                                         ) : (
-                                                                                            <button type="button" onClick={() => selectTreeWorksheet(worksheet.id)} onDoubleClick={() => startTreeRename({ type: 'worksheet', worksheetId: worksheet.id }, worksheet.name)} className="min-w-0 flex-1 truncate text-left outline-none" title="Double-cliquez pour renommer">{worksheet.name}</button>
+                                                                                            <button type="button" onClick={() => selectTreeWorksheet(worksheet.id)} onDoubleClick={() => startTreeRename({ type: 'worksheet', worksheetId: worksheet.id }, worksheet.name)} className="min-w-0 flex-1 truncate text-left outline-none hover:underline" title="Double-cliquez pour renommer">{worksheet.name}</button>
                                                                                         )}
                                                                                         <div className="flex items-center opacity-0 transition-opacity group-hover/fiche:opacity-100 group-focus-within/fiche:opacity-100">
-                                                                                            <button type="button" onClick={() => setMovingWorksheetId((current) => current === worksheet.id ? null : worksheet.id)} className="grid h-5 w-5 place-items-center rounded hover:bg-[#e9f0df] hover:text-[#81983f]" title="Déplacer vers une classe" aria-label="Déplacer vers une classe"><FolderInput className="h-3 w-3" /></button>
-                                                                                            <button type="button" onClick={() => startTreeRename({ type: 'worksheet', worksheetId: worksheet.id }, worksheet.name)} className="grid h-5 w-5 place-items-center rounded hover:bg-[#dceceb]" aria-label="Renommer la fiche"><Pencil className="h-3 w-3" /></button>
+                                                                                            <button type="button" onClick={() => setMovingWorksheetId((current) => current === worksheet.id ? null : worksheet.id)} className="grid h-5 w-5 place-items-center rounded hover:bg-dash-sage-light hover:text-dash-sage" title="Déplacer vers une classe" aria-label="Déplacer vers une classe"><FolderInput className="h-3 w-3" /></button>
+                                                                                            <button type="button" onClick={() => startTreeRename({ type: 'worksheet', worksheetId: worksheet.id }, worksheet.name)} className="grid h-5 w-5 place-items-center rounded hover:bg-dash-teal-light" aria-label="Renommer la fiche"><Pencil className="h-3 w-3" /></button>
                                                                                             <button type="button" onClick={() => handleDeleteWorksheet(worksheet.id)} className="grid h-5 w-5 place-items-center rounded hover:bg-red-50 hover:text-red-600" aria-label="Supprimer la fiche"><Trash2 className="h-3 w-3" /></button>
-                                                                                            <button type="button" onClick={() => onSelectWorksheet(worksheet.id)} className="grid h-5 w-5 place-items-center rounded hover:bg-[#dceceb]" aria-label="Ouvrir la fiche"><ChevronRight className="h-3.5 w-3.5" /></button>
+                                                                                            <button type="button" onClick={() => onSelectWorksheet(worksheet.id)} className="grid h-5 w-5 place-items-center rounded hover:bg-dash-teal-light" aria-label="Ouvrir la fiche"><ChevronRight className="h-3.5 w-3.5" /></button>
                                                                                         </div>
 
                                                                                         {movingWorksheetId === worksheet.id && (
@@ -288,7 +294,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                                                                                                 value={worksheet.content.settings?.className || ''}
                                                                                                 onChange={(event) => { onAssignWorksheetClass(worksheet.id, event.target.value); setMovingWorksheetId(null); }}
                                                                                                 onBlur={() => setMovingWorksheetId(null)}
-                                                                                                className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border border-[#d7e1c9] bg-white px-2 py-1 text-[11px] font-bold text-[#4c585b] shadow-sm outline-none"
+                                                                                                className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border border-dash-border bg-white px-2 py-1 text-[11px] font-bold text-dash-main shadow-sm outline-none"
                                                                                                 aria-label="Choisir la classe de la fiche"
                                                                                             >
                                                                                                 <option value="">Non classé</option>
