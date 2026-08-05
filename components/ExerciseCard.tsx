@@ -34,7 +34,7 @@ interface ExerciseCardProps {
  * énoncé terminé par une formule centrée faisait auparavant glisser le numéro
  * jusqu'en bas du bloc.
  */
-const QUESTION_LINE_BOX = '1.70625rem';
+const QUESTION_LINE_BOX = '1.70625em';
 
 /**
  * Numéro en pastille. La hauteur de la pastille vaut exactement celle de la
@@ -65,7 +65,7 @@ const badgeStyle = (level: number): React.CSSProperties => {
   if (level <= 0) {
     return {
       ...base,
-      fontSize: '1.08rem',
+      fontSize: '1.08em',
       fontWeight: 700,
       color: '#0f172a',
     };
@@ -74,7 +74,7 @@ const badgeStyle = (level: number): React.CSSProperties => {
   if (level === 1) {
     return {
       ...base,
-      fontSize: '1.02rem',
+      fontSize: '1.02em',
       fontWeight: 700,
       color: '#0369a1',
     };
@@ -82,7 +82,7 @@ const badgeStyle = (level: number): React.CSSProperties => {
 
   return {
     ...base,
-    fontSize: '0.95rem',
+    fontSize: '0.95em',
     fontWeight: 700,
     color: '#334155',
   };
@@ -94,7 +94,7 @@ const slideBadgeStyle: React.CSSProperties = {
   justifyContent: 'center',
   fontFamily: 'Fredoka, Quicksand, sans-serif',
   lineHeight: 1,
-  fontSize: '2rem',
+  fontSize: '2em',
   color: '#19788c',
   fontWeight: 700,
   marginBottom: '1.5rem',
@@ -284,7 +284,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                 }}
               >
                 <div
-                  className={`question-text-wrapper text-[#263337] print:text-black leading-relaxed font-beamer ${isPresentationSlide ? 'text-[1.5rem] print:!text-[24pt] text-center print:!leading-relaxed' : 'text-[1.05rem] print:!text-[11pt] pr-8'}`}
+                  className={`question-text-wrapper text-[#263337] print:text-black leading-relaxed font-beamer ${isPresentationSlide ? 'text-[1.5em] print:!text-[1.5em] text-center print:!leading-relaxed' : 'text-[1.05em] print:!text-[1.05em] pr-8'}`}
                   style={{ margin: 0, padding: 0 }}
                 >
                   {figure && q.image ? (
@@ -390,7 +390,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
       {/* En-tête : Badge "Exercice X" affiché uniquement lorsqu'il y a plusieurs exercices et pas de "Partie X" */}
       {!shouldHideBadge && (
         <h2 className="exercise-title flex items-center mb-6 print:mb-4">
-          <div className="relative inline-flex items-center justify-center bg-[linear-gradient(135deg,#e6e6e6_0%,#a0a0a0_100%)] px-5 py-2 rounded-[4px_8px_8px_4px] font-sans font-bold text-[0.85rem] text-[#333] uppercase tracking-[1px] shadow-[4px_6px_10px_rgba(0,0,0,0.3),inset_1px_1px_2px_rgba(255,255,255,0.9),inset_-1px_-1px_2px_rgba(0,0,0,0.2)] border border-[#999] [text-shadow:1px_1px_0px_rgba(255,255,255,0.6)] -ml-[calc(1.5rem+8px)] sm:-ml-[calc(3rem+8px)] md:-ml-[calc(4rem+8px)] print:-ml-0 print:border-none print:shadow-none print:bg-none print:text-black">
+          <div className="relative inline-flex items-center justify-center bg-[linear-gradient(135deg,#e6e6e6_0%,#a0a0a0_100%)] px-5 py-2 rounded-[4px_8px_8px_4px] font-sans font-bold text-[0.85em] text-[#333] uppercase tracking-[1px] shadow-[4px_6px_10px_rgba(0,0,0,0.3),inset_1px_1px_2px_rgba(255,255,255,0.9),inset_-1px_-1px_2px_rgba(0,0,0,0.2)] border border-[#999] [text-shadow:1px_1px_0px_rgba(255,255,255,0.6)] -ml-[calc(1.5rem+8px)] sm:-ml-[calc(3rem+8px)] md:-ml-[calc(4rem+8px)] print:-ml-0 print:border-none print:shadow-none print:bg-none print:text-black">
             Exercice {exerciseNumber}
             <div className="absolute top-[100%] left-0 w-2 h-3 bg-[linear-gradient(to_bottom,#777,transparent)] [clip-path:polygon(0_0,100%_0,100%_100%)] print:hidden" />
           </div>
@@ -400,7 +400,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
       {(exercise.title || isEditMode) && (
         <div className={`exercise-part-title flex w-full items-center justify-center text-center ${isPartieTitle ? 'my-3 mb-5' : 'mb-6 print:mb-4'}`}>
           <div className={`flex-1 h-[1px] mr-2.5 ${isPartieTitle ? 'bg-gradient-to-r from-transparent via-[#bfae9c] to-[#bfae9c] max-w-[60px] sm:max-w-[130px]' : 'border-b border-[#cbd5e1] max-w-[80px] sm:max-w-[160px]'}`} />
-          <div className={`print:text-black ${isPartieTitle ? "font-sans text-[1.05rem] sm:text-[1.15rem] font-medium text-[#524a42] px-3 tracking-normal" : "text-[1.15rem] italic text-[#5c5953] tracking-[0.5px]"}`}>
+          <div className={`print:text-black ${isPartieTitle ? "font-sans text-[1.05em] sm:text-[1.15em] font-medium text-[#524a42] px-3 tracking-normal" : "text-[1.15em] italic text-[#5c5953] tracking-[0.5px]"}`}>
             <EditableMathText
               text={exercise.title ? formatPartieTitle(exercise.title) : ""}
               isEditMode={!!isEditMode}
@@ -425,7 +425,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
       )}
 
       {exercise.statement && (
-        <div className="exercise-statement text-[1.25rem] text-[#2b2b2b] mb-6 indent-4 leading-[1.7] font-serif print:text-black print:text-lg">
+        <div className="exercise-statement text-[1.2em] sm:text-[1.25em] text-[#2b2b2b] mb-6 indent-4 leading-[1.7] font-serif print:text-black print:text-[1.15em]">
           <EditableMathText
             text={exercise.statement}
             isEditMode={!!isEditMode}

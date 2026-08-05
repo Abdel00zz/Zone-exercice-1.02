@@ -466,7 +466,7 @@ const App: React.FC = () => {
               fontSize: `${Math.min(130, Math.max(80, textScale))}%`,
               '--worksheet-text-font': textFont,
               '--worksheet-handwriting-font': handwritingFont,
-              '--worksheet-math-scale': '100%',
+              '--worksheet-math-scale': `${Math.min(140, Math.max(80, mathScale))}%`,
               '--worksheet-math-font': 'inherit',
             } as React.CSSProperties}
           >
@@ -474,7 +474,7 @@ const App: React.FC = () => {
               <div className="space-y-8 print:space-y-6">
                 <div className="title-and-first-exercise-container space-y-6 print:space-y-4">
                 <div className="latex-document-header mb-8 mt-0 print:mb-6 print:mt-0 relative">
-                  <div className="flex items-start justify-between text-[11px] font-semibold uppercase tracking-widest text-[#697478] print:text-black mb-8">
+                  <div className="flex items-start justify-between text-[0.75em] font-semibold uppercase tracking-widest text-[#697478] print:text-black mb-8">
                     <div className="flex flex-col gap-1.5 text-left">
                       {userNameLabel && <span className="text-[#172126] print:text-black">{userNameLabel}</span>}
                       <span>Classe {classNameLabel || '\u2014'}</span>
@@ -487,11 +487,11 @@ const App: React.FC = () => {
                   <div className="mb-10 flex flex-col items-center">
                     <div className="text-center">
                       <div className="inline-flex items-center justify-center mb-4">
-                        <span className="text-[#19788c] print:text-black text-[10px] font-bold uppercase tracking-[0.2em]">
+                        <span className="text-[#19788c] print:text-black text-[0.7em] font-bold uppercase tracking-[0.2em]">
                           Le {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
                         </span>
                       </div>
-                      <div role="heading" aria-level={1} className="font-chapter text-[1.58rem] sm:text-[1.85rem] md:text-[2.2rem] font-medium leading-tight text-[#172126] print:text-2xl tracking-tight">
+                      <div role="heading" aria-level={1} className="font-chapter text-[1.58em] sm:text-[1.85em] md:text-[2.2em] font-medium leading-tight text-[#172126] print:text-[1.8em] tracking-tight">
                         <EditableMathText 
                           text={selectedWorksheet.name} 
                           isEditMode={isEditMode} 
