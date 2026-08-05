@@ -7,6 +7,7 @@ import ImageModal from './ImageModal';
 import { Image as ImageIcon } from 'lucide-react';
 import QuestionBeamerScope from './QuestionBeamerScope';
 import { computeQuestionLayout, joinAroundFigure } from '../utils/questionLayout';
+import { formatPartieTitle } from '../utils/worksheetUtils';
 
 interface ExerciseCardProps {
   exercise: Exercise;
@@ -401,7 +402,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
           <div className={`flex-1 h-[1px] mr-2.5 ${isPartieTitle ? 'bg-gradient-to-r from-transparent via-[#bfae9c] to-[#bfae9c] max-w-[60px] sm:max-w-[130px]' : 'border-b border-[#cbd5e1] max-w-[80px] sm:max-w-[160px]'}`} />
           <div className={`print:text-black ${isPartieTitle ? "font-sans text-[1.05rem] sm:text-[1.15rem] font-medium text-[#524a42] px-3 tracking-normal" : "text-[1.15rem] italic text-[#5c5953] tracking-[0.5px]"}`}>
             <EditableMathText
-              text={exercise.title ? (exercise.title.toLowerCase().startsWith('partie') ? exercise.title.replace(/^partie\b/i, 'Partie') : exercise.title) : ""}
+              text={exercise.title ? formatPartieTitle(exercise.title) : ""}
               isEditMode={!!isEditMode}
               onChange={(newTitle) => onExerciseUpdate && onExerciseUpdate(exercise.id, { title: newTitle })}
               className={!exercise.title && isEditMode ? "min-w-[150px] text-[#aaa29b]" : ""}

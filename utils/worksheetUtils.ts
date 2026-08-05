@@ -1,6 +1,37 @@
 import { z } from 'zod';
 import type { Worksheet, WorksheetContent, Exercise } from '../types';
 
+/**
+ * Formate proprement les titres de parties :
+ * - Capitalise "partie" -> "Partie"
+ * - Remplace les numéros par des lettres (ex: "Partie 1" -> "Partie A", "Partie 2" -> "Partie B")
+ * - Capitalise les lettres de parties (ex: "Partie a" -> "Partie A")
+ */
+export function formatPartieTitle(title: string): string {
+  if (!title) return title;
+  
+  let formatted = title.trim();
+
+  // "partie" -> "Partie"
+  formatted = formatted.replace(/^partie\b/i, 'Partie');
+
+  // Remplace "Partie 1", "Partie 2", "Partie 3" par "Partie A", "Partie B", "Partie C"
+  formatted = formatted.replace(/\bPartie\s+([1-9]\d*)\b/gi, (_, numStr) => {
+    const num = parseInt(numStr, 10);
+    if (num >= 1 && num <= 26) {
+      return `Partie ${String.fromCharCode(64 + num)}`;
+    }
+    return `Partie ${numStr}`;
+  });
+
+  // Remplace "Partie a", "Partie b" par "Partie A", "Partie B"
+  formatted = formatted.replace(/\bPartie\s+([a-z])\b/gi, (_, letter) => {
+    return `Partie ${letter.toUpperCase()}`;
+  });
+
+  return formatted;
+}
+
 // Schéma Zod récursif pour les questions et sous-questions
 export const QuestionSchema: z.ZodType<any> = z.lazy(() =>
   z.object({

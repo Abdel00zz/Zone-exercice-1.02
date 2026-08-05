@@ -2,6 +2,7 @@ import React from 'react';
 import type { ImageConfig, QuestionPart, Worksheet } from '../types';
 import MathText from './MathText';
 import { formatNumbering } from '../utils/questionLayout';
+import { formatPartieTitle } from '../utils/worksheetUtils';
 
 interface WorksheetThumbnailProps {
   worksheet: Worksheet;
@@ -155,7 +156,7 @@ const WorksheetThumbnail: React.FC<WorksheetThumbnailProps> = ({ worksheet }) =>
                 {isPartie ? (
                    <div className="mb-1.5 mt-2.5 text-center">
                       <span className="text-[7px] font-semibold text-[#1e293b] uppercase tracking-wider">
-                        <ThumbnailMath text={exercise.title || `Partie ${exerciseIndex + 1}`} />
+                        <ThumbnailMath text={exercise.title ? formatPartieTitle(exercise.title) : `Partie ${String.fromCharCode(65 + (exerciseIndex % 26))}`} />
                       </span>
                    </div>
                 ) : (
