@@ -294,6 +294,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   }, [commitStrokes, recordAdd, textInput]);
 
   useEffect(() => {
+    // rAF en cours pour le rendu intermédiaire (throttle visuel)
+    let rafId = 0;
+    // Timer pour diffèrer le commitStrokes (évite N écritures localStorage/seconde)
+    let commitTimer = 0;
+    // Largeur avant le dernier redimensionnement nécessitant un rescale
+    let pendingRescale = false;
+
     const resizeCanvas = () => {
       const canvas = canvasRef.current;
       const container = containerRef.current;
@@ -330,22 +337,42 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             point.x *= ratio;
           });
         });
+        pendingRescale = true;
       }
 
       redrawAllRef.current();
-      // On enregistre les coordonnées remises à l'échelle, sinon le prochain
-      // chargement retrouverait un tracé calé sur l'ancienne largeur.
-      if (needsRescale) commitStrokes();
     };
 
+    // Throttle visuel via rAF : au plus un redimensionnement par frame.
+    const handleResize = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        resizeCanvas();
+        // Différer le commitStrokes pour ne l'appeler qu'une seule fois
+        // une fois le redimensionnement stabilisé (120 ms sans nouveau resize).
+        if (pendingRescale) {
+          clearTimeout(commitTimer);
+          commitTimer = window.setTimeout(() => {
+            pendingRescale = false;
+            commitStrokes();
+          }, 120);
+        }
+      });
+    };
+
+    // Premier appel synchrone pour initialiser les dimensions sans délai.
     resizeCanvas();
 
-    const resizeObserver = new ResizeObserver(resizeCanvas);
+    const resizeObserver = new ResizeObserver(handleResize);
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
 
-    return () => resizeObserver.disconnect();
+    return () => {
+      resizeObserver.disconnect();
+      cancelAnimationFrame(rafId);
+      clearTimeout(commitTimer);
+    };
   }, [commitStrokes]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -802,17 +829,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                   currentStrokeRef.current.points = [start, { x: start.x, y: coords.y, pressure: coords.pressure }];
                 }
               } else {
-                // Add point with smoothing for stylus/touch writing quality
+                // Le StrokeSmoother (OneEuroFilter) gère déjà la stabilisation ;
+                // un lissage supplémentaire ici rendrait les traits trop mous.
                 const pts = currentStrokeRef.current.points;
                 const last = pts[pts.length - 1];
                 const dist = Math.hypot(coords.x - last.x, coords.y - last.y);
                 if (dist > 0.3) {
-                  const smoothed = {
-                    x: last.x * 0.15 + coords.x * 0.85,
-                    y: last.y * 0.15 + coords.y * 0.85,
-                    pressure: coords.pressure
-                  };
-                  pts.push(smoothed);
+                  pts.push(coords);
                 }
               }
               scheduleShapeRecognition(activeTool);

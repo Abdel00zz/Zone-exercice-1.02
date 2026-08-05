@@ -413,16 +413,26 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
 
               {styleName === 'seyes' && (
                 <>
-                  <line x1={SEYES_LINE_PX * 4} y1="0" x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.screen.seyesVertical} strokeWidth="1" />
+                  {/* Ligne horizontale mineure (toutes les 2mm) */}
                   <line x1="0" y1={SEYES_LINE_PX} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX} stroke={theme.screen.seyesMinor} strokeWidth="1" />
                   <line x1="0" y1={SEYES_LINE_PX * 2} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 2} stroke={theme.screen.seyesMinor} strokeWidth="1" />
                   <line x1="0" y1={SEYES_LINE_PX * 3} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 3} stroke={theme.screen.seyesMinor} strokeWidth="1" />
+                  {/* Ligne horizontale majeure (toutes les 8mm) */}
                   <line x1="0" y1={SEYES_LINE_PX * 4} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.screen.seyesMajor} strokeWidth="1" />
                 </>
               )}
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill={`url(#${gridPatternId})`} />
+          {/* Marge verticale Séyes : une seule ligne rouge à ~2,5 cm du bord gauche */}
+          {styleName === 'seyes' && (
+            <line
+              x1={Math.round(25 * MM_TO_PX)} y1="0"
+              x2={Math.round(25 * MM_TO_PX)} y2="100%"
+              stroke={theme.screen.seyesVertical}
+              strokeWidth="1"
+            />
+          )}
         </svg>
 
         <svg
@@ -458,16 +468,26 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
 
               {styleName === 'seyes' && (
                 <>
-                  <line x1={SEYES_LINE_PX * 4} y1="0" x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.print.seyesVertical} strokeWidth="1" />
+                  {/* Lignes horizontales mineures */}
                   <line x1="0" y1={SEYES_LINE_PX} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX} stroke={theme.print.seyesMinor} strokeWidth="1" />
                   <line x1="0" y1={SEYES_LINE_PX * 2} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 2} stroke={theme.print.seyesMinor} strokeWidth="1" />
                   <line x1="0" y1={SEYES_LINE_PX * 3} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 3} stroke={theme.print.seyesMinor} strokeWidth="1" />
+                  {/* Ligne horizontale majeure */}
                   <line x1="0" y1={SEYES_LINE_PX * 4} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.print.seyesMajor} strokeWidth="1" />
                 </>
               )}
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill={`url(#${gridPatternId}-print)`} />
+          {/* Marge verticale Séyes impression : une seule ligne rouge à ~2,5 cm du bord gauche */}
+          {styleName === 'seyes' && (
+            <line
+              x1={Math.round(25 * MM_TO_PX)} y1="0"
+              x2={Math.round(25 * MM_TO_PX)} y2="100%"
+              stroke={theme.print.seyesVertical}
+              strokeWidth="1"
+            />
+          )}
         </svg>
 
         {/*
