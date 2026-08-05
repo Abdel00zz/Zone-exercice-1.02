@@ -18,6 +18,8 @@ const translations = {
     fr: {
         title: "Guide & Centre d'aide",
         subtitle: "Interactive Maths v1.0",
+        author: "Créé par Boudouh Abdelmalek",
+        authorArabic: "بدوح عبدالمالك",
         close: "Fermer le guide",
         searchPlaceholder: "Rechercher dans l'aide...",
         languages: { fr: "Français", en: "English", ar: "العربية" },
@@ -105,6 +107,8 @@ const translations = {
     en: {
         title: "Help Center & Guide",
         subtitle: "Interactive Maths v1.0",
+        author: "Created by Boudouh Abdelmalek",
+        authorArabic: "بدوح عبدالمالك",
         close: "Close Guide",
         searchPlaceholder: "Search help...",
         languages: { fr: "Français", en: "English", ar: "العربية" },
@@ -192,6 +196,8 @@ const translations = {
     ar: {
         title: "دليل المستخدم ومركز المساعدة",
         subtitle: "Interactive Maths v1.0",
+        author: "أنشئ بواسطة بدوح عبدالمالك",
+        authorArabic: "بدوح عبدالمالك",
         close: "إغلاق الدليل",
         searchPlaceholder: "البحث في الدليل...",
         languages: { fr: "Français", en: "English", ar: "العربية" },
@@ -369,10 +375,21 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                         })}
                     </nav>
 
-                    {/* Bottom Status Box */}
-                    <div className="mt-4 rounded-2xl bg-[#e6f0ee] p-3 border border-[#cbe0dc] flex items-center gap-2 text-xs text-[#19788c]">
-                        <ShieldCheck className="h-4 w-4 shrink-0 text-[#19788c]" />
-                        <span className="text-[11px] font-semibold leading-tight">PWA Ready · Functioning offline</span>
+                    {/* Bottom Status Box & Creator Credit */}
+                    <div className="mt-4 space-y-2">
+                        <div className="rounded-2xl bg-[#e6f0ee] p-2.5 border border-[#cbe0dc] flex items-center gap-2 text-xs text-[#19788c]">
+                            <ShieldCheck className="h-4 w-4 shrink-0 text-[#19788c]" />
+                            <span className="text-[11px] font-semibold leading-tight">PWA Ready · Functioning offline</span>
+                        </div>
+                        <div className="rounded-2xl bg-[#f0eee4] p-2.5 border border-[#dfdbcd] text-center shadow-2xs">
+                            <div className="text-[11px] font-bold text-[#172126] flex items-center justify-center gap-1">
+                                <GraduationCap className="h-3.5 w-3.5 text-[#19788c]" />
+                                <span>{t.author}</span>
+                            </div>
+                            <div className="text-[11px] font-bold text-[#19788c] mt-0.5" dir="rtl">
+                                {t.authorArabic}
+                            </div>
+                        </div>
                     </div>
                 </aside>
 
@@ -406,6 +423,22 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                                     </span>
                                     <h3 className="font-serif text-2xl font-bold text-[#172126] mb-2">{t.overview.heading}</h3>
                                     <p className="text-sm leading-relaxed text-[#3d4c51] max-w-2xl">{t.overview.intro}</p>
+                                </div>
+
+                                {/* Author / Creator Card */}
+                                <div className="rounded-2xl bg-gradient-to-r from-[#f7f5ed] to-[#f0efe6] p-4 border border-[#e2ded0] flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+                                    <div className="flex items-center gap-3">
+                                        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#19788c] text-white shadow-sm">
+                                            <GraduationCap className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#19788c] block">Conception & Développement</span>
+                                            <span className="text-sm font-bold text-[#172126]">{t.author}</span>
+                                        </div>
+                                    </div>
+                                    <span className="text-sm font-bold text-[#19788c] bg-white px-3 py-1 rounded-xl shadow-2xs border border-[#d8e3e1]" dir="rtl">
+                                        {t.authorArabic}
+                                    </span>
                                 </div>
 
                                 {/* Target Audience */}

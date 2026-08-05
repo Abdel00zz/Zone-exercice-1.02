@@ -545,9 +545,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   }, [isEditMode, openTextEditorByIndex]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    // Le doigt est toujours totalement bloqué sur le canvas (seuls stylet et souris dessinent)
-    if (e.pointerType === 'touch') return;
+    // Si le rejet de paume est activé, ignorer le toucher au doigt (seuls le stylet et la souris dessinent)
+    if (e.pointerType === 'touch' && palmRejection) return;
     if (e.pointerType === 'pen') lastPenInputAtRef.current = Date.now();
+    if (e.cancelable) e.preventDefault();
+
     const settings = getToolState();
     closeToolMenu();
     setActiveCanvas(instanceId);
@@ -709,8 +711,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing.current) return;
-    if (e.pointerType === 'touch') return;
+    if (e.pointerType === 'touch' && palmRejection) return;
     if (e.pointerType === 'pen') lastPenInputAtRef.current = Date.now();
+    if (e.cancelable) e.preventDefault();
     const settings = getToolState();
 
     const nativeE = e.nativeEvent as any;
@@ -1115,7 +1118,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         ref={containerRef}
         className="flex-1 w-full relative pointer-events-auto"
         onPointerDownCapture={() => setActiveCanvas(instanceId)}
-        style={{ touchAction: palmRejection ? 'pan-y' : 'manipulation' }}
+        style={{ touchAction: 'none' }}
       >
         <canvas
           ref={canvasRef}
@@ -1132,7 +1135,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             tool === 'text' ? 'cursor-text' : 
             'cursor-crosshair'
           }`}
-          style={{ touchAction: palmRejection ? 'pan-y' : 'manipulation' }}
+          style={{ touchAction: 'none' }}
         />
         <CanvasTextLayer
           strokes={strokesRef.current}
