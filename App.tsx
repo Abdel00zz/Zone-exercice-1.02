@@ -491,7 +491,7 @@ const App: React.FC = () => {
                           Le {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
                         </span>
                       </div>
-                      <div role="heading" aria-level={1} className="font-chapter text-[2.25rem] sm:text-4xl md:text-5xl font-medium leading-tight text-[#172126] print:text-4xl tracking-tight">
+                      <div role="heading" aria-level={1} className="font-chapter text-[1.58rem] sm:text-[1.85rem] md:text-[2.2rem] font-medium leading-tight text-[#172126] print:text-2xl tracking-tight">
                         <EditableMathText 
                           text={selectedWorksheet.name} 
                           isEditMode={isEditMode} 

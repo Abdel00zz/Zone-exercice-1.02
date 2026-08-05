@@ -397,9 +397,9 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
       )}
 
       {(exercise.title || isEditMode) && (
-        <div className={`exercise-part-title flex w-full items-center justify-center text-center ${isPartieTitle ? 'my-2 mb-4' : 'mb-6 print:mb-4'}`}>
-          <div className={`flex-1 border-b border-[#cbd5e1] h-[1px] mr-2.5 ${isPartieTitle ? 'max-w-[50px] sm:max-w-[110px]' : 'max-w-[80px] sm:max-w-[160px]'}`} />
-          <div className={`print:text-black ${isPartieTitle ? "text-[0.7rem] sm:text-[0.76rem] font-bold uppercase tracking-[0.16em] text-[#0f172a] bg-[#f1f5f9] px-3 py-0.5 rounded-md border border-[#cbd5e1] shadow-2xs" : "text-[1.15rem] italic text-[#5c5953] tracking-[0.5px]"}`}>
+        <div className={`exercise-part-title flex w-full items-center justify-center text-center ${isPartieTitle ? 'my-3 mb-5' : 'mb-6 print:mb-4'}`}>
+          <div className={`flex-1 h-[1px] mr-2.5 ${isPartieTitle ? 'bg-gradient-to-r from-transparent via-[#bfae9c] to-[#bfae9c] max-w-[60px] sm:max-w-[130px]' : 'border-b border-[#cbd5e1] max-w-[80px] sm:max-w-[160px]'}`} />
+          <div className={`print:text-black ${isPartieTitle ? "font-sans text-[1.05rem] sm:text-[1.15rem] font-medium text-[#524a42] px-3 tracking-normal" : "text-[1.15rem] italic text-[#5c5953] tracking-[0.5px]"}`}>
             <EditableMathText
               text={exercise.title ? (exercise.title.toLowerCase().startsWith('partie') ? exercise.title.replace(/^partie\b/i, 'Partie') : exercise.title) : ""}
               isEditMode={!!isEditMode}
@@ -407,7 +407,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
               className={!exercise.title && isEditMode ? "min-w-[150px] text-[#aaa29b]" : ""}
             />
           </div>
-          <div className={`flex-1 border-b border-[#cbd5e1] h-[1px] ml-2.5 ${isPartieTitle ? 'max-w-[50px] sm:max-w-[110px]' : 'max-w-[80px] sm:max-w-[160px]'}`} />
+          <div className={`flex-1 h-[1px] ml-2.5 ${isPartieTitle ? 'bg-gradient-to-l from-transparent via-[#bfae9c] to-[#bfae9c] max-w-[60px] sm:max-w-[130px]' : 'border-b border-[#cbd5e1] max-w-[80px] sm:max-w-[160px]'}`} />
         </div>
       )}
 

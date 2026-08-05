@@ -1066,22 +1066,14 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             aria-label={correctionToggle.visible ? 'Masquer la correction et rappel de cours' : 'Afficher la correction et rappel de cours'}
             aria-pressed={correctionToggle.visible}
             onClick={correctionToggle.toggle}
-            className={`group/helpbtn relative inline-flex items-center gap-1.5 h-7 px-3 rounded-full border text-xs font-bold tracking-wide transition-all duration-200 ease-out active:scale-95 shadow-2xs ${
+            className={`group/helpbtn relative inline-flex items-center justify-center h-6 px-2.5 rounded-full border text-[11px] font-semibold tracking-wide transition-all duration-200 ease-out active:scale-95 shadow-2xs ${
               correctionToggle.visible
-                ? 'border-amber-500 bg-amber-500 text-white shadow-xs shadow-amber-500/20 ring-2 ring-amber-200/60'
-                : 'border-slate-300/90 bg-[#fdfbf7] backdrop-blur-md text-slate-700 hover:border-amber-400 hover:bg-amber-50/90 hover:text-amber-800 shadow-2xs'
+                ? 'border-amber-300/90 bg-amber-200/80 backdrop-blur-md text-amber-950 font-bold shadow-2xs ring-1 ring-amber-300/50'
+                : 'border-amber-200/70 bg-[#fffdf7]/85 backdrop-blur-md text-amber-900/90 hover:border-amber-300 hover:bg-amber-100/60 hover:text-amber-950 shadow-2xs'
             }`}
             title={correctionToggle.visible ? 'Masquer le rappel de cours' : 'Afficher le rappel de cours'}
           >
-            <HelpCircle
-              size={13}
-              className={`transition-transform duration-200 ease-out stroke-[2.5] ${
-                correctionToggle.visible
-                  ? 'text-white'
-                  : 'text-amber-600 group-hover/helpbtn:scale-110'
-              }`}
-            />
-            <span className="text-[11px] font-bold tracking-tight">Aide</span>
+            <span>Aide</span>
           </button>
         </div>
       )}
