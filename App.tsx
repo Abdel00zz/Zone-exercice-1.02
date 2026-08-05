@@ -470,7 +470,7 @@ const App: React.FC = () => {
               '--worksheet-math-font': 'inherit',
             } as React.CSSProperties}
           >
-            <div className="bg-[#f4f1ea] rounded-[2px] w-full px-6 sm:px-12 md:px-16 pt-12 pb-12 shadow-[-15px_20px_35px_rgba(0,0,0,0.4),inset_0_0_60px_rgba(139,122,94,0.1)] print:shadow-none print:bg-transparent print:p-0" style={{ backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.5), rgba(255,255,255,0) 20%), url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.04"/></svg>')` }}>
+            <div className="bg-[#f4f1ea] rounded-[2px] w-full px-6 sm:px-12 md:px-16 pt-12 pb-12 shadow-sm print:shadow-none print:bg-transparent print:p-0 border-l-4 border-gray-800/30" style={{ backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.5), rgba(255,255,255,0) 20%), url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.04"/></svg>')` }}>
               <div className="space-y-8 print:space-y-6">
                 <div className="title-and-first-exercise-container space-y-6 print:space-y-4">
                 <div className="latex-document-header mb-8 mt-0 print:mb-6 print:mt-0 relative">

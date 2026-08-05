@@ -137,40 +137,40 @@
         margin: 0.4em 0;
       }
 
-      /* Highlighting moderne, doux et respirant pour mots et formules par double-clic */
+      /* Highlighting moderne, doux et respirant pour mots et formules par double-clic - Style iOS sans arrondi */
       .math-highlight-rounded,
       mark.math-highlight-rounded {
-        background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%) !important;
+        background: linear-gradient(135deg, rgba(254, 249, 195, 0.85) 0%, rgba(254, 240, 138, 0.85) 100%) !important;
         color: #713f12 !important;
-        border-radius: 0.375rem !important; /* moins arrondi (6px) */
-        padding: 0.15rem 0.45rem !important; /* respirant */
-        margin: 0 0.15rem !important;
-        box-shadow: 0 1px 4px rgba(234, 179, 8, 0.18), inset 0 0 0 1px rgba(250, 204, 21, 0.5) !important;
-        transition: all 0.2s ease-out !important; /* grande fluidité */
+        border-radius: 0px !important; /* Sans arrondi - style iOS */
+        padding: 0.1rem 0.35rem !important; /* Plus compact */
+        margin: 0 0.1rem !important;
+        box-shadow: none !important; /* Ombre supprimée pour style doux */
+        border-bottom: 2px solid rgba(234, 179, 8, 0.4) !important; /* Ligne subtile en bas */
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important; /* Transition douce iOS */
         display: inline-block !important;
         cursor: pointer !important;
-        animation: popHighlight 0.22s ease-out !important;
+        animation: highlightFadeIn 0.3s ease-out !important;
         vertical-align: baseline !important;
+        backdrop-filter: blur(2px) !important;
       }
 
       .math-highlight-rounded:hover,
       mark.math-highlight-rounded:hover {
-        background: linear-gradient(135deg, #fef08a 0%, #fde047 100%) !important;
-        transform: translateY(-1px) scale(1.015) !important;
-        box-shadow: 0 3px 8px rgba(234, 179, 8, 0.25), inset 0 0 0 1px rgba(234, 179, 8, 0.6) !important;
+        background: linear-gradient(135deg, rgba(254, 240, 138, 0.9) 0%, rgba(253, 224, 71, 0.9) 100%) !important;
+        border-bottom-color: rgba(234, 179, 8, 0.6) !important;
+        transform: translateY(0) !important;
+        box-shadow: none !important;
       }
 
-      @keyframes popHighlight {
+      @keyframes highlightFadeIn {
         0% {
-          transform: scale(0.9) translateY(2px);
-          opacity: 0.5;
-        }
-        60% {
-          transform: scale(1.05) translateY(-1px);
+          background-color: rgba(254, 249, 195, 0);
+          border-bottom-color: rgba(234, 179, 8, 0);
         }
         100% {
-          transform: scale(1) translateY(0);
-          opacity: 1;
+          background-color: rgba(254, 249, 195, 0.85);
+          border-bottom-color: rgba(234, 179, 8, 0.4);
         }
       }
 
