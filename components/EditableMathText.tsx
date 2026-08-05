@@ -5,10 +5,11 @@ interface EditableMathTextProps {
   text: string;
   isEditMode: boolean;
   onChange: (newText: string) => void;
+  onDeleteEmpty?: () => void;
   className?: string;
 }
 
-const EditableMathTextImpl: React.FC<EditableMathTextProps> = ({ text, isEditMode, onChange, className = '' }) => {
+const EditableMathTextImpl: React.FC<EditableMathTextProps> = ({ text, isEditMode, onChange, onDeleteEmpty, className = '' }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentText, setCurrentText] = useState(text);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -27,12 +28,8 @@ const EditableMathTextImpl: React.FC<EditableMathTextProps> = ({ text, isEditMod
   }, [isEditing]);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target && target.closest('mjx-container, .math-display, .math-center, .math-highlight-rounded, mark')) {
-      return;
-    }
-
     if (isEditMode) {
+      e.stopPropagation();
       setIsEditing(true);
     }
   };
@@ -48,6 +45,14 @@ const EditableMathTextImpl: React.FC<EditableMathTextProps> = ({ text, isEditMod
     setCurrentText(e.target.value);
     e.target.style.height = 'auto';
     e.target.style.height = e.target.scrollHeight + 'px';
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Backspace' && currentText === '' && onDeleteEmpty) {
+      e.preventDefault();
+      onDeleteEmpty();
+      setIsEditing(false);
+    }
   };
 
   const makeSelectionFillBlank = () => {
@@ -82,9 +87,9 @@ const EditableMathTextImpl: React.FC<EditableMathTextProps> = ({ text, isEditMod
           ref={textareaRef}
           value={currentText}
           onChange={handleChange}
+          onKeyDown={handleKeyDown}
           onBlur={handleBlur}
-          className={`w-full bg-gray-100 border-2 border-gray-500 p-2 rounded-sm font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-600 ${className}`}
-          style={{ minHeight: '60px', overflow: 'hidden' }}
+          className={`w-full bg-gray-100 border-2 border-gray-500 p-2 rounded-sm font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-600 min-h-[60px] overflow-hidden ${className}`}
         />
       </div>
     );
@@ -93,10 +98,10 @@ const EditableMathTextImpl: React.FC<EditableMathTextProps> = ({ text, isEditMod
   return (
     <div
       onDoubleClick={handleDoubleClick}
-      className={`${isEditMode ? 'hover:bg-gray-100/60 hover:outline-dashed hover:outline-2 hover:outline-gray-500 cursor-text transition-colors' : ''} ${className}`}
+      className={`${isEditMode ? 'cursor-text' : ''} ${className}`}
       title={isEditMode ? "Double-cliquez pour modifier" : undefined}
     >
-      <MathText text={text} revealFillBlanks={isEditMode} />
+      <MathText text={text} revealFillBlanks={isEditMode} disableHighlight={isEditMode} />
     </div>
   );
 };

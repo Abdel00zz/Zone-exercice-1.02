@@ -123,13 +123,16 @@ const ThumbnailQuestion: React.FC<{
 /** Miniature de document A4, volontairement dépourvue de toute zone de réponse. */
 const WorksheetThumbnail: React.FC<WorksheetThumbnailProps> = ({ worksheet }) => {
   const settings = worksheet.content.settings ?? {};
-  const title = worksheet.content.chapter?.trim() || worksheet.name;
+  const title = worksheet.name;
   const className = settings.className?.trim();
 
   return (
     <div
-      className="worksheet-thumbnail relative h-full w-full overflow-hidden bg-white text-[#334155] font-latex font-normal"
-      style={{ fontWeight: 400 }}
+      className="worksheet-thumbnail relative h-full w-full overflow-hidden bg-[#f4f1ea] shadow-inner text-[#334155] font-latex font-normal"
+      style={{ 
+        fontWeight: 400,
+        backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.5), rgba(255,255,255,0) 20%), url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.04"/></svg>')` 
+      }}
       aria-hidden="true"
     >
       <div className="h-full px-[8%] pb-[8%] pt-[8%]">

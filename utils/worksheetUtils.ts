@@ -1,4 +1,88 @@
+import { z } from 'zod';
 import type { Worksheet, WorksheetContent, Exercise } from '../types';
+
+// Schéma Zod récursif pour les questions et sous-questions
+export const QuestionSchema: z.ZodType<any> = z.lazy(() =>
+  z.object({
+    id: z.union([z.string(), z.number()]).optional(),
+    title: z.string().optional(),
+    statement: z.string().optional(),
+    answer: z.string().optional(),
+    solution: z.string().optional(),
+    guidance: z.string().optional(),
+    fillBlanks: z.union([z.string(), z.array(z.string())]).optional(),
+    fillBlanksDisplay: z.string().optional(),
+    subquestions: z.array(z.lazy(() => QuestionSchema)).optional(),
+    answerSpaceHeight: z.number().optional(),
+    answerSpaceStyle: z.enum(['seyes', 'slate', 'grid', 'dotted', 'blank']).optional(),
+    answerSpaceColor: z.string().optional(),
+    image: z.string().optional(),
+    statementStrokes: z.array(z.any()).optional(),
+    answersStrokes: z.record(z.string(), z.array(z.any())).optional(),
+  })
+);
+
+// Schéma Zod pour les paramètres de la fiche
+export const WorksheetSettingsSchema = z.object({
+  showCanvas: z.boolean().optional(),
+  showSolutions: z.boolean().optional(),
+  presentationMode: z.boolean().optional(),
+  oneQuestionPerPage: z.boolean().optional(),
+  className: z.string().optional(),
+  schoolYear: z.string().optional(),
+  userName: z.string().optional(),
+  textFont: z.string().optional(),
+  mathFont: z.string().optional(),
+  handwritingFont: z.string().optional(),
+  textScale: z.number().optional(),
+  mathScale: z.number().optional(),
+  logoDataUrl: z.string().optional(),
+  answerSpaceMinHeight: z.number().optional(),
+  answerSpaceStyle: z.enum(['seyes', 'slate', 'grid', 'dotted', 'blank']).optional(),
+  answerSpaceColor: z.string().optional(),
+});
+
+// Schéma Zod pour un exercice
+export const ExerciseSchema = z.object({
+  id: z.union([z.string(), z.number()]).optional(),
+  title: z.string().optional(),
+  statement: z.string().optional(),
+  answer: z.string().optional(),
+  solution: z.string().optional(),
+  guidance: z.string().optional(),
+  questions: z.array(QuestionSchema).optional(),
+  statementAnswerHeight: z.number().optional(),
+  statementAnswerStyle: z.enum(['seyes', 'slate', 'grid', 'dotted', 'blank']).optional(),
+  statementAnswerColor: z.string().optional(),
+  image: z.string().optional(),
+  statementStrokes: z.array(z.any()).optional(),
+  hideBadge: z.boolean().optional(),
+});
+
+// Schéma Zod pour le contenu complet de la fiche
+export const WorksheetContentSchema = z.object({
+  chapter: z.string().optional(),
+  title: z.string().optional(),
+  settings: WorksheetSettingsSchema.optional(),
+  exercise: ExerciseSchema.optional(),
+  exercises: z.union([ExerciseSchema, z.array(ExerciseSchema)]).optional(),
+  questions: z.array(QuestionSchema).optional(),
+  statement: z.string().optional(),
+}).passthrough();
+
+/**
+ * Valide un objet avec Zod et retourne les éventuelles erreurs sous forme d'une chaîne lisible.
+ */
+export const validateWorksheetWithZod = (data: unknown): { success: true; data: z.infer<typeof WorksheetContentSchema> } | { success: false; error: string } => {
+  const result = WorksheetContentSchema.safeParse(data);
+  if (!result.success) {
+    const formattedErrors = result.error.issues
+      .map(issue => `• ${issue.path.join('.') || 'racine'}: ${issue.message}`)
+      .join('\n');
+    return { success: false, error: `Erreur de validation Zod:\n${formattedErrors}` };
+  }
+  return { success: true, data: result.data };
+};
 
 export type TreeFilter = 
     | { type: 'class'; className: string } 
@@ -82,8 +166,12 @@ export const normalizeWorksheetJson = (jsonData: any): WorksheetContent => {
         chapter = normalizedExercises[0]?.title || 'Fiche d\'Exercices';
     }
 
+    const settings = jsonData.settings || {};
+    settings.presentationMode = settings.presentationMode ?? false;
+
     return {
         ...jsonData,
+        settings,
         chapter,
         exercises: normalizedExercises,
     };

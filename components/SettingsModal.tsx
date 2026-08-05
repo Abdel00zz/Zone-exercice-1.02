@@ -29,7 +29,7 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, worksheet, onSave }) => {
-	const [editableContent, setEditableContent] = useState<WorksheetContent>(JSON.parse(JSON.stringify(worksheet.content)));
+	const [editableContent, setEditableContent] = useState<WorksheetContent>(() => structuredClone(worksheet.content));
 	const [logoError, setLogoError] = useState<string | null>(null);
 	const [isLogoDragOver, setIsLogoDragOver] = useState(false);
 	const draggedItem = useRef<number | null>(null);
@@ -40,11 +40,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 			if (!isOpen) {
 				return;
 			}
-			const cloned: WorksheetContent = JSON.parse(JSON.stringify(worksheet.content));
+			const cloned: WorksheetContent = structuredClone(worksheet.content);
 			const defaultYear = computeDefaultSchoolYear();
 			const settings = { ...(cloned.settings ?? {}) };
 			if (!settings.schoolYear) {
 				settings.schoolYear = defaultYear;
+			}
+			if (settings.presentationMode === undefined) {
+				settings.presentationMode = false;
 			}
 			cloned.settings = settings;
 			setEditableContent(cloned);
@@ -492,6 +495,87 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 										className="mt-2 w-full accent-[#19788c]"
 									/>
 								</label>
+							</div>
+
+							{/* Aperçu en temps réel */}
+							<div className="mt-5 rounded-xl border border-[#dedbd2] bg-white p-4 shadow-sm">
+								<div className="mb-2 flex items-center justify-between border-b border-[#f0eee6] pb-2">
+									<span className="text-xs font-bold uppercase tracking-wider text-[#19788c]">Aperçu en temps réel</span>
+									<span className="rounded-full bg-[#19788c]/10 px-2 py-0.5 text-[10px] font-bold text-[#19788c]">Mise à jour directe</span>
+								</div>
+								
+								{/* Mini En-tête */}
+								<div className="flex items-center justify-between rounded-lg bg-[#fcfbfa] p-3 border border-[#f0eee6]">
+									<div>
+										<div className="text-xs font-bold text-[#172126]">
+											{selectedClass || 'Classe non spécifiée'}
+										</div>
+										<div className="text-[11px] font-medium text-[#697478]">
+											Année : {selectedSchoolYear}
+										</div>
+									</div>
+									{logoPreview ? (
+										<img src={logoPreview} alt="Aperçu logo" className="h-8 max-w-[80px] object-contain" />
+									) : (
+										<span className="text-[10px] italic text-[#a3acae]">Aucun logo</span>
+									)}
+								</div>
+
+								{/* Mini Canevas / Zone de réponse */}
+								{editableContent.settings?.showCanvas !== false ? (
+									<div className="mt-3">
+										<div className="mb-1 text-[11px] font-semibold text-[#697478]">
+											Style de zone de réponse : <span className="text-[#172126] font-bold">{editableContent.settings?.answerSpaceStyle || 'slate'}</span> ({editableContent.settings?.answerSpaceMinHeight || 120}px)
+										</div>
+										<div 
+											className="w-full rounded-lg border border-[#334155] relative overflow-hidden transition-all duration-200"
+											style={{
+												height: `${Math.min(100, Math.max(50, (editableContent.settings?.answerSpaceMinHeight || 120) * 0.4))}px`,
+												backgroundColor: 
+													editableContent.settings?.answerSpaceColor === 'black' ? '#0F172A' :
+													editableContent.settings?.answerSpaceColor === 'green' ? '#14532D' :
+													editableContent.settings?.answerSpaceColor === 'blue' ? '#1E3A8A' :
+													editableContent.settings?.answerSpaceColor === 'white' ? '#FFFFFF' :
+													editableContent.settings?.answerSpaceColor === 'cream' ? '#FEF3C7' : '#0F172A',
+											}}
+										>
+											{/* Simulation du quadrillage */}
+											{(editableContent.settings?.answerSpaceStyle === 'slate' || !editableContent.settings?.answerSpaceStyle) && (
+												<div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_23px,rgba(255,255,255,0.15)_24px)] bg-[size:100%_24px]" />
+											)}
+											{editableContent.settings?.answerSpaceStyle === 'seyes' && (
+												<div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(239,68,68,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(59,130,246,0.3)_1px,transparent_1px)] bg-[size:16px_16px]" />
+											)}
+											{editableContent.settings?.answerSpaceStyle === 'grid' && (
+												<div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.15)_1px,transparent_1px)] bg-[size:16px_16px]" />
+											)}
+											{editableContent.settings?.answerSpaceStyle === 'dotted' && (
+												<div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.3)_1px,transparent_1px)] bg-[size:12px_12px]" />
+											)}
+											<div className="absolute bottom-2 right-2 text-[10px] font-mono text-white/50 bg-black/30 px-1.5 py-0.5 rounded">
+												Zone de réponse ({editableContent.settings?.answerSpaceMinHeight || 120}px)
+											</div>
+										</div>
+									</div>
+								) : (
+									<div className="mt-3 rounded-lg border border-dashed border-[#dedbd2] p-3 text-center text-xs font-semibold text-[#697478] bg-[#fcfbfa]">
+										Les zones de réponse sont actuellement masquées.
+									</div>
+								)}
+
+								{/* Badges d'options */}
+								<div className="mt-3 flex flex-wrap gap-1.5">
+									{editableContent.settings?.oneQuestionPerPage && (
+										<span className="rounded-md bg-[#fbf4dc] border border-[#e5dcb8] px-2 py-0.5 text-[10px] font-bold text-[#b88700]">
+											1 question / page
+										</span>
+									)}
+									{editableContent.settings?.presentationMode && (
+										<span className="rounded-md bg-[#eadef5] border border-[#e2d5ed] px-2 py-0.5 text-[10px] font-bold text-[#7e3af2]">
+											Mode Diaporama
+										</span>
+									)}
+								</div>
 							</div>
 						</section>
 

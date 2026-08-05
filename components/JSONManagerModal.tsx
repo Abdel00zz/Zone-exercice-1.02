@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, FileUp, Download, Code, Save, AlertCircle, CheckCircle2, AlignLeft, AlignJustify, HelpCircle, BookOpen, UploadCloud, Terminal } from 'lucide-react';
 import type { WorksheetContent, Worksheet } from '../types';
-import { normalizeWorksheetJson } from '../utils/worksheetUtils';
+import { normalizeWorksheetJson, validateWorksheetWithZod } from '../utils/worksheetUtils';
 
 // [NOTE: Ported from original JSONEditorModal for editor functionality]
 const BRACKET_PAIRS: Record<string, string> = { '{': '}', '[': ']', '"': '"' };
@@ -50,6 +50,12 @@ const JSONManagerModal: React.FC<JSONManagerModalProps> = ({
     const validate = useCallback((value: string) => {
       try {
         const parsed = JSON.parse(value);
+        const zodCheck = validateWorksheetWithZod(parsed);
+        if (!zodCheck.success) {
+            setIsValid(false);
+            setError({ message: (zodCheck as { success: false; error: string }).error, line: null });
+            return;
+        }
         normalizeWorksheetJson(parsed);
         setIsValid(true);
         setError({ message: '', line: null });

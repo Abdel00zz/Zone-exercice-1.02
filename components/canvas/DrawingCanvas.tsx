@@ -468,11 +468,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     return { ...point, x: bestX, y: bestY };
   };
 
-  // Bits 2 (clic droit) et 4 (molette) sont des codes souris : certains firmwares
-  // Samsung les font remonter par erreur sur `buttons` pour un simple survol du
-  // S Pen, ce qui activait la gomme sans que le bouton latéral soit pressé.
-  // Seuls le bit 32 / button 5 (bouton latéral standard) et les flags dédiés
-  // barrelButton/eraser font foi.
+  // Bits 2 (clic droit / bouton latéral secondaire), 32 (bouton gomme standard) et button 2/5
+  // permettent d'activer la gomme instantanément lors de la pression du bouton latéral du stylet.
   const isStylusEraser = (e: React.PointerEvent | PointerEvent) => {
     if (!e) return false;
     if (e.pointerType === 'eraser') return true;
@@ -482,7 +479,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       const button = e.button ?? ne.button ?? -1;
       return (
         (buttons & 32) !== 0 ||
+        (buttons & 2) !== 0 ||
         button === 5 ||
+        button === 2 ||
         Boolean((ne as any).barrelButton) ||
         Boolean((e as any).barrelButton) ||
         Boolean((ne as any).eraser) ||
@@ -1232,7 +1231,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         ref={containerRef}
         className="flex-1 w-full relative pointer-events-auto"
         onPointerDownCapture={() => setActiveCanvas(instanceId)}
-        style={{ touchAction: palmRejection ? 'none' : 'auto' }}
+        style={{ touchAction: palmRejection ? 'pan-y' : 'manipulation' }}
       >
         <canvas
           ref={canvasRef}
@@ -1249,7 +1248,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             tool === 'text' ? 'cursor-text' : 
             'cursor-crosshair'
           }`}
-          style={{ touchAction: palmRejection ? 'none' : 'auto' }}
+          style={{ touchAction: palmRejection ? 'pan-y' : 'manipulation' }}
         />
         <CanvasTextLayer
           strokes={strokesRef.current}

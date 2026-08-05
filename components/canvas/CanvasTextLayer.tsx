@@ -56,7 +56,7 @@ const CanvasTextLayer: React.FC<CanvasTextLayerProps> = ({
             if (isEditMode && event.detail >= 2) onEditText(index);
           }}
         >
-          <MathText text={stroke.text} revealFillBlanks={isEditMode} />
+          <MathText text={stroke.text} revealFillBlanks={isEditMode} disableHighlight={isEditMode} />
         </div>
       );
     })}

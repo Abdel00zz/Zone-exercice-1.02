@@ -291,6 +291,70 @@ const App: React.FC = () => {
     updateExercise(exerciseId, exercise => ({ ...exercise, ...newProps }));
   };
 
+  const handleExerciseMergeUp = (exerciseId: string) => {
+    setWorksheets(prev => prev.map(ws => {
+      if (ws.id !== selectedWorksheetId) return ws;
+      const exercises = ws.content?.exercises;
+      if (!Array.isArray(exercises)) return ws;
+      const index = exercises.findIndex(ex => ex.id === exerciseId);
+      if (index <= 0) {
+        if (index === 0) {
+          // If it's the first exercise and it's empty, we just delete it
+          const nextExercises = [...exercises];
+          nextExercises.splice(index, 1);
+          return { ...ws, content: { ...ws.content, exercises: nextExercises } };
+        }
+        return ws;
+      }
+      
+      const nextExercises = [...exercises];
+      const currentEx = nextExercises[index];
+      const prevEx = nextExercises[index - 1];
+      
+      // Merge questions
+      const mergedPrevEx = {
+        ...prevEx,
+        questions: [...(prevEx.questions || []), ...(currentEx.questions || [])]
+      };
+      
+      nextExercises[index - 1] = mergedPrevEx;
+      nextExercises.splice(index, 1);
+      
+      return { ...ws, content: { ...ws.content, exercises: nextExercises } };
+    }));
+  };
+
+  const handleQuestionMergeUp = (exerciseId: string, questionPath: (string | number)[]) => {
+    updateExercise(exerciseId, exercise => {
+      if (!exercise.questions) return exercise;
+      const pathStr = questionPath.join('.');
+      
+      // We only support merging up top-level questions for now
+      if (questionPath.length === 1 && typeof questionPath[0] === 'number') {
+        const index = questionPath[0];
+        if (index > 0) {
+          const nextQuestions = [...exercise.questions];
+          const currentQ = nextQuestions[index];
+          const prevQ = nextQuestions[index - 1];
+          
+          const mergedPrevQ = {
+            ...prevQ,
+            subquestions: [...(prevQ.subquestions || []), ...(currentQ.subquestions || [])]
+          };
+          
+          nextQuestions[index - 1] = mergedPrevQ;
+          nextQuestions.splice(index, 1);
+          return { ...exercise, questions: nextQuestions };
+        } else if (index === 0) {
+          const nextQuestions = [...exercise.questions];
+          nextQuestions.splice(index, 1);
+          return { ...exercise, questions: nextQuestions };
+        }
+      }
+      return exercise;
+    });
+  };
+
   const selectedWorksheet = useMemo(() => {
     return worksheets.find(ws => ws.id === selectedWorksheetId);
   }, [worksheets, selectedWorksheetId]);
@@ -363,7 +427,7 @@ const App: React.FC = () => {
         src="https://cdn.jsdelivr.net/npm/mathjax@4/startup.js"
         config={{ ...mathJaxConfig, output: { ...mathJaxConfig.output, font: mathFont, scale: Math.min(140, Math.max(80, mathScale)) / 100 } }}
       >
-        <div className="min-h-screen bg-[#f2f0eb] font-sans">
+        <div className={`min-h-screen font-sans ${activeView !== 'dashboard' && selectedWorksheet ? 'bg-[radial-gradient(circle_at_center,#4a3b32_0%,#2c221d_100%)] print:bg-white' : 'bg-[#f2f0eb]'}`}>
       {importError && (
           <div className="sticky top-0 z-50">
             <ErrorMessage message={importError} onClose={() => setImportError(null)} />
@@ -396,7 +460,7 @@ const App: React.FC = () => {
       ) : selectedWorksheet ? (
         <>
           <main
-            className="worksheet-typography max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-4 landscape:px-2 sm:landscape:px-4 pb-8 pt-4 landscape:py-4 transition-all duration-300 print:max-w-none print:p-0 print:py-0"
+            className="worksheet-typography max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-4 landscape:px-2 sm:landscape:px-4 pb-16 pt-8 landscape:py-8 transition-all duration-300 print:max-w-none print:p-0 print:py-0"
             style={{
               fontFamily: textFont,
               fontSize: `${Math.min(130, Math.max(80, textScale))}%`,
@@ -406,8 +470,9 @@ const App: React.FC = () => {
               '--worksheet-math-font': 'inherit',
             } as React.CSSProperties}
           >
-            <div className="space-y-8 print:space-y-6">
-              <div className="title-and-first-exercise-container space-y-6 print:space-y-4">
+            <div className="bg-[#f4f1ea] rounded-[2px] w-full px-6 sm:px-12 md:px-16 pt-12 pb-12 shadow-[-15px_20px_35px_rgba(0,0,0,0.4),inset_0_0_60px_rgba(139,122,94,0.1)] print:shadow-none print:bg-transparent print:p-0" style={{ backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.5), rgba(255,255,255,0) 20%), url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.04"/></svg>')` }}>
+              <div className="space-y-8 print:space-y-6">
+                <div className="title-and-first-exercise-container space-y-6 print:space-y-4">
                 <div className="latex-document-header mb-8 mt-0 print:mb-6 print:mt-0 relative">
                   <div className="flex items-start justify-between text-[11px] font-semibold uppercase tracking-widest text-[#697478] print:text-black mb-8">
                     <div className="flex flex-col gap-1.5 text-left">
@@ -419,27 +484,37 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {selectedWorksheet.content.chapter && (
+                  <div className="mb-10 flex flex-col items-center">
                     <div className="text-center">
                       <div className="inline-flex items-center justify-center space-x-3 mb-4">
+                        <span className="text-[#19788c] print:text-black text-[10px] font-bold uppercase tracking-[0.2em]">
+                          <EditableMathText 
+                            text={selectedWorksheet.content.chapter || "Sans chapitre"} 
+                            isEditMode={isEditMode}
+                            onChange={(newChap) => {
+                              handleUpdateWorksheetContent(selectedWorksheet.id, {
+                                ...selectedWorksheet.content,
+                                chapter: newChap
+                              });
+                            }}
+                          />
+                        </span>
+                        <span className="w-1 h-1 rounded-full bg-[#19788c] print:bg-black opacity-50" />
                         <span className="text-[#19788c] print:text-black text-[10px] font-bold uppercase tracking-[0.2em]">
                           {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
                         </span>
                       </div>
                       <div role="heading" aria-level={1} className="font-chapter text-[2.25rem] sm:text-4xl md:text-5xl font-medium leading-tight text-[#172126] print:text-4xl tracking-tight">
                         <EditableMathText 
-                          text={selectedWorksheet.content.chapter} 
+                          text={selectedWorksheet.name} 
                           isEditMode={isEditMode} 
                           onChange={(newTitle) => {
-                            handleUpdateWorksheetContent(selectedWorksheet.id, {
-                              ...selectedWorksheet.content,
-                              chapter: newTitle
-                            });
+                            handleRenameWorksheet(selectedWorksheet.id, newTitle);
                           }} 
                         />
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {firstExercise && (
@@ -457,6 +532,8 @@ const App: React.FC = () => {
                       oneQuestionPerPage={oneQuestionPerPage}
                       onQuestionUpdate={handleQuestionUpdate}
                       onExerciseUpdate={handleExerciseUpdate}
+                      onExerciseMergeUp={handleExerciseMergeUp}
+                      onQuestionMergeUp={handleQuestionMergeUp}
                       isEditMode={isEditMode}
                     />
                   </div>
@@ -477,6 +554,8 @@ const App: React.FC = () => {
                   oneQuestionPerPage={oneQuestionPerPage}
                   onQuestionUpdate={handleQuestionUpdate}
                   onExerciseUpdate={handleExerciseUpdate}
+                  onExerciseMergeUp={handleExerciseMergeUp}
+                  onQuestionMergeUp={handleQuestionMergeUp}
                   isEditMode={isEditMode}
                 />
               ))}
@@ -497,6 +576,7 @@ const App: React.FC = () => {
                   />
                 </div>
               )}
+            </div>
             </div>
           </main>
           {/*

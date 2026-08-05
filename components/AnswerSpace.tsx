@@ -56,13 +56,13 @@ const COLOR_PALETTES: Record<'black' | 'green' | 'blue' | 'white' | 'cream', Col
     seyesVertical: '#ef4444'
   },
   white: {
-    bg: '#ffffff',
-    line: '#e2e8f0',
-    border: '#cbd5e1',
-    dot: '#94a3b8',
-    seyesMajor: '#94a3b8',
-    seyesMinor: '#e2e8f0',
-    seyesVertical: '#fca5a5'
+    bg: 'transparent',
+    line: '#a4b4c4',
+    border: '#a4b4c4',
+    dot: '#a4b4c4',
+    seyesMajor: '#a4b4c4',
+    seyesMinor: '#cfc6b6',
+    seyesVertical: '#d9c2c2'
   },
   cream: {
     bg: '#fef3c7',
@@ -384,10 +384,9 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
         }}
       >
         <svg
-          className="absolute inset-0 w-full h-full pointer-events-none print:hidden"
+          className="absolute inset-0 w-full h-full pointer-events-none print:hidden overflow-hidden"
           xmlns="http://www.w3.org/2000/svg"
           aria-hidden="true"
-          style={{ overflow: 'hidden' }}
         >
           <defs>
             <pattern

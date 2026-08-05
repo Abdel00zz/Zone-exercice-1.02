@@ -7,6 +7,8 @@ interface MathTextProps {
   className?: string;
   /** Affiche la valeur des commandes \fillblank en mode auteur. */
   revealFillBlanks?: boolean;
+  /** Désactive le surlignage par double-clic (ex: en mode édition). */
+  disableHighlight?: boolean;
 }
 
 /**
@@ -623,12 +625,12 @@ const handleMathDoubleClick = (e: React.MouseEvent<HTMLSpanElement>) => {
   }
 };
 
-const MathTextImpl: React.FC<MathTextProps> = ({ text, className = '', revealFillBlanks = false }) => {
+const MathTextImpl: React.FC<MathTextProps> = ({ text, className = '', revealFillBlanks = false, disableHighlight = false }) => {
   const { step } = useBeamerPresentation();
   if (!text) return null;
 
   return (
-    <span className={`inline-block w-full ${className}`} onDoubleClick={handleMathDoubleClick}>
+    <span className={`inline-block w-full ${className}`} onDoubleClick={disableHighlight ? undefined : handleMathDoubleClick}>
       <ProgressiveContent text={text} step={step} revealFillBlanks={revealFillBlanks} />
     </span>
   );

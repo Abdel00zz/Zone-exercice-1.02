@@ -22,6 +22,8 @@ interface ExerciseCardProps {
   isEditMode?: boolean;
   onQuestionUpdate: (exerciseId: string, questionPath: (string | number)[], newProps: Partial<QuestionPart>) => void;
   onExerciseUpdate: (exerciseId: string, newProps: Partial<Exercise>) => void;
+  onExerciseMergeUp?: (exerciseId: string) => void;
+  onQuestionMergeUp?: (exerciseId: string, questionPath: (string | number)[]) => void;
 }
 
 /**
@@ -46,14 +48,14 @@ const badgeStyle = (level: number): React.CSSProperties => {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontFamily: "'Fira Code', 'Lora', 'Plus Jakarta Sans', monospace, serif",
-    height: QUESTION_LINE_BOX,
-    minWidth: QUESTION_LINE_BOX,
-    padding: '0 0.5rem',
-    borderRadius: '0.4rem',
+    fontFamily: "'Inter', sans-serif",
+    height: '1.5rem',
+    minWidth: '1.5rem',
+    padding: '0 0.4rem',
+    borderRadius: '6px',
     lineHeight: 1,
     whiteSpace: 'nowrap',
-    marginTop: 0,
+    marginTop: '0.15rem',
     WebkitPrintColorAdjust: 'exact',
     printColorAdjust: 'exact' as any,
   };
@@ -61,34 +63,39 @@ const badgeStyle = (level: number): React.CSSProperties => {
   if (level <= 0) {
     return {
       ...base,
-      fontSize: '0.88rem',
-      fontWeight: 700,
-      color: '#ffffff',
-      backgroundColor: '#172126',
-      border: 'none',
-      boxShadow: '0 2px 5px rgba(23, 33, 38, 0.15)',
+      fontSize: '0.95rem',
+      fontWeight: 600,
+      color: '#334155',
+      backgroundColor: '#f1f5f9',
+      border: '1px solid #cbd5e1',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
     };
   }
 
   if (level === 1) {
     return {
       ...base,
-      fontSize: '0.84rem',
-      fontWeight: 700,
-      color: '#19788c',
-      backgroundColor: '#eef6f6',
-      border: 'none',
+      height: '1.4rem',
+      minWidth: '1.4rem',
+      fontSize: '0.85rem',
+      fontWeight: 600,
+      color: '#475569',
+      backgroundColor: '#f8fafc',
+      border: '1px solid #e2e8f0',
+      borderRadius: '5px',
     };
   }
 
   return {
     ...base,
+    height: '1.3rem',
+    minWidth: '1.3rem',
     fontSize: '0.8rem',
-    fontWeight: 600,
-    fontStyle: 'italic',
-    color: '#526065',
-    backgroundColor: '#f8f6f0',
-    border: 'none',
+    fontWeight: 500,
+    color: '#64748b',
+    backgroundColor: '#ffffff',
+    border: '1px solid #f1f5f9',
+    borderRadius: '4px',
   };
 };
 
@@ -151,6 +158,7 @@ interface QuestionListProps {
   oneQuestionPerPage?: boolean;
   isEditMode?: boolean;
   onQuestionUpdate: (exerciseId: string, questionPath: (string | number)[], newProps: Partial<QuestionPart>) => void;
+  onQuestionMergeUp?: (exerciseId: string, questionPath: (string | number)[]) => void;
   exerciseId: string;
   path: (string | number)[];
   /**
@@ -162,7 +170,7 @@ interface QuestionListProps {
   leadLevel?: number;
 }
 
-const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, exerciseId, path, leadLabel, leadLevel = 0 }) => {
+const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onQuestionMergeUp, exerciseId, path, leadLabel, leadLevel = 0 }) => {
   const [activeImageModal, setActiveImageModal] = useState<number | null>(null);
 
   if (!questions || questions.length === 0) {
@@ -198,6 +206,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
             presentationMode={presentationMode}
             oneQuestionPerPage={oneQuestionPerPage}
             onQuestionUpdate={onQuestionUpdate}
+            onQuestionMergeUp={onQuestionMergeUp}
             exerciseId={exerciseId}
             path={[...currentPath, 'subquestions']}
             isEditMode={isEditMode}
@@ -306,22 +315,25 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                     </>
                   ) : (
                     <EditableMathText
-                      text={q.text}
+                      text={q.text || ""}
                       isEditMode={!!isEditMode}
                       onChange={(newText) => onQuestionUpdate(exerciseId, currentPath, { text: newText })}
+                      onDeleteEmpty={() => onQuestionMergeUp && onQuestionMergeUp(exerciseId, currentPath)}
                     />
                   )}
                 </div>
 
                 {/* Bouton d'ajout d'image (visible au survol) */}
-                <button
-                  onClick={() => setActiveImageModal(index)}
-                  className="absolute top-0 right-0 rounded-lg p-1.5 text-[#8a9293] opacity-0 transition-opacity hover:bg-[#e7f0ef] hover:text-[#19788c] group-hover/question:opacity-100 no-print"
-                  title="Image de la question — affichée au-dessus de la zone de réponse"
-                  aria-label="Ajouter ou modifier l'image de la question hors canvas"
-                >
-                  <ImageIcon className="w-4 h-4" />
-                </button>
+                {isEditMode && (
+                  <button
+                    onClick={() => setActiveImageModal(index)}
+                    className="absolute top-0 right-0 rounded-lg p-1.5 text-[#8a9293] opacity-0 transition-opacity hover:bg-[#e7f0ef] hover:text-[#19788c] group-hover/question:opacity-100 no-print"
+                    title="Image de la question — affichée au-dessus de la zone de réponse"
+                    aria-label="Ajouter ou modifier l'image de la question hors canvas"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -338,7 +350,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
             )}
 
             {hasSubquestions ? (
-              <div className={`subquestions-container ${isPresentationSlide ? 'print:!mt-10' : ''}`} style={{ marginTop: '0.75rem' }}>
+              <div className={`subquestions-container ${isPresentationSlide ? 'print:!mt-10' : ''} mt-3`}>
                 {subquestionList}
               </div>
             ) : showCanvas ? (
@@ -377,83 +389,59 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
 };
 
 
-const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, totalExercisesCount, hideExerciseBadge, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onExerciseUpdate }) => {
+const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, totalExercisesCount, hideExerciseBadge, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onExerciseUpdate, onExerciseMergeUp, onQuestionMergeUp }) => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   // Mécanisme intelligent : si la fiche ne contient qu'un seul exercice, masquer le badge "Exercice 1"
   const shouldHideBadge = hideExerciseBadge || totalExercisesCount === 1 || exercise.hideBadge === true;
 
   return (
-    <div className={`exercise-card bg-[#ffffff] text-black p-5 sm:p-7 lg:p-9 landscape:px-4 landscape:py-5 sm:landscape:px-6 rounded-2xl shadow-[0_4px_24px_rgba(23,33,38,0.04)] mb-10 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
+    <div className={`exercise-card bg-transparent text-black py-4 mb-8 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
       {/* En-tête : Badge "Exercice X" affiché uniquement lorsqu'il y a plusieurs exercices */}
       {!shouldHideBadge && (
-        <h2 className="exercise-title flex items-center mb-3 print:mb-2 pb-3">
-          <span
-            className="exercise-badge uppercase tracking-wider shrink-0"
-            style={{
-              backgroundColor: '#172126',
-              color: '#ffffff',
-              fontSize: '0.82rem',
-              padding: '0.45rem 0.9rem',
-              borderRadius: '0.45rem',
-              border: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              fontFamily: "'Plus Jakarta Sans', 'Lora', sans-serif",
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              boxShadow: '0 2px 8px rgba(23, 33, 38, 0.08)',
-              WebkitPrintColorAdjust: 'exact',
-              printColorAdjust: 'exact' as any,
-              lineHeight: 1,
-            }}
-          >
+        <h2 className="exercise-title flex items-center mb-6 print:mb-4">
+          <div className="relative inline-flex items-center justify-center bg-[linear-gradient(135deg,#e6e6e6_0%,#a0a0a0_100%)] px-5 py-2 rounded-[4px_8px_8px_4px] font-sans font-bold text-[0.85rem] text-[#333] uppercase tracking-[1px] shadow-[4px_6px_10px_rgba(0,0,0,0.3),inset_1px_1px_2px_rgba(255,255,255,0.9),inset_-1px_-1px_2px_rgba(0,0,0,0.2)] border border-[#999] [text-shadow:1px_1px_0px_rgba(255,255,255,0.6)] -ml-[calc(1.5rem+8px)] sm:-ml-[calc(3rem+8px)] md:-ml-[calc(4rem+8px)] print:-ml-0 print:border-none print:shadow-none print:bg-none print:text-black">
             Exercice {exerciseNumber}
-          </span>
+            <div className="absolute top-[100%] left-0 w-2 h-3 bg-[linear-gradient(to_bottom,#777,transparent)] [clip-path:polygon(0_0,100%_0,100%_100%)] print:hidden" />
+          </div>
         </h2>
       )}
 
       {(exercise.title || isEditMode) && (
-        <div className="exercise-part-title mb-6 print:mb-4 flex w-full items-center justify-center gap-3 px-6 text-center">
-          <span aria-hidden="true" className="h-px w-8 bg-gradient-to-r from-transparent to-[#b8afa5]/70 sm:w-12" />
-          <div
-            className="min-w-0 max-w-[75%] text-[1.05rem] leading-snug text-[#71675f] print:text-black"
-            style={{
-              fontFamily: "'Itim', 'Cormorant Garamond', 'Lora', serif",
-              fontWeight: 400,
-              letterSpacing: '0.025em',
-            }}
-          >
+        <div className="exercise-part-title mb-10 print:mb-6 flex w-full items-center justify-center text-center">
+          <div className="flex-1 border-b border-[#cfc6b6] h-[1px] mr-4" />
+          <div className="text-[1.15rem] italic text-[#5c5953] tracking-[0.5px] print:text-black">
             <EditableMathText
               text={exercise.title || ""}
               isEditMode={!!isEditMode}
               onChange={(newTitle) => onExerciseUpdate(exercise.id, { title: newTitle })}
+              onDeleteEmpty={() => onExerciseMergeUp && onExerciseMergeUp(exercise.id)}
               className={!exercise.title && isEditMode ? "min-w-[150px] text-[#aaa29b]" : ""}
             />
           </div>
-          <span aria-hidden="true" className="h-px w-8 bg-gradient-to-l from-transparent to-[#b8afa5]/70 sm:w-12" />
+          <div className="flex-1 border-b border-[#cfc6b6] h-[1px] ml-4" />
         </div>
       )}
 
       {/* Bouton d'ajout d'image pour l'énoncé (visible au survol) */}
-      <button
-        onClick={() => setIsImageModalOpen(true)}
-        className="absolute top-6 right-6 rounded-lg p-2 text-[#8a9293] opacity-0 transition-opacity hover:bg-[#e7f0ef] hover:text-[#19788c] group-hover/exercise:opacity-100 no-print"
-        title="Image de l'énoncé — affichée au-dessus de la zone de réponse"
-        aria-label="Ajouter ou modifier l'image de l'énoncé hors canvas"
-      >
-        <ImageIcon className="w-5 h-5" />
-      </button>
+      {isEditMode && (
+        <button
+          onClick={() => setIsImageModalOpen(true)}
+          className="absolute top-6 right-6 rounded-lg p-2 text-[#8a9293] opacity-0 transition-opacity hover:bg-[#e7f0ef] hover:text-[#19788c] group-hover/exercise:opacity-100 no-print"
+          title="Image de l'énoncé — affichée au-dessus de la zone de réponse"
+          aria-label="Ajouter ou modifier l'image de l'énoncé hors canvas"
+        >
+          <ImageIcon className="w-5 h-5" />
+        </button>
+      )}
 
       {exercise.statement && (
-        <div className="exercise-statement prose prose-lg mb-8 max-w-none pl-1 font-beamer text-[1.1rem] text-[#263337] print:text-black print:!text-[11.5pt]">
-            <div className="leading-relaxed text-[#263337] print:text-black">
-              <EditableMathText
-                text={exercise.statement}
-                isEditMode={!!isEditMode}
-                onChange={(newStatement) => onExerciseUpdate(exercise.id, { statement: newStatement })}
-              />
-            </div>
+        <div className="exercise-statement text-[1.25rem] text-[#2b2b2b] mb-6 indent-4 leading-[1.7] font-serif print:text-black print:text-lg">
+          <EditableMathText
+            text={exercise.statement}
+            isEditMode={!!isEditMode}
+            onChange={(newStatement) => onExerciseUpdate(exercise.id, { statement: newStatement })}
+          />
         </div>
       )}
 
@@ -514,6 +502,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
             presentationMode={presentationMode}
             oneQuestionPerPage={oneQuestionPerPage}
             onQuestionUpdate={onQuestionUpdate}
+            onQuestionMergeUp={onQuestionMergeUp}
             exerciseId={exercise.id}
             path={['questions']}
             isEditMode={isEditMode}

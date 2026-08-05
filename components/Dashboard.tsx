@@ -241,15 +241,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     return (
         <div className="min-h-screen bg-[#f2f0eb] text-[#172126]">
             <div className={`relative mx-auto grid min-h-screen w-full max-w-[1680px] content-start transition-[grid-template-columns] duration-300 lg:content-normal ${sidebarCollapsed ? 'lg:grid-cols-[0px_minmax(0,1fr)]' : 'lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)]'}`}>
-                <button
-                    type="button"
-                    onClick={() => setSidebarCollapsed((current) => !current)}
-                    className={`absolute top-2.5 z-20 hidden h-8 w-8 place-items-center bg-transparent text-[#19788c] transition hover:-translate-y-0.5 hover:text-[#11677a] focus:outline-none lg:grid ${sidebarCollapsed ? 'left-3' : 'left-[225px] xl:left-[255px]'}`}
-                    title={sidebarCollapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
-                    aria-label={sidebarCollapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
-                >
-                    {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-                </button>
                 {/* ── Navigation / outils & Arborescence des classes ── */}
                 <DashboardSidebar 
                     sidebarCollapsed={sidebarCollapsed}
@@ -288,26 +279,37 @@ const Dashboard: React.FC<DashboardProps> = ({
                 />
 
                 {/* ── Bibliothèque de fiches ── */}
-                <main className="min-w-0 px-4 pt-6 pb-7 sm:px-6 sm:pt-7 sm:pb-9 lg:pl-6 lg:pr-8 xl:pl-8 xl:pr-10 xl:pt-8 xl:pb-12 2xl:pl-9 2xl:pr-12">
-                    <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-1 sm:mt-2">
-                        <div className="block min-w-0">
-                            <h2 className="font-serif text-lg font-semibold tracking-[-0.02em] text-[#111719] sm:text-xl md:text-2xl">
-                                Mes Fiches d'Exercices
-                            </h2>
-                            <div className="mt-1 flex flex-wrap items-center gap-2">
-                                <p className="text-xs font-semibold text-[#697478]">
-                                    {dynamicSubtitle}
-                                </p>
-                                {(treeFilter || searchQuery) && (
-                                    <button 
-                                        type="button" 
-                                        onClick={() => { setTreeFilter(null); setSearchQuery(''); setVisibleCount(6); }} 
-                                        className="rounded-full bg-[#19788c]/10 px-2 py-0.5 text-[11px] font-bold text-[#19788c] transition hover:bg-[#19788c]/20 hover:text-[#11677a]" 
-                                        title="Réinitialiser le filtre"
-                                    >
-                                        Tout afficher
-                                    </button>
-                                )}
+                <main className="min-w-0 px-3.5 pt-3.5 pb-7 sm:px-5 sm:pt-3.5 sm:pb-8 lg:pl-3 lg:pr-6 xl:pl-4 xl:pr-8 2xl:pl-4 2xl:pr-8">
+                    <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <button
+                                type="button"
+                                onClick={() => setSidebarCollapsed((current) => !current)}
+                                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#19788c]/10 text-[#19788c] transition hover:bg-[#19788c]/20 hover:text-[#11677a] focus:outline-none"
+                                title={sidebarCollapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
+                                aria-label={sidebarCollapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
+                            >
+                                {sidebarCollapsed ? <PanelLeftOpen className="h-4.5 w-4.5" /> : <PanelLeftClose className="h-4.5 w-4.5" />}
+                            </button>
+                            <div className="block min-w-0">
+                                <h2 className="font-serif text-lg font-semibold tracking-[-0.02em] text-[#111719] sm:text-xl md:text-2xl">
+                                    Mes Fiches d'Exercices
+                                </h2>
+                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                    <p className="text-xs font-semibold text-[#697478]">
+                                        {dynamicSubtitle}
+                                    </p>
+                                    {(treeFilter || searchQuery) && (
+                                        <button 
+                                            type="button" 
+                                            onClick={() => { setTreeFilter(null); setSearchQuery(''); setVisibleCount(6); }} 
+                                            className="rounded-full bg-[#19788c]/10 px-2 py-0.5 text-[11px] font-bold text-[#19788c] transition hover:bg-[#19788c]/20 hover:text-[#11677a]" 
+                                            title="Réinitialiser le filtre"
+                                        >
+                                            Tout afficher
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
 

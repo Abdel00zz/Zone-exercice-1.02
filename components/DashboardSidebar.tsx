@@ -80,18 +80,8 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     onSelectWorksheet,
 }) => {
     return (
-        <aside className={`min-w-0 bg-[#fffefa] px-5 py-5 sm:px-7 sm:py-6 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:py-6 ${sidebarCollapsed ? 'lg:w-0 lg:overflow-hidden lg:p-0 lg:opacity-0 lg:pointer-events-none' : 'lg:px-4 xl:px-5'}`}>
+        <aside className={`min-w-0 bg-[#fffefa] px-3.5 pt-3.5 pb-5 sm:px-4 sm:pt-3.5 sm:pb-6 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:pt-3.5 lg:pb-6 ${sidebarCollapsed ? 'lg:w-0 lg:overflow-hidden lg:p-0 lg:opacity-0 lg:pointer-events-none' : 'lg:px-3.5 xl:px-4'}`}>
             <div className="flex flex-col xl:h-full">
-                <div className={`mb-4 flex items-start ${sidebarCollapsed ? 'justify-center' : 'justify-between gap-2'} xl:mb-5`}>
-                    {sidebarCollapsed ? (
-                        <button type="button" onClick={() => setSidebarCollapsed(false)} className="grid h-11 w-11 place-items-center rounded-2xl bg-[#172126] text-white shadow-sm transition hover:bg-[#25363c] focus:outline-none focus:ring-4 focus:ring-[#19788c]/15" title="Développer la barre latérale" aria-label="Développer la barre latérale">
-                            <PanelLeftOpen className="h-5 w-5" />
-                        </button>
-                    ) : (
-                        <div />
-                    )}
-                </div>
-
                 <nav className="grid gap-2 grid-cols-1" aria-label="Actions du tableau de bord">
                     <button
                         type="button"
