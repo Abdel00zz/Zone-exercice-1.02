@@ -308,14 +308,14 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
     return (
       <div
         ref={railRef}
-        className="canvas-toolbar canvas-rail fixed left-1/2 bottom-4 z-40 -translate-x-1/2 print:hidden"
+        className="canvas-toolbar canvas-rail fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-40 print:hidden"
       >
         <button
           type="button"
           onClick={() => setToolState({ railCollapsed: false })}
-          title="Afficher les outils"
-          aria-label="Afficher les outils"
-          className="grid h-12 w-12 place-items-center rounded-full bg-[#fbf8f2]/95 text-[#435054] shadow-[0_7px_22px_rgba(23,33,38,0.15)] backdrop-blur-xl transition active:scale-95"
+          title="Afficher la barre d'outils"
+          aria-label="Afficher la barre d'outils"
+          className="group relative grid h-12 w-12 place-items-center rounded-2xl bg-[#fffefa]/95 text-[#435054] border border-[#dedbd2] shadow-[0_8px_28px_rgba(23,33,38,0.18)] backdrop-blur-xl transition hover:scale-105 active:scale-95"
         >
           {tools.tool === 'pen' ? <PenIcon src={activePen.image} size={29} />
             : tools.tool === 'highlighter' ? (
@@ -337,31 +337,31 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
   }
 
   const panelStyle: React.CSSProperties = {
-    bottom: TOOLBAR_HEIGHT + 6,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    maxHeight: `calc(100vh - ${TOOLBAR_HEIGHT + 22}px)`,
+    position: 'absolute',
+    right: 'calc(100% + 14px)',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    maxHeight: 'min(85vh, 620px)',
   };
 
   const panel = (title: string, body: React.ReactNode, width = 320) => (
     <div
-      className="canvas-rail-panel absolute flex flex-col overflow-y-auto overscroll-contain rounded-2xl border border-[#dedbd2] bg-[#fffefa]/95 p-3 shadow-[0_16px_42px_rgba(23,33,38,0.18)] backdrop-blur-xl"
-      style={{ ...panelStyle, width: `min(${width}px, calc(100vw - 20px))` }}
+      className="canvas-rail-panel absolute z-50 flex flex-col overflow-y-auto overscroll-contain rounded-2xl border border-[#dedbd2] bg-[#fffefa]/98 p-3.5 shadow-[0_20px_50px_rgba(23,33,38,0.22)] backdrop-blur-xl animate-in fade-in slide-in-from-right-3 duration-200"
+      style={{ ...panelStyle, width: `min(${width}px, calc(100vw - 80px))` }}
     >
       <PanelHeader title={title} onClose={closeToolMenu} />
       {body}
     </div>
   );
 
-  // z-40 : au-dessus de la fiche, mais sous l'en-tête (z-50) et sous les modales,
-  // qui doivent rester atteignables tant qu'elles sont ouvertes.
+  // z-40 : au-dessus de la fiche, ancré verticalement à droite pour ne pas masquer le texte.
   return (
     <div
       ref={railRef}
-      className="canvas-toolbar canvas-rail fixed left-1/2 bottom-4 z-40 w-[calc(100vw-16px)] max-w-fit -translate-x-1/2 print:hidden"
+      className="canvas-toolbar canvas-rail fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-40 print:hidden"
     >
       <div
-        className="flex h-[50px] max-w-full flex-row items-center gap-1 overflow-x-auto rounded-full bg-[#fbf8f2]/95 px-1.5 py-1 shadow-[0_7px_24px_rgba(23,33,38,0.14)] backdrop-blur-xl"
+        className="flex flex-col items-center gap-1 rounded-2xl sm:rounded-3xl bg-[#fffefa]/95 py-2 px-1.5 border border-[#dedbd2] shadow-[0_12px_36px_rgba(23,33,38,0.18)] backdrop-blur-xl transition-all duration-300"
       >
         <RailButton label="Stylo" active={tools.tool === 'pen'} onClick={() => selectTool('pen', 'pen')}>
           <PenIcon src={activePen.image} size={30} />
@@ -398,7 +398,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
           <MousePointer2 size={22} strokeWidth={tools.tool === 'pointer' ? 2.3 : 1.7} />
         </RailButton>
 
-        <div className="mx-0.5 h-7 w-px shrink-0 bg-[#dedbd2]" />
+        <div className="my-1 h-px w-7 shrink-0 bg-[#dedbd2]" />
 
         <RailButton label="Annuler" disabled={!canvas.canUndo} onClick={() => withActiveCanvas(handle => handle.undo())}>
           <PngIcon src={CANVAS_ICONS.undo} size={21} />
@@ -429,9 +429,9 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
           onClick={() => setToolState({ railCollapsed: true, openMenu: null })}
           title="Replier la barre"
           aria-label="Replier la barre d'outils"
-          className="grid h-9 w-7 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-white hover:text-slate-700"
+          className="grid h-7 w-9 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-white hover:text-slate-700"
         >
-          <ChevronUp size={17} />
+          <ChevronDown size={17} className="-rotate-90" />
         </button>
       </div>
 
