@@ -422,7 +422,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
       )}
 
       {exercise.statement && (
-        <div className="exercise-statement text-[1.2em] sm:text-[1.25em] text-[#2b2b2b] mb-6 indent-4 leading-[1.7] font-serif print:text-black print:text-[1.15em]">
+        <div className="exercise-statement text-[1.15em] sm:text-[1.2em] text-[#2b2b2b] mb-6 leading-[1.7] font-serif print:text-black print:text-[1.1em] text-left">
           <EditableMathText
             text={exercise.statement}
             isEditMode={!!isEditMode}
