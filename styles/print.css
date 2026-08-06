@@ -173,13 +173,11 @@
   ══════════════════════════════════════════════ */
   .question-number-badge,
   .question-lead-badge {
-    font-family: 'Roboto Slab', serif !important;
+    font-family: inherit !important;
     display: inline-block !important;
     text-align: right !important;
     white-space: nowrap !important;
-    /* Même hauteur de ligne que l'énoncé : le numéro tombe sur sa PREMIÈRE
-       ligne, y compris lorsque la question se termine par une formule centrée. */
-    line-height: var(--print-question-line-box) !important;
+    line-height: inherit !important;
     margin-top: 0 !important;
     flex-shrink: 0 !important;
   }
@@ -191,11 +189,11 @@
     border: none !important;
     width: auto !important;
     height: auto !important;
-    line-height: var(--print-question-line-box) !important;
+    line-height: inherit !important;
     text-align: right !important;
     font-size: 11pt !important;
     font-weight: 700 !important;
-    font-family: 'Roboto Slab', serif !important;
+    font-family: inherit !important;
     padding: 0 !important;
     margin-top: 0 !important;
   }
@@ -211,12 +209,12 @@
     border: none !important;
     width: auto !important;
     height: auto !important;
-    line-height: var(--print-question-line-box) !important;
+    line-height: inherit !important;
     text-align: right !important;
-    font-size: 10pt !important;
+    font-size: 11pt !important;
     font-style: normal !important;
     font-weight: 700 !important;
-    font-family: 'Roboto Slab', serif !important;
+    font-family: inherit !important;
     justify-content: flex-end !important;
     padding: 0 !important;
     margin-top: 0 !important;
@@ -235,12 +233,12 @@
     border: none !important;
     width: auto !important;
     height: auto !important;
-    line-height: var(--print-question-line-box) !important;
+    line-height: inherit !important;
     text-align: right !important;
-    font-size: 9.5pt !important;
+    font-size: 11pt !important;
     font-style: normal !important;
     font-weight: 700 !important;
-    font-family: 'Roboto Slab', serif !important;
+    font-family: inherit !important;
     justify-content: flex-end !important;
     padding: 0 !important;
     margin-top: 0 !important;
@@ -252,7 +250,7 @@
   .question-row {
     display: grid !important;
     gap: 4mm !important;
-    align-items: start !important;
+    align-items: first baseline !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }

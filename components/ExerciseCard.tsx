@@ -49,8 +49,8 @@ const badgeStyle = (level: number): React.CSSProperties => {
     display: 'inline-flex',
     alignItems: 'baseline',
     justifyContent: 'flex-start',
-    fontFamily: "'Roboto Slab', serif",
-    lineHeight: QUESTION_LINE_BOX,
+    fontFamily: "var(--worksheet-text-font, 'Plus Jakarta Sans', sans-serif)",
+    lineHeight: '1.625',
     whiteSpace: 'nowrap',
     letterSpacing: '0.01em',
     padding: '0 0.15rem 0 0',
@@ -65,7 +65,7 @@ const badgeStyle = (level: number): React.CSSProperties => {
   if (level <= 0) {
     return {
       ...base,
-      fontSize: '1.08em',
+      fontSize: '1.05em',
       fontWeight: 700,
       color: '#0f172a',
     };
@@ -74,7 +74,7 @@ const badgeStyle = (level: number): React.CSSProperties => {
   if (level === 1) {
     return {
       ...base,
-      fontSize: '1.02em',
+      fontSize: '1.05em',
       fontWeight: 700,
       color: '#0369a1',
     };
@@ -82,7 +82,7 @@ const badgeStyle = (level: number): React.CSSProperties => {
 
   return {
     ...base,
-    fontSize: '0.95em',
+    fontSize: '1.05em',
     fontWeight: 700,
     color: '#334155',
   };
@@ -247,10 +247,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                 display: 'grid',
                 gridTemplateColumns: hasLead ? 'min-content min-content 1fr' : 'min-content 1fr',
                 gap: '0.45rem',
-                /* `start` et non `baseline` : la ligne de base d'un bloc
-                   terminé par une formule centrée est celle de la DERNIÈRE
-                   ligne, ce qui faisait tomber le numéro en bas du bloc. */
-                alignItems: 'start',
+                alignItems: 'first baseline',
               }}
             >
               {/* Numéro chapeau du parent. Les lignes suivantes conservent la
@@ -400,7 +397,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
       {(exercise.title || isEditMode) && (
         <div className={`exercise-part-title flex w-full items-center justify-center text-center ${isPartieTitle ? 'my-3 mb-5' : 'mb-6 print:mb-4'}`}>
           <div className={`flex-1 h-[1px] mr-2.5 ${isPartieTitle ? 'bg-gradient-to-r from-transparent via-[#bfae9c] to-[#bfae9c] max-w-[60px] sm:max-w-[130px]' : 'border-b border-[#cbd5e1] max-w-[80px] sm:max-w-[160px]'}`} />
-          <div className={`print:text-black ${isPartieTitle ? "font-sans text-[1.05em] sm:text-[1.15em] font-medium text-[#524a42] px-3 tracking-normal" : "text-[1.15em] italic text-[#5c5953] tracking-[0.5px]"}`}>
+          <div className={`print:text-black ${isPartieTitle ? "font-itim text-[1.15em] sm:text-[1.25em] font-medium text-[#423a31] px-3 tracking-wide" : "text-[1.15em] italic text-[#5c5953] tracking-[0.5px]"}`}>
             <EditableMathText
               text={exercise.title ? formatPartieTitle(exercise.title) : ""}
               isEditMode={!!isEditMode}
