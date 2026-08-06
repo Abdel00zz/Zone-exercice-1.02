@@ -180,16 +180,15 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
                                 return (
                                     <div key={className} role="treeitem" aria-expanded={!classCollapsed} className="group/class">
-                                        <div className={`flex items-center gap-1.5 rounded-xl px-2 py-1.5 transition-all ${isClassSelected ? 'bg-dash-teal-light text-dash-teal font-bold border-l-2 border-dash-teal shadow-xs' : 'hover:bg-dash-card border-l-2 border-transparent'}`}>
+                                        <div className={`flex items-center gap-1.5 rounded-xl px-2.5 py-2 transition-all ${isClassSelected ? 'bg-[#e3f2f1] text-[#11677a] font-bold shadow-2xs' : 'text-[#2e3e42] hover:bg-[#f4f1eb]'}`}>
                                             <button
                                                 type="button"
                                                 onClick={() => setCollapsedClasses((current) => ({ ...current, [className]: !classCollapsed }))}
-                                                className="grid h-6 w-5 shrink-0 place-items-center rounded-md text-dash-muted hover:text-dash-teal focus:outline-none focus:ring-2 focus:ring-dash-teal/15 transition-colors"
+                                                className="grid h-5 w-5 shrink-0 place-items-center rounded-md text-dash-muted hover:text-dash-teal hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-dash-teal/15 transition-colors"
                                                 aria-label={`${classCollapsed ? 'Afficher' : 'Masquer'} ${className}`}
                                             >
                                                 <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${classCollapsed ? '-rotate-90' : 'rotate-0'}`} />
                                             </button>
-                                            <Folder className="h-4 w-4 shrink-0 text-dash-teal" />
                                             {isClassRenaming ? (
                                                 <form onSubmit={(event) => { event.preventDefault(); saveTreeRename(); }} className="min-w-0 flex-1">
                                                     <input
@@ -207,13 +206,13 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                                                     type="button"
                                                     onClick={() => selectTreeClass(className)}
                                                     onDoubleClick={() => !isUnclassified && startTreeRename({ type: 'class', className }, className)}
-                                                    className="min-w-0 flex-1 truncate text-left text-xs font-bold text-dash-main outline-none hover:text-dash-teal transition-colors"
-                                                    title={isUnclassified ? className : 'Double-cliquez pour renommer'}
+                                                    className="min-w-0 flex-1 text-left text-[12px] sm:text-[13px] font-semibold leading-snug break-words outline-none transition-colors hover:text-dash-teal"
+                                                    title={className}
                                                 >
                                                     {className}
                                                 </button>
                                             )}
-                                            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-dash-bg px-1.5 text-[10px] font-bold text-dash-muted">{worksheetCount}</span>
+                                            <span className={`grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[10px] font-bold shrink-0 ml-1 ${isClassSelected ? 'bg-[#c5e6e3] text-[#11677a]' : 'bg-[#e8ece7] text-[#526065]'}`}>{worksheetCount}</span>
                                             {!isUnclassified && (
                                                 <div className="flex items-center opacity-0 transition-opacity group-hover/class:opacity-100 group-focus-within/class:opacity-100">
                                                     <button type="button" onClick={() => startTreeRename({ type: 'class', className }, className)} className="grid h-5 w-5 place-items-center rounded text-dash-muted hover:bg-dash-teal-light hover:text-dash-teal" aria-label="Renommer la classe"><Pencil className="h-3 w-3" /></button>
@@ -224,7 +223,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
                                         <div className={`grid transition-all duration-200 ease-out ${classCollapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}>
                                             <div className="overflow-hidden">
-                                                <div className="ml-3 my-1 pl-2.5 border-l-2 border-dash-border/50 space-y-1" role="group">
+                                                <div className="ml-4 my-1 space-y-1" role="group">
                                                     {chapters.map(({ chapterName, worksheets: chapterWorksheets }) => {
                                                         const chapterKey = `${className}::${chapterName}`;
                                                         const isChapterSelected = treeFilter?.type === 'chapter' && treeFilter.className === className && treeFilter.chapterName === chapterName;
@@ -266,7 +265,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
                                                                 <div className={`grid transition-all duration-200 ease-out ${chapterExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                                                                     <div className="overflow-hidden">
-                                                                        <div className="ml-3 my-0.5 pl-2.5 border-l-2 border-dash-border/30 space-y-0.5" role="group">
+                                                                        <div className="ml-4 my-0.5 space-y-0.5" role="group">
                                                                             {chapterWorksheets.map((worksheet) => {
                                                                                 const isWorksheetRenaming = treeRename?.type === 'worksheet' && treeRename.worksheetId === worksheet.id;
                                                                                 const isWorksheetSelected = treeFilter?.type === 'worksheet' && treeFilter.worksheetId === worksheet.id;

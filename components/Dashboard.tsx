@@ -240,7 +240,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     return (
         <div className="min-h-screen bg-dash-bg text-dash-main">
-            <div className={`relative mx-auto grid min-h-screen w-full max-w-[1680px] content-start transition-[grid-template-columns] duration-300 lg:content-normal ${sidebarCollapsed ? 'lg:grid-cols-[0px_minmax(0,1fr)]' : 'lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)]'}`}>
+            <div className={`relative mx-auto grid min-h-screen w-full max-w-[1680px] content-start transition-[grid-template-columns] duration-300 lg:content-normal ${sidebarCollapsed ? 'lg:grid-cols-[0px_minmax(0,1fr)]' : 'lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]'}`}>
                 {/* ── Navigation / outils & Arborescence des classes ── */}
                 <DashboardSidebar 
                     sidebarCollapsed={sidebarCollapsed}

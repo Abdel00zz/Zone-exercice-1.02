@@ -235,6 +235,18 @@ export const normalizeWorksheetJson = (jsonData: any): WorksheetContent => {
     };
 };
 
+export const DEFAULT_OFFICIAL_CLASSES = [
+    'Tronc Commun Scientifique',
+    'Tronc Commun Lettres et Sciences Humaines',
+    '1ère Bac Sciences Expérimentales',
+    '1ère Bac Sciences Mathématiques',
+    '1ère Bac Lettres et Sciences Humaines',
+    'Terminale PC/SVT',
+    'Terminale Sciences Mathématiques A/B',
+    '2ème Bac Sciences Expérimentales',
+    '2ème Bac Sciences Mathématiques',
+];
+
 export const getWorksheetClassName = (worksheet: Worksheet): string => {
     return worksheet.content?.settings?.className?.trim() || 'Non classé';
 };
@@ -245,13 +257,17 @@ export const getWorksheetChapterName = (worksheet: Worksheet): string => {
 
 export const buildWorksheetTree = (
     worksheets: Worksheet[],
-    worksheetClasses: string[]
+    worksheetClasses: string[] = DEFAULT_OFFICIAL_CLASSES
 ): WorksheetTreeClass[] => {
-    const classes = new Map<string, Map<string, Worksheet[]>>();
+    const activeClasses = worksheetClasses.length > 0 ? worksheetClasses : DEFAULT_OFFICIAL_CLASSES;
+    const classesMap = new Map<string, Map<string, Worksheet[]>>();
     
-    worksheetClasses.forEach((className) => {
+    // Initialise les classes dans l'ordre de la liste officielle/configurée
+    activeClasses.forEach((className) => {
         const normalizedName = className.trim();
-        if (normalizedName) classes.set(normalizedName, new Map());
+        if (normalizedName && !classesMap.has(normalizedName)) {
+            classesMap.set(normalizedName, new Map());
+        }
     });
 
     [...worksheets]
@@ -259,21 +275,28 @@ export const buildWorksheetTree = (
         .forEach((worksheet) => {
             const className = getWorksheetClassName(worksheet);
             const chapterName = getWorksheetChapterName(worksheet);
-            const chapters = classes.get(className) || new Map<string, Worksheet[]>();
+
+            if (!classesMap.has(className)) {
+                classesMap.set(className, new Map());
+            }
+
+            const chapters = classesMap.get(className)!;
             const chapterWorksheets = chapters.get(chapterName) || [];
             chapterWorksheets.push(worksheet);
             chapters.set(chapterName, chapterWorksheets);
-            classes.set(className, chapters);
         });
 
-    return Array.from(classes, ([className, chapters]) => ({
+    const tree = Array.from(classesMap, ([className, chapters]) => ({
         className,
         worksheetCount: Array.from(chapters.values()).reduce((sum, list) => sum + list.length, 0),
         chapters: Array.from(chapters, ([chapterName, chapterWorksheets]) => ({ chapterName, worksheets: chapterWorksheets })),
-    })).sort((a, b) => {
+    }));
+
+    // Trie pour placer 'Non classé' en dernier s'il est présent
+    return tree.sort((a, b) => {
         if (a.className === 'Non classé') return 1;
         if (b.className === 'Non classé') return -1;
-        return a.className.localeCompare(b.className, 'fr');
+        return 0; // Conserve l'ordre configuré de activeClasses
     });
 };
 

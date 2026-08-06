@@ -1,14 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { Worksheet, WorksheetContent } from '../types';
+import { DEFAULT_OFFICIAL_CLASSES } from '../utils/worksheetUtils';
 import { GripVertical, Trash2, X, UploadCloud, ImageOff, Info, Image, LayoutTemplate, ListOrdered, Palette, Settings } from 'lucide-react';
-
-const CLASS_OPTIONS = [
-	'Tronc Commun Scientifique',
-	"1ère Bac Sciences Expérimentales",
-	"1ère Bac Sciences Mathématiques",
-	"2ème Bac Sciences Expérimentales",
-	"2ème Bac Sciences Mathématiques",
-];
 
 const ACCEPTED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml'];
 const MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024; // 2 Mo
@@ -25,10 +18,18 @@ interface SettingsModalProps {
 	isOpen: boolean;
 	onClose: () => void;
 	worksheet: Worksheet;
+	worksheetClasses?: string[];
 	onSave: (updatedContent: WorksheetContent) => void;
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, worksheet, onSave }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ 
+	isOpen, 
+	onClose, 
+	worksheet, 
+	worksheetClasses = DEFAULT_OFFICIAL_CLASSES,
+	onSave 
+}) => {
+	const classOptions = worksheetClasses.length > 0 ? worksheetClasses : DEFAULT_OFFICIAL_CLASSES;
 	const [editableContent, setEditableContent] = useState<WorksheetContent>(() => structuredClone(worksheet.content));
 	const [logoError, setLogoError] = useState<string | null>(null);
 	const [isLogoDragOver, setIsLogoDragOver] = useState(false);
@@ -290,7 +291,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, workshee
 										className="h-11 w-full rounded-xl border border-[#cbe0df] bg-white px-3 text-sm font-semibold text-[#172126] outline-none focus:ring-2 focus:ring-[#19788c]/20"
 									>
 										<option value="">— Sélectionner —</option>
-										{CLASS_OPTIONS.map(option => (
+										{classOptions.map(option => (
 											<option key={option} value={option}>{option}</option>
 										))}
 									</select>

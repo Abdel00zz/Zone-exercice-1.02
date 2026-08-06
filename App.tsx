@@ -11,6 +11,7 @@ import CanvasFloatingToolbar from './components/canvas/FloatingToolbar';
 import ConfigurationModal from './components/ConfigurationModal';
 import { MathJaxContext } from 'better-react-mathjax';
 import { DEFAULT_MATHJAX_FONT, resolveMathJaxFont } from './utils/mathjaxFonts';
+import { DEFAULT_OFFICIAL_CLASSES } from './utils/worksheetUtils';
 
 import { initialJson } from "./data/initialWorksheet";
 const createDefaultWorksheet = (): Worksheet => ({ id: "ws_default_3", name: initialJson.chapter || "Fiche de Démarrage", createdAt: new Date().toISOString(), content: initialJson }); const computeDefaultSchoolYear = (): string => { const now = new Date(); const year = now.getFullYear(); const month = now.getMonth(); const startYear = month >= 7 ? year : year - 1; return `${startYear}-${startYear + 1}`; };
@@ -26,7 +27,7 @@ const DEFAULT_CONFIGURATION: AppConfiguration = {
 
 const App: React.FC = () => {
   const [worksheets, setWorksheets] = useLocalStorage<Worksheet[]>('worksheets', []);
-  const [worksheetClasses, setWorksheetClasses] = useLocalStorage<string[]>('worksheet-classes', []);
+  const [worksheetClasses, setWorksheetClasses] = useLocalStorage<string[]>('worksheet-classes', DEFAULT_OFFICIAL_CLASSES);
   const [configuration, setConfiguration] = useLocalStorage<AppConfiguration>('app-configuration', DEFAULT_CONFIGURATION);
   const cloudSync = useCloudSync(worksheets, setWorksheets);
   const [isSyncPanelOpen, setIsSyncPanelOpen] = useState(false);
@@ -70,13 +71,18 @@ const App: React.FC = () => {
   // Les classes existent indépendamment des fiches : une classe vide reste donc
   // visible dans l'arborescence et peut être préparée à l'avance.
   React.useEffect(() => {
+    if (!worksheetClasses || worksheetClasses.length === 0) {
+      setWorksheetClasses(DEFAULT_OFFICIAL_CLASSES);
+      return;
+    }
     const classesFromWorksheets = worksheets
       .map((worksheet) => worksheet.content.settings?.className?.trim())
       .filter((className): className is string => Boolean(className));
     if (classesFromWorksheets.length === 0) return;
     setWorksheetClasses((current) => {
-      const next = Array.from(new Set([...current, ...classesFromWorksheets]));
-      return next.length === current.length ? current : next;
+      const base = current && current.length > 0 ? current : DEFAULT_OFFICIAL_CLASSES;
+      const next = Array.from(new Set([...base, ...classesFromWorksheets]));
+      return next.length === base.length ? base : next;
     });
   }, [setWorksheetClasses, worksheets]);
 
@@ -582,6 +588,7 @@ const App: React.FC = () => {
               isOpen={isSettingsModalOpen}
               onClose={() => setIsSettingsModalOpen(false)}
               worksheet={selectedWorksheet}
+              worksheetClasses={worksheetClasses}
               onSave={(newContent) => {
                 handleUpdateWorksheetContent(selectedWorksheet.id, newContent);
                 setIsSettingsModalOpen(false);
@@ -603,6 +610,13 @@ const App: React.FC = () => {
           setConfiguration(nextConfiguration);
           setIsConfigurationOpen(false);
         }}
+        worksheetClasses={worksheetClasses}
+        worksheets={worksheets}
+        onCreateClass={handleCreateClass}
+        onRenameClass={handleRenameClass}
+        onDeleteClass={handleDeleteClass}
+        onReorderClasses={(newClasses) => setWorksheetClasses(newClasses)}
+        onResetClasses={() => setWorksheetClasses(DEFAULT_OFFICIAL_CLASSES)}
       />
       <SyncPanel isOpen={isSyncPanelOpen} onClose={() => setIsSyncPanelOpen(false)} sync={cloudSync} />
         </div>
