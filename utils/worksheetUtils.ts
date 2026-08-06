@@ -37,6 +37,7 @@ export const QuestionSchema: z.ZodType<any> = z.lazy(() =>
   z.object({
     id: z.union([z.string(), z.number()]).optional(),
     title: z.string().optional(),
+    text: z.string().optional(),
     statement: z.string().optional(),
     answer: z.string().optional(),
     solution: z.string().optional(),
@@ -44,13 +45,13 @@ export const QuestionSchema: z.ZodType<any> = z.lazy(() =>
     fillBlanks: z.union([z.string(), z.array(z.string())]).optional(),
     fillBlanksDisplay: z.string().optional(),
     subquestions: z.array(z.lazy(() => QuestionSchema)).optional(),
-    answerSpaceHeight: z.number().optional(),
-    answerSpaceStyle: z.enum(['seyes', 'slate', 'grid', 'dotted', 'blank']).optional(),
+    answerSpaceHeight: z.union([z.number(), z.string()]).optional(),
+    answerSpaceStyle: z.string().optional(),
     answerSpaceColor: z.string().optional(),
     image: z.string().optional(),
     statementStrokes: z.array(z.any()).optional(),
     answersStrokes: z.record(z.string(), z.array(z.any())).optional(),
-  })
+  }).passthrough()
 );
 
 // Schéma Zod pour les paramètres de la fiche
@@ -65,30 +66,31 @@ export const WorksheetSettingsSchema = z.object({
   textFont: z.string().optional(),
   mathFont: z.string().optional(),
   handwritingFont: z.string().optional(),
-  textScale: z.number().optional(),
-  mathScale: z.number().optional(),
+  textScale: z.union([z.number(), z.string()]).optional(),
+  mathScale: z.union([z.number(), z.string()]).optional(),
   logoDataUrl: z.string().optional(),
-  answerSpaceMinHeight: z.number().optional(),
-  answerSpaceStyle: z.enum(['seyes', 'slate', 'grid', 'dotted', 'blank']).optional(),
+  answerSpaceMinHeight: z.union([z.number(), z.string()]).optional(),
+  answerSpaceStyle: z.string().optional(),
   answerSpaceColor: z.string().optional(),
-});
+}).passthrough();
 
 // Schéma Zod pour un exercice
 export const ExerciseSchema = z.object({
   id: z.union([z.string(), z.number()]).optional(),
   title: z.string().optional(),
+  text: z.string().optional(),
   statement: z.string().optional(),
   answer: z.string().optional(),
   solution: z.string().optional(),
   guidance: z.string().optional(),
   questions: z.array(QuestionSchema).optional(),
-  statementAnswerHeight: z.number().optional(),
-  statementAnswerStyle: z.enum(['seyes', 'slate', 'grid', 'dotted', 'blank']).optional(),
+  statementAnswerHeight: z.union([z.number(), z.string()]).optional(),
+  statementAnswerStyle: z.string().optional(),
   statementAnswerColor: z.string().optional(),
   image: z.string().optional(),
   statementStrokes: z.array(z.any()).optional(),
   hideBadge: z.boolean().optional(),
-});
+}).passthrough();
 
 // Schéma Zod pour le contenu complet de la fiche
 export const WorksheetContentSchema = z.object({

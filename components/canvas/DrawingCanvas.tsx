@@ -1081,7 +1081,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         Bouton de rappel de cours / aide : badge d'aide parfaitement fusionné sur la bordure supérieure du cadre.
       */}
       {correctionToggle?.available && (
-        <div className="absolute -top-3.5 right-6 z-30 flex items-center gap-1.5 pointer-events-auto no-print">
+        <div className="absolute -top-[13px] right-6 z-30 flex items-center gap-1.5 pointer-events-auto no-print">
           {correctionProgress && correctionToggle.visible && (
             <div className="animate-in fade-in slide-in-from-right-2 duration-200">
               <CorrectionProgressControl progress={correctionProgress} />
@@ -1092,14 +1092,14 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             aria-label={correctionToggle.visible ? 'Masquer la correction et rappel de cours' : 'Afficher la correction et rappel de cours'}
             aria-pressed={correctionToggle.visible}
             onClick={correctionToggle.toggle}
-            className={`group/helpbtn relative inline-flex items-center justify-center h-6 px-2.5 rounded-full border text-[11px] font-semibold tracking-wide transition-all duration-200 ease-out active:scale-95 shadow-2xs ${
+            className={`group/helpbtn relative inline-flex items-center justify-center h-[26px] px-3.5 rounded-full border text-[0.88rem] font-bold font-itim tracking-wide transition-all duration-200 ease-out active:scale-95 shadow-2xs ${
               correctionToggle.visible
-                ? 'border-amber-300/90 bg-amber-200/80 backdrop-blur-md text-amber-950 font-bold shadow-2xs ring-1 ring-amber-300/50'
-                : 'border-amber-200/70 bg-[#fffdf7]/85 backdrop-blur-md text-amber-900/90 hover:border-amber-300 hover:bg-amber-100/60 hover:text-amber-950 shadow-2xs'
+                ? 'border-[#19788c] bg-[#19788c] text-white shadow-xs ring-2 ring-[#19788c]/30'
+                : 'border-[#19788c] bg-[#fbf9f4] text-[#19788c] hover:border-[#0284c7] hover:bg-[#e0f2fe]/70 hover:text-[#0284c7] shadow-2xs'
             }`}
             title={correctionToggle.visible ? 'Masquer le rappel de cours' : 'Afficher le rappel de cours'}
           >
-            <span>Aide</span>
+            <span className="font-itim font-bold">Aide</span>
           </button>
         </div>
       )}
