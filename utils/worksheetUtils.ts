@@ -32,6 +32,28 @@ export function formatPartieTitle(title: string): string {
   return formatted;
 }
 
+const GuidanceSchema = z.union([
+  z.string(),
+  z.object({
+    instruction: z.string().optional(),
+    recall: z.string().optional(),
+    hints: z.array(z.string()).optional(),
+    answer: z.string().optional(),
+  }).passthrough()
+]);
+
+const ImageSchema = z.union([
+  z.string(),
+  z.object({
+    id: z.string().optional(),
+    src: z.string().optional(),
+    width: z.union([z.number(), z.string()]).optional(),
+    height: z.union([z.number(), z.string()]).optional(),
+    placement: z.string().optional(),
+    caption: z.string().optional(),
+  }).passthrough()
+]);
+
 // Schéma Zod récursif pour les questions et sous-questions
 export const QuestionSchema: z.ZodType<any> = z.lazy(() =>
   z.object({
@@ -41,14 +63,17 @@ export const QuestionSchema: z.ZodType<any> = z.lazy(() =>
     statement: z.string().optional(),
     answer: z.string().optional(),
     solution: z.string().optional(),
-    guidance: z.string().optional(),
+    guidance: GuidanceSchema.optional(),
     fillBlanks: z.union([z.string(), z.array(z.string())]).optional(),
     fillBlanksDisplay: z.string().optional(),
     subquestions: z.array(z.lazy(() => QuestionSchema)).optional(),
+    answerHeight: z.union([z.number(), z.string()]).optional(),
     answerSpaceHeight: z.union([z.number(), z.string()]).optional(),
+    answerStyle: z.string().optional(),
     answerSpaceStyle: z.string().optional(),
+    answerColor: z.string().optional(),
     answerSpaceColor: z.string().optional(),
-    image: z.string().optional(),
+    image: ImageSchema.optional(),
     statementStrokes: z.array(z.any()).optional(),
     answersStrokes: z.record(z.string(), z.array(z.any())).optional(),
   }).passthrough()
@@ -82,12 +107,12 @@ export const ExerciseSchema = z.object({
   statement: z.string().optional(),
   answer: z.string().optional(),
   solution: z.string().optional(),
-  guidance: z.string().optional(),
+  guidance: GuidanceSchema.optional(),
   questions: z.array(QuestionSchema).optional(),
   statementAnswerHeight: z.union([z.number(), z.string()]).optional(),
   statementAnswerStyle: z.string().optional(),
   statementAnswerColor: z.string().optional(),
-  image: z.string().optional(),
+  image: ImageSchema.optional(),
   statementStrokes: z.array(z.any()).optional(),
   hideBadge: z.boolean().optional(),
 }).passthrough();
