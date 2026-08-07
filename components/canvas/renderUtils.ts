@@ -1,5 +1,20 @@
 import { Stroke, Point } from './types';
 import { drawArrowhead } from './utils';
+import { getStroke } from 'perfect-freehand';
+
+export function getSvgPathFromStroke(stroke: number[][]) {
+  if (!stroke.length) return '';
+  const d = stroke.reduce(
+    (acc, [x0, y0], i, arr) => {
+      const [x1, y1] = arr[(i + 1) % arr.length];
+      acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+      return acc;
+    },
+    ['M', ...stroke[0], 'Q']
+  );
+  d.push('Z');
+  return d.join(' ');
+}
 
 export const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke, isSelected: boolean = false) => {
   if (stroke.points.length === 0) return;
@@ -285,59 +300,37 @@ export const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke, isSele
 
   // Freehand stroke
   const isDashedOrDotted = stroke.lineStyle === 'dashed' || stroke.lineStyle === 'dotted';
-  const isVariableWidth = !isDashedOrDotted && !stroke.isHighlighter && !stroke.isEraser && 
-                         (stroke.penType === 'fountain' || stroke.penType === 'calligraphy' || stroke.penType === 'brush' || stroke.lineStyle === 'tapered');
+  const usePerfectFreehand = !isDashedOrDotted && !stroke.isHighlighter && !stroke.isEraser;
                          
-  if (isVariableWidth) {
-     const N = stroke.points.length;
-     let prevPressure = stroke.points[0].pressure > 0 ? stroke.points[0].pressure : 0.5;
+  if (usePerfectFreehand) {
+     const isFountain = stroke.penType === 'fountain';
+     const isBrush = stroke.penType === 'brush';
+     const isCalligraphy = stroke.penType === 'calligraphy';
      const isTapered = stroke.lineStyle === 'tapered';
-     const taperLength = Math.min(15, Math.floor(N / 2));
+     
+     let thinning = 0.15;
+     if (isFountain) thinning = 0.6;
+     if (isBrush) thinning = 0.75;
+     if (isCalligraphy) thinning = 0.8;
+     if (isTapered) thinning = 0.85;
 
-     for (let i = 1; i < N; i++) {
-        const p1 = stroke.points[i - 1];
-        const p2 = stroke.points[i];
-        
-        let pressure = p2.pressure > 0 ? p2.pressure : 0.5;
-        // Simulate pressure via velocity if constant pressure
-        if (Math.abs(pressure - 0.5) < 0.01) {
-           const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-           const velocity = Math.min(1, dist / 20); 
-           const simulatedPressure = Math.max(0.1, 1 - velocity * 0.8);
-           pressure = prevPressure * 0.6 + simulatedPressure * 0.4;
-        }
-
-        // Taper calculation at start & end
-        let taper = 1;
-        if (isTapered && taperLength > 0) {
-          if (i < taperLength) {
-            taper = Math.sin((i / taperLength) * (Math.PI / 2));
-          } else if (i >= N - taperLength) {
-            taper = Math.sin(((N - i) / taperLength) * (Math.PI / 2));
-          }
-        }
-        
-        ctx.beginPath();
-        let currentWidth = stroke.width;
-        if (stroke.penType === 'calligraphy') {
-           const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-           const angleFactor = Math.abs(Math.sin(angle - Math.PI / 4));
-           currentWidth = stroke.width * (0.25 + angleFactor * 1.4);
-        } else if (stroke.penType === 'brush') {
-           currentWidth = stroke.width * (0.3 + pressure * 1.4);
-        } else {
-           currentWidth = stroke.width * (0.3 + pressure * 1.5);
-        }
-        
-        currentWidth *= Math.max(0.08, taper);
-
-        ctx.lineWidth = Math.max(1, currentWidth);
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
-        
-        prevPressure = pressure;
-     }
+     // Extract pressure and smooth it if it's all 0.5 (mouse)
+     const hasRealPressure = stroke.points.some(p => Math.abs(p.pressure - 0.5) > 0.05);
+     const freehandPoints = getStroke(
+       stroke.points.map(p => ({ x: p.x, y: p.y, pressure: p.pressure })),
+       {
+         size: stroke.width,
+         thinning: thinning,
+         smoothing: 0.6,
+         streamline: 0.65,
+         simulatePressure: !hasRealPressure,
+         last: false,
+       }
+     );
+     
+     const pathData = getSvgPathFromStroke(freehandPoints);
+     const path = new Path2D(pathData);
+     ctx.fill(path);
   } else {
      // Smooth curve for uniform width or dashed/dotted tools
      ctx.beginPath();
