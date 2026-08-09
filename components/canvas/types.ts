@@ -19,6 +19,10 @@ export interface Stroke {
   points: Point[];
   color: string;
   width: number;
+  /** Source d'entrée conservée pour ne pas deviner la présence d'un vrai stylet à partir de la pression. */
+  pointerType?: string;
+  /** `true` quand les valeurs de pression proviennent d'un stylet matériel. */
+  usesRealPressure?: boolean;
   opacity?: number;
   isEraser?: boolean;
   isHighlighter?: boolean;
@@ -53,6 +57,8 @@ export interface DrawingCanvasProps {
   /** Identifiant stable fourni par la zone de réponse pour la coordination avec la barre d'outils. */
   instanceId?: string;
   height: number;
+  /** Suspend la réallocation du bitmap haute résolution pendant le glissement de la poignée. */
+  isResizing?: boolean;
   styleName?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
   colorName?: 'black' | 'green' | 'blue' | 'white' | 'cream' | '';
   onStyleChange?: (style: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank') => void;

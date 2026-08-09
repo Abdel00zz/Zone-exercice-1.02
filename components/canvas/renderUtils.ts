@@ -2,6 +2,118 @@ import { Stroke, Point } from './types';
 import { drawArrowhead } from './utils';
 import { getStroke } from 'perfect-freehand';
 
+type FreehandProfile = {
+  thinning: number;
+  smoothing: number;
+  streamline: number;
+};
+
+const DEFAULT_FREEHAND_PROFILE: FreehandProfile = {
+  thinning: 0.15,
+  smoothing: 0.6,
+  streamline: 0.55,
+};
+
+/** Profils distincts : bille réactif, feutre uniforme, crayon plus sensible. */
+const PEN_PROFILES: Partial<Record<NonNullable<Stroke['penType']>, FreehandProfile>> = {
+  ballpoint: { thinning: 0.08, smoothing: 0.55, streamline: 0.38 },
+  marker: { thinning: 0, smoothing: 0.78, streamline: 0.5 },
+  pencil: { thinning: 0.45, smoothing: 0.52, streamline: 0.34 },
+  fountain: { thinning: 0.6, smoothing: 0.62, streamline: 0.5 },
+  brush: { thinning: 0.75, smoothing: 0.68, streamline: 0.55 },
+  calligraphy: { thinning: 0.8, smoothing: 0.64, streamline: 0.5 },
+};
+
+type CachedFreehandPath = { key: string; path: Path2D };
+const freehandPathCache = new WeakMap<Stroke, CachedFreehandPath>();
+const pencilPatternCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasPattern>>();
+
+function getFreehandProfile(stroke: Stroke): FreehandProfile {
+  const base = stroke.penType ? PEN_PROFILES[stroke.penType] : undefined;
+  if (stroke.lineStyle === 'tapered') {
+    return { ...(base || DEFAULT_FREEHAND_PROFILE), thinning: 0.85 };
+  }
+  return base || DEFAULT_FREEHAND_PROFILE;
+}
+
+/**
+ * Un motif minuscule et déterministe donne au crayon un grain de graphite sans
+ * recalculer des centaines de particules le long du tracé à chaque frame.
+ */
+function getPencilPattern(ctx: CanvasRenderingContext2D, color: string): CanvasPattern | null {
+  let patterns = pencilPatternCache.get(ctx);
+  if (!patterns) {
+    patterns = new Map();
+    pencilPatternCache.set(ctx, patterns);
+  }
+  const cached = patterns.get(color);
+  if (cached) return cached;
+  if (typeof document === 'undefined') return null;
+
+  const size = 16;
+  const tile = document.createElement('canvas');
+  tile.width = size;
+  tile.height = size;
+  const tileCtx = tile.getContext('2d');
+  if (!tileCtx) return null;
+
+  tileCtx.fillStyle = color;
+  tileCtx.globalAlpha = 0.42;
+  tileCtx.fillRect(0, 0, size, size);
+
+  let seed = 2166136261;
+  for (let index = 0; index < color.length; index++) {
+    seed = Math.imul(seed ^ color.charCodeAt(index), 16777619);
+  }
+  for (let index = 0; index < 80; index++) {
+    seed = Math.imul(seed ^ (seed >>> 13), 1597334677);
+    const x = (seed >>> 0) % size;
+    seed = Math.imul(seed ^ (seed >>> 11), 3812015801);
+    const y = (seed >>> 0) % size;
+    tileCtx.globalAlpha = 0.18 + ((seed >>> 24) / 255) * 0.52;
+    tileCtx.fillRect(x, y, (index % 5 === 0) ? 2 : 1, 1);
+  }
+
+  const pattern = ctx.createPattern(tile, 'repeat');
+  if (pattern) patterns.set(color, pattern);
+  return pattern;
+}
+
+function getFreehandPath(stroke: Stroke, completed: boolean): Path2D {
+  const points = stroke.points;
+  const first = points[0];
+  const middle = points[Math.floor(points.length / 2)];
+  const last = points[points.length - 1];
+  const profile = getFreehandProfile(stroke);
+  const usesRealPressure = stroke.usesRealPressure ?? points.some(point => Math.abs(point.pressure - 0.5) > 0.05);
+  const key = [
+    points.length,
+    first.x, first.y, first.pressure,
+    middle.x, middle.y, middle.pressure,
+    last.x, last.y, last.pressure,
+    stroke.width, profile.thinning, profile.smoothing, profile.streamline,
+    usesRealPressure ? 1 : 0,
+    completed ? 1 : 0,
+  ].join('|');
+  const cached = freehandPathCache.get(stroke);
+  if (cached?.key === key) return cached.path;
+
+  // Les tuples évitent la conversion d'objets effectuée en interne par
+  // perfect-freehand et réduisent sensiblement les allocations par rendu.
+  const inputPoints = points.map(point => [point.x, point.y, point.pressure]);
+  const outline = getStroke(inputPoints, {
+    size: stroke.width,
+    thinning: profile.thinning,
+    smoothing: profile.smoothing,
+    streamline: profile.streamline,
+    simulatePressure: !usesRealPressure,
+    last: completed,
+  });
+  const path = new Path2D(getSvgPathFromStroke(outline));
+  freehandPathCache.set(stroke, { key, path });
+  return path;
+}
+
 export function getSvgPathFromStroke(stroke: number[][]) {
   if (!stroke.length) return '';
   const d = stroke.reduce(
@@ -16,7 +128,12 @@ export function getSvgPathFromStroke(stroke: number[][]) {
   return d.join(' ');
 }
 
-export const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke, isSelected: boolean = false) => {
+export const drawStroke = (
+  ctx: CanvasRenderingContext2D,
+  stroke: Stroke,
+  isSelected: boolean = false,
+  completed: boolean = true,
+) => {
   if (stroke.points.length === 0) return;
   
   if (stroke.isText && stroke.text) {
@@ -103,10 +220,10 @@ export const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke, isSele
     }
     
     // Pen specifics
-    if (stroke.opacity !== undefined) {
+    if (stroke.penType === 'pencil') {
+      ctx.globalAlpha = stroke.opacity !== undefined && stroke.opacity < 1 ? stroke.opacity : 0.9;
+    } else if (stroke.opacity !== undefined) {
       ctx.globalAlpha = stroke.opacity;
-    } else if (stroke.penType === 'pencil') {
-      ctx.globalAlpha = 0.75;
     } else if (stroke.penType === 'brush') {
       ctx.globalAlpha = 0.6;
     } else if (stroke.penType === 'marker') {
@@ -303,33 +420,11 @@ export const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke, isSele
   const usePerfectFreehand = !isDashedOrDotted && !stroke.isHighlighter && !stroke.isEraser;
                          
   if (usePerfectFreehand) {
-     const isFountain = stroke.penType === 'fountain';
-     const isBrush = stroke.penType === 'brush';
-     const isCalligraphy = stroke.penType === 'calligraphy';
-     const isTapered = stroke.lineStyle === 'tapered';
-     
-     let thinning = 0.15;
-     if (isFountain) thinning = 0.6;
-     if (isBrush) thinning = 0.75;
-     if (isCalligraphy) thinning = 0.8;
-     if (isTapered) thinning = 0.85;
-
-     // Extract pressure and smooth it if it's all 0.5 (mouse)
-     const hasRealPressure = stroke.points.some(p => Math.abs(p.pressure - 0.5) > 0.05);
-     const freehandPoints = getStroke(
-       stroke.points.map(p => ({ x: p.x, y: p.y, pressure: p.pressure })),
-       {
-         size: stroke.width,
-         thinning: thinning,
-         smoothing: 0.6,
-         streamline: 0.65,
-         simulatePressure: !hasRealPressure,
-         last: false,
-       }
-     );
-     
-     const pathData = getSvgPathFromStroke(freehandPoints);
-     const path = new Path2D(pathData);
+     const path = getFreehandPath(stroke, completed);
+     if (stroke.penType === 'pencil') {
+       const graphite = getPencilPattern(ctx, stroke.color);
+       if (graphite) ctx.fillStyle = graphite;
+     }
      ctx.fill(path);
   } else {
      // Smooth curve for uniform width or dashed/dotted tools

@@ -368,7 +368,7 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
     >
       <div
         ref={containerRef}
-        className={`w-full relative rounded-md transition-all duration-200 print:rounded-none print:shadow-none print:border-none box-border ${
+        className={`w-full relative rounded-md transition-shadow duration-200 print:rounded-none print:shadow-none print:border-none box-border ${
           isResizeActive
             ? 'shadow-md ring-2 ring-slate-400'
             : isCanvasActive
@@ -559,6 +559,7 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
           <DrawingCanvas
             instanceId={canvasInstanceId}
             height={height}
+            isResizing={isResizeActive}
             styleName={styleName}
             colorName={colorName}
             onStyleChange={onStyleChange}

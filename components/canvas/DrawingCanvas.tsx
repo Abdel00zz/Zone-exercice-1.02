@@ -28,6 +28,7 @@ const getRenderScale = () => Math.min(2, Math.max(1, window.devicePixelRatio || 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   instanceId: providedInstanceId,
   height,
+  isResizing = false,
   styleName,
   colorName,
   onStyleChange,
@@ -54,6 +55,10 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   onStrokesChangeRef.current = onStrokesChange;
 
   const redrawAllRef = useRef<() => void>(() => {});
+  const resizeCanvasRef = useRef<() => void>(() => {});
+  const isResizingRef = useRef(isResizing);
+  const wasResizingRef = useRef(isResizing);
+  const redrawFrameRef = useRef(0);
 
   const {
     historyRef,
@@ -156,12 +161,12 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       // Le texte est rendu dans une couche DOM : MathText peut ainsi compiler
       // LaTeX/Beamer, contrairement à CanvasRenderingContext2D.fillText().
       if (stroke.isText) return;
-      drawStroke(ctx, stroke, selectedStrokeIndexes.has(idx));
+      drawStroke(ctx, stroke, selectedStrokeIndexes.has(idx), true);
     });
 
     const previewStroke = recognizedStrokeRef.current || currentStrokeRef.current;
     if (previewStroke) {
-      drawStroke(ctx, previewStroke);
+      drawStroke(ctx, previewStroke, false, false);
       if (showMeasurements && previewStroke.shapeType && previewStroke.points.length >= 2) {
         const start = previewStroke.points[0];
         const end = previewStroke.points[previewStroke.points.length - 1];
@@ -265,6 +270,25 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   // par une ref évite de recréer le ResizeObserver et les abonnements à chaque fois.
   redrawAllRef.current = redrawAll;
 
+  // Les Pointer Events peuvent arriver plus vite que l'écran (stylets 120/240 Hz).
+  // Une seule peinture est donc planifiée par image, en utilisant les derniers
+  // points coalescés disponibles au moment où le navigateur dessine réellement.
+  const scheduleRedraw = useCallback(() => {
+    if (redrawFrameRef.current) return;
+    redrawFrameRef.current = window.requestAnimationFrame(() => {
+      redrawFrameRef.current = 0;
+      redrawAllRef.current();
+    });
+  }, []);
+
+  const cancelScheduledRedraw = useCallback(() => {
+    if (!redrawFrameRef.current) return;
+    window.cancelAnimationFrame(redrawFrameRef.current);
+    redrawFrameRef.current = 0;
+  }, []);
+
+  useEffect(() => () => cancelScheduledRedraw(), [cancelScheduledRedraw]);
+
   const commitTextInput = useCallback(() => {
     if (!textInput) return;
     const { color, lineWidth } = getToolState();
@@ -302,6 +326,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     let pendingRescale = false;
 
     const resizeCanvas = () => {
+      // Le cadre CSS suit la poignée, mais le bitmap reste inchangé pendant le
+      // geste. Réassigner canvas.width/height réinitialiserait le contexte et
+      // obligerait à recalculer tous les traits à chaque taille intermédiaire.
+      if (isResizingRef.current) return;
+
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
@@ -342,6 +371,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
       redrawAllRef.current();
     };
+    resizeCanvasRef.current = resizeCanvas;
 
     // Throttle visuel via rAF : au plus un redimensionnement par frame.
     const handleResize = () => {
@@ -374,6 +404,18 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       clearTimeout(commitTimer);
     };
   }, [commitStrokes]);
+
+  // Le ResizeObserver peut ne pas recevoir un nouvel événement au relâchement :
+  // le DOM possède déjà la hauteur finale appliquée directement pendant le drag.
+  // On force donc exactement une allocation finale après le commit React.
+  isResizingRef.current = isResizing;
+  useEffect(() => {
+    const wasResizing = wasResizingRef.current;
+    wasResizingRef.current = isResizing;
+    if (!wasResizing || isResizing) return;
+    const frame = window.requestAnimationFrame(() => resizeCanvasRef.current());
+    return () => window.cancelAnimationFrame(frame);
+  }, [isResizing]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -680,7 +722,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         points: [startPoint],
         color: activeTool === 'highlighter' ? settings.highlighterColor : settings.color,
         width: activeTool === 'highlighter' ? settings.highlighterWidth : activeTool === 'eraser' ? settings.eraserWidth : settings.lineWidth,
-        opacity: activeTool === 'highlighter' ? settings.highlighterOpacity : 1,
+        pointerType: e.pointerType,
+        usesRealPressure: e.pointerType === 'pen',
+        opacity: activeTool === 'highlighter' ? settings.highlighterOpacity : undefined,
         isEraser: activeTool === 'eraser',
         isHighlighter: activeTool === 'highlighter',
         shapeType: activeTool === 'shape' ? settings.shapeType : undefined,
@@ -717,7 +761,10 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     const settings = getToolState();
 
     const nativeE = e.nativeEvent as any;
-    const events = nativeE.getCoalescedEvents ? nativeE.getCoalescedEvents() : [nativeE];
+    const coalescedEvents: PointerEvent[] | undefined = nativeE.getCoalescedEvents?.();
+    // Certains navigateurs exposent l'API mais renvoient ponctuellement une
+    // liste vide. Le pointermove principal doit alors rester utilisable.
+    const events = coalescedEvents?.length ? coalescedEvents : [nativeE];
     
     events.forEach((event: PointerEvent) => {
         const rawCoords = getCoordinates(event);
@@ -848,10 +895,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
     // Rendu seul pendant le geste. La persistance (clone de la fiche +
     // écriture localStorage) est reportée au relâchement du pointeur.
-    redrawAll();
+    scheduleRedraw();
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    cancelScheduledRedraw();
     releasePointer(e);
     const settings = getToolState();
     if (recognitionTimerRef.current) clearTimeout(recognitionTimerRef.current);
@@ -1116,7 +1164,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
       <div
         ref={containerRef}
-        className="flex-1 w-full relative pointer-events-auto"
+        className="flex-1 w-full relative overflow-hidden pointer-events-auto"
         onPointerDownCapture={() => setActiveCanvas(instanceId)}
         style={{ touchAction: 'none' }}
       >
