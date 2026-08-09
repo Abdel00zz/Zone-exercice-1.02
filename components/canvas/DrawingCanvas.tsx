@@ -1129,26 +1129,47 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         Bouton de rappel de cours / aide : badge d'aide parfaitement fusionné sur la bordure supérieure du cadre.
       */}
       {correctionToggle?.available && (
-        <div className="absolute -top-[13px] right-6 z-30 flex items-center gap-1.5 pointer-events-auto no-print">
+        <div 
+          className="absolute right-6 z-30 flex items-end pointer-events-auto no-print"
+          style={{ 
+            top: isResizing || isCanvasActive ? '-26px' : '-25px', // height of the tab (24px) + border (1px or 2px)
+          }}
+        >
           {correctionProgress && correctionToggle.visible && (
-            <div className="animate-in fade-in slide-in-from-right-2 duration-200">
+            <div className="animate-in fade-in slide-in-from-right-2 duration-200 mr-2 mb-1">
               <CorrectionProgressControl progress={correctionProgress} />
             </div>
           )}
-          <button
-            type="button"
-            aria-label={correctionToggle.visible ? 'Masquer la correction et rappel de cours' : 'Afficher la correction et rappel de cours'}
-            aria-pressed={correctionToggle.visible}
-            onClick={correctionToggle.toggle}
-            className={`group/helpbtn relative inline-flex items-center justify-center h-[26px] px-3.5 rounded-full border text-[0.88rem] font-bold font-itim tracking-wide transition-all duration-200 ease-out active:scale-95 shadow-2xs ${
-              correctionToggle.visible
-                ? 'border-[#19788c] bg-[#19788c] text-white shadow-xs ring-2 ring-[#19788c]/30'
-                : 'border-[#19788c] bg-[#fbf9f4] text-[#19788c] hover:border-[#0284c7] hover:bg-[#e0f2fe]/70 hover:text-[#0284c7] shadow-2xs'
-            }`}
-            title={correctionToggle.visible ? 'Masquer le rappel de cours' : 'Afficher le rappel de cours'}
-          >
-            <span className="font-itim font-bold">Aide</span>
-          </button>
+          
+          {(() => {
+            const borderWidth = isResizing || isCanvasActive ? 2 : 1;
+            const borderColor = isResizing ? '#64748b' : isCanvasActive ? '#0284c7' : (colorName === 'black' || (styleName === 'slate' && !colorName)) ? '#1e293b' : colorName === 'green' ? '#14532d' : colorName === 'blue' ? '#1e3a8a' : colorName === 'cream' ? '#fcd34d' : '#a4b4c4';
+            const bgColor = (colorName === 'black' || (styleName === 'slate' && !colorName)) ? '#0f172a' : colorName === 'green' ? '#14532d' : colorName === 'blue' ? '#1e3a8a' : colorName === 'cream' ? '#fef3c7' : '#f4f1ea';
+            const textColor = correctionToggle.visible ? '#0d9488' : (colorName === 'black' || colorName === 'green' || colorName === 'blue' || (styleName === 'slate' && !colorName)) ? '#cbd5e1' : '#64748b';
+            
+            return (
+              <button
+                type="button"
+                aria-label={correctionToggle.visible ? 'Masquer la correction et rappel de cours' : 'Afficher la correction et rappel de cours'}
+                aria-pressed={correctionToggle.visible}
+                onClick={correctionToggle.toggle}
+                className="group/helpbtn relative flex items-center justify-center h-[26px] px-3.5 rounded-t-lg transition-colors duration-200 ease-out font-itim tracking-wide text-[0.88rem] font-bold"
+                style={{
+                  backgroundColor: bgColor,
+                  borderTop: `${borderWidth}px solid ${borderColor}`,
+                  borderLeft: `${borderWidth}px solid ${borderColor}`,
+                  borderRight: `${borderWidth}px solid ${borderColor}`,
+                  borderBottom: `${borderWidth}px solid ${bgColor}`,
+                  color: textColor,
+                  boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.05), 0 -2px 4px -1px rgba(0, 0, 0, 0.03)',
+                  clipPath: 'inset(-10px -10px 0 -10px)',
+                }}
+                title={correctionToggle.visible ? 'Masquer le rappel de cours' : 'Afficher le rappel de cours'}
+              >
+                <span>Aide</span>
+              </button>
+            );
+          })()}
         </div>
       )}
 
