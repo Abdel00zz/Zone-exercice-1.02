@@ -249,6 +249,8 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
   const railRef = useRef<HTMLDivElement>(null);
   const [expandedSection, setExpandedSection] = useState<'background' | 'ink' | 'geometry' | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [penPalette, setPenPalette] = useState(COLORS);
+  const [highlighterPalette, setHighlighterPalette] = useState(HIGHLIGHTER_COLORS);
 
   const { openMenu, railCollapsed } = tools;
 
@@ -346,7 +348,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
 
   const panel = (title: string, body: React.ReactNode, width = 320) => (
     <div
-      className="canvas-rail-panel absolute z-50 flex flex-col overflow-y-auto overscroll-contain rounded-2xl border border-[#dedbd2] bg-[#fffefa]/98 p-3.5 shadow-[0_20px_50px_rgba(23,33,38,0.22)] backdrop-blur-xl animate-in fade-in slide-in-from-right-3 duration-200"
+      className="canvas-rail-panel absolute z-50 flex flex-col overflow-y-auto overscroll-contain rounded-2xl border border-[#dedbd2] bg-[#f4f1ea] p-3.5 shadow-[0_20px_50px_rgba(23,33,38,0.22)] animate-in fade-in slide-in-from-right-3 duration-200"
       style={{ ...panelStyle, width: `min(${width}px, calc(100vw - 80px))` }}
     >
       <PanelHeader title={title} onClose={closeToolMenu} />
@@ -471,21 +473,40 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
             })}
           </div>
 
-          <div className="border-t border-slate-200 pt-3">
+          <div className="pt-2">
             <div className="mb-2 text-[11px] font-semibold text-slate-500">Couleur du trait</div>
             <div className="flex flex-wrap items-center gap-2.5">
-              {COLORS.map(candidate => (
-                <button
-                  key={candidate}
-                  type="button"
-                  aria-label={`Couleur ${candidate}`}
-                  onClick={() => setToolState({ color: candidate })}
-                  className={`h-10 w-10 rounded-full transition-transform ${tools.color === candidate ? 'scale-105 ring-2 ring-[#e56861] ring-offset-2' : 'hover:scale-110'}`}
-                  style={{ backgroundColor: candidate }}
-                />
-              ))}
+              {penPalette.map((candidate, idx) => {
+                const isSelected = tools.color === candidate;
+                return (
+                  <div key={idx} className="relative">
+                    <button
+                      type="button"
+                      aria-label={`Couleur ${candidate}`}
+                      onClick={() => setToolState({ color: candidate })}
+                      className={`h-10 w-10 rounded-full transition-transform ${isSelected ? 'scale-105 ring-2 ring-[#e56861] ring-offset-2' : 'hover:scale-110'}`}
+                      style={{ backgroundColor: candidate }}
+                    />
+                    {isSelected && (
+                      <input 
+                        type="color" 
+                        value={candidate} 
+                        onChange={event => {
+                          const newColor = event.target.value;
+                          const newPalette = [...penPalette];
+                          newPalette[idx] = newColor;
+                          setPenPalette(newPalette);
+                          setToolState({ color: newColor });
+                        }} 
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0" 
+                        title="Double-cliquez pour modifier"
+                      />
+                    )}
+                  </div>
+                );
+              })}
               <label className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)]" title="Couleur personnalisée">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-base text-slate-700">+</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-700"><Plus size={16} strokeWidth={3} /></span>
                 <input type="color" value={tools.color} onChange={event => setToolState({ color: event.target.value })} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
               </label>
             </div>
@@ -574,20 +595,40 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
 
           <Toggle label="Tracer des lignes droites" checked={tools.highlighterStraightLines} onChange={() => setToolState({ highlighterStraightLines: !tools.highlighterStraightLines })} />
 
-          <div className="flex flex-wrap items-center gap-2.5 border-t border-slate-200 pt-3">
-            {HIGHLIGHTER_COLORS.map(candidate => (
-              <button
-                key={candidate}
-                type="button"
-                aria-label={`Couleur ${candidate}`}
-                onClick={() => setToolState({ highlighterColor: candidate })}
-                className={`flex h-10 w-10 items-center justify-center rounded-full transition-transform ${tools.highlighterColor === candidate ? 'scale-110 shadow-md ring-2 ring-blue-500 ring-offset-2' : 'hover:scale-110'}`}
-                style={{ backgroundColor: candidate }}
-              >
-                {tools.highlighterColor === candidate && <Check size={17} className="text-slate-800 drop-shadow-sm" />}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2.5 pt-2">
+            {highlighterPalette.map((candidate, idx) => {
+              const isSelected = tools.highlighterColor === candidate;
+              return (
+                <div key={idx} className="relative">
+                  <button
+                    type="button"
+                    aria-label={`Couleur ${candidate}`}
+                    onClick={() => setToolState({ highlighterColor: candidate })}
+                    className={`flex h-10 w-10 items-center justify-center rounded-full transition-transform ${isSelected ? 'scale-110 shadow-md ring-2 ring-blue-500 ring-offset-2' : 'hover:scale-110'}`}
+                    style={{ backgroundColor: candidate }}
+                  >
+                    {isSelected && <Check size={17} className="text-slate-800 drop-shadow-sm pointer-events-none" />}
+                  </button>
+                  {isSelected && (
+                    <input 
+                      type="color" 
+                      value={candidate} 
+                      onChange={event => {
+                        const newColor = event.target.value;
+                        const newPalette = [...highlighterPalette];
+                        newPalette[idx] = newColor;
+                        setHighlighterPalette(newPalette);
+                        setToolState({ highlighterColor: newColor });
+                      }} 
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0" 
+                      title="Double-cliquez pour modifier"
+                    />
+                  )}
+                </div>
+              );
+            })}
             <label className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-gradient-to-tr from-pink-500 via-purple-500 to-yellow-500" title="Couleur personnalisée">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-700"><Plus size={16} strokeWidth={3} /></span>
               <input type="color" value={tools.highlighterColor} onChange={event => setToolState({ highlighterColor: event.target.value })} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
             </label>
           </div>
