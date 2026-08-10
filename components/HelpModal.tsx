@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { 
-    HelpCircle, X, BookOpen, Folder, Edit3, PenTool, 
+    HelpCircle, X, Folder, Edit3, PenTool, 
     Tv, RefreshCw, CheckCircle2, Sparkles, GraduationCap, 
-    Lightbulb, FileText, Layers, ShieldCheck, Globe, ChevronRight,
-    Search, Terminal, Monitor, Tablet, Code2
+    FileText, ShieldCheck, Code2
 } from 'lucide-react';
 
 type Language = 'fr' | 'en' | 'ar';

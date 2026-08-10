@@ -12,9 +12,7 @@ const GRID_SIZE_PX = GRID_SIZE_MM * MM_TO_PX;
 const SEYES_LINE_MM = 2; // Seyes has horizontal lines every 2mm
 const SEYES_LINE_PX = SEYES_LINE_MM * MM_TO_PX;
 const MIN_HEIGHT = 40;
-const MAX_HEIGHT = 1600; 
-const A4_HEIGHT_PX = 1123;
-const PRINT_MARGIN_BOTTOM_PX = 50;
+const MAX_HEIGHT = 1600;
 
 type ColorPalette = {
   bg: string;
@@ -75,17 +73,7 @@ const COLOR_PALETTES: Record<'black' | 'green' | 'blue' | 'white' | 'cream', Col
   }
 };
 
-type StyleConfig = {
-  bg: string;
-  line: string;
-  border: string;
-  dot?: string;
-  seyesMajor?: string;
-  seyesMinor?: string;
-  seyesVertical?: string;
-};
-
-type ThemeMap = Record<'seyes' | 'slate' | 'grid' | 'dotted' | 'blank', { screen: StyleConfig, print: StyleConfig }>;
+type ThemeMap = Record<'seyes' | 'slate' | 'grid' | 'dotted' | 'blank', { screen: ColorPalette, print: ColorPalette }>;
 
 const THEMES: ThemeMap = {
   slate: {
@@ -146,6 +134,7 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   const isCanvasActive = useCanvasIsActive(canvasInstanceId);
   const heightLabelRef = useRef<HTMLDivElement>(null);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
+  const resizePreviewRef = useRef<HTMLDivElement>(null);
   const isResizing = useRef(false);
   const startY = useRef(0);
   const startHeight = useRef(0);
@@ -187,28 +176,33 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   const gridPatternId = `grid-${uid}`;
 
   const clampHeight = (value: number) => Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, value));
-  const snapHeight = (value: number) => Math.round(clampHeight(Math.round(value / GRID_SIZE_PX) * GRID_SIZE_PX));
 
-  // Calcul de la nouvelle hauteur avec snapping (redimensionnement manuel)
+  // Le glissement reste continu au pixel près. L'ancien pas de 5 mm donnait
+  // l'impression d'un pointeur lent car la poignée avançait par bonds de 19 px.
   const calculateHeight = useCallback((clientY: number): number => {
     const delta = clientY - startY.current;
     const rawHeight = startHeight.current + delta;
-    return snapHeight(rawHeight);
+    return Math.round(clampHeight(rawHeight));
   }, []);
 
   /**
-   * Applique la hauteur directement au DOM pendant le glissement.
+   * Déplace uniquement un cadre fantôme et la poignée pendant le glissement.
    *
-   * Auparavant chaque frame appelait `onHeightChange`, ce qui déclenchait une
-   * mise à jour de la fiche complète, un re-rendu de tous les exercices, une
-   * recomposition MathJax et une écriture localStorage — 60 fois par seconde.
-   * La valeur n'est remontée qu'au relâchement.
+   * Modifier la hauteur réelle de la zone à chaque frame forçait encore le
+   * navigateur à remettre en page toute la fiche et à notifier les canvas.
+   * L'aperçu absolu n'influence pas le document : la hauteur réelle n'est
+   * appliquée qu'une fois, au relâchement.
    */
-  const applyHeight = useCallback((next: number) => {
+  const updateResizePreview = useCallback((next: number) => {
     pendingHeight.current = next;
-    if (containerRef.current) containerRef.current.style.height = `${next}px`;
+    const offset = next - startHeight.current;
+    if (resizePreviewRef.current) {
+      resizePreviewRef.current.style.height = `${next}px`;
+      resizePreviewRef.current.style.opacity = '1';
+    }
     if (heightLabelRef.current) heightLabelRef.current.textContent = `${next}px`;
     if (resizeHandleRef.current) {
+      resizeHandleRef.current.style.transform = `translate(-50%, ${offset + 5}px)`;
       resizeHandleRef.current.setAttribute('aria-valuenow', String(next));
       resizeHandleRef.current.setAttribute('aria-valuetext', `${next} pixels`);
     }
@@ -217,15 +211,19 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   const handleMove = useCallback((clientY: number) => {
     if (!isResizing.current) return;
     cancelAnimationFrame(rafId.current);
-    rafId.current = requestAnimationFrame(() => applyHeight(calculateHeight(clientY)));
-  }, [applyHeight, calculateHeight]);
+    rafId.current = requestAnimationFrame(() => updateResizePreview(calculateHeight(clientY)));
+  }, [calculateHeight, updateResizePreview]);
 
   const beginResize = useCallback((clientY: number) => {
     if (!containerRef.current) return false;
     isResizing.current = true;
     startY.current = clientY;
     startHeight.current = containerRef.current.offsetHeight;
-    pendingHeight.current = height;
+    pendingHeight.current = startHeight.current;
+    if (resizePreviewRef.current) {
+      resizePreviewRef.current.style.height = `${startHeight.current}px`;
+      resizePreviewRef.current.style.opacity = '1';
+    }
     previousBodyStyles.current = {
       cursor: document.body.style.cursor,
       userSelect: document.body.style.userSelect,
@@ -241,11 +239,18 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
     if (!isResizing.current) return;
     isResizing.current = false;
     cancelAnimationFrame(rafId.current);
+    const finalHeight = pendingHeight.current;
+    if (containerRef.current) containerRef.current.style.height = `${finalHeight}px`;
+    if (resizePreviewRef.current) {
+      resizePreviewRef.current.style.height = `${finalHeight}px`;
+      resizePreviewRef.current.style.opacity = '0';
+    }
+    resizeHandleRef.current?.style.removeProperty('transform');
     document.body.style.cursor = previousBodyStyles.current.cursor;
     document.body.style.userSelect = previousBodyStyles.current.userSelect;
     setIsResizeActive(false);
-    if (pendingHeight.current !== height) {
-      onHeightChange(pendingHeight.current);
+    if (finalHeight !== height) {
+      onHeightChange(finalHeight);
     }
   }, [height, onHeightChange]);
 
@@ -266,14 +271,14 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
 
   const handleResizePointerEnd = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!e.isPrimary) return;
-    if (isResizing.current) applyHeight(calculateHeight(e.clientY));
+    if (isResizing.current) updateResizePreview(calculateHeight(e.clientY));
     try {
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId);
       }
     } catch { /* capture déjà libérée */ }
     endResize();
-  }, [applyHeight, calculateHeight, endResize]);
+  }, [calculateHeight, endResize, updateResizePreview]);
 
   // Certains navigateurs Android peuvent perdre la capture lors d'un geste
   // interrompu par le système. Le relâchement global garantit la sortie de
@@ -281,7 +286,7 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   useEffect(() => {
     if (!isResizeActive) return;
     const finishFromWindow = (event: PointerEvent) => {
-      if (isResizing.current) applyHeight(calculateHeight(event.clientY));
+      if (isResizing.current) updateResizePreview(calculateHeight(event.clientY));
       endResize();
     };
     const finishOnBlur = () => endResize();
@@ -293,7 +298,7 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
       window.removeEventListener('pointercancel', finishFromWindow, true);
       window.removeEventListener('blur', finishOnBlur);
     };
-  }, [applyHeight, calculateHeight, endResize, isResizeActive]);
+  }, [calculateHeight, endResize, isResizeActive, updateResizePreview]);
 
   // La poignée porte role="slider" et tabIndex : elle doit donc être pilotable
   // au clavier, ce qui n'était pas le cas.
@@ -310,12 +315,16 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
 
     if (next === null) return;
     e.preventDefault();
-    const snapped = snapHeight(next);
-    if (snapped !== height) onHeightChange(snapped);
+    const normalized = Math.round(clampHeight(next));
+    if (normalized !== height) onHeightChange(normalized);
   }, [height, onHeightChange]);
 
   useEffect(() => {
     pendingHeight.current = height;
+    if (!isResizing.current && resizePreviewRef.current) {
+      resizePreviewRef.current.style.height = `${height}px`;
+      resizePreviewRef.current.style.opacity = '0';
+    }
     if (heightLabelRef.current) heightLabelRef.current.textContent = `${height}px`;
     if (resizeHandleRef.current) {
       resizeHandleRef.current.setAttribute('aria-valuenow', String(height));
@@ -368,9 +377,10 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
     >
       <div
         ref={containerRef}
+        data-answer-space-surface=""
         className={`w-full relative rounded-md transition-shadow duration-200 print:rounded-none print:shadow-none print:border-none box-border ${
           isResizeActive
-            ? 'shadow-md ring-2 ring-slate-400'
+            ? 'shadow-sm'
             : isCanvasActive
               ? 'shadow-xs ring-2 ring-sky-500/40 border-sky-600'
               : 'hover:shadow-xs'
@@ -378,7 +388,7 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
         style={{
           height: `${height}px`,
           backgroundColor: theme.screen.bg,
-          border: isResizeActive ? '2px solid #64748b' : isCanvasActive ? '2px solid #0284c7' : `1px solid ${theme.screen.border}`,
+          border: isCanvasActive ? '2px solid #0284c7' : `1px solid ${theme.screen.border}`,
           boxSizing: 'border-box',
         }}
       >
@@ -489,6 +499,19 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
             />
           )}
         </svg>
+
+        <div
+          ref={resizePreviewRef}
+          data-resize-preview=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 z-[35] rounded-md border-2 border-slate-500 bg-slate-500/[0.035] shadow-[0_5px_18px_rgba(15,23,42,0.14)] print:hidden"
+          style={{
+            height: `${height}px`,
+            opacity: isResizeActive ? 1 : 0,
+            contain: 'layout paint style',
+            willChange: 'height',
+          }}
+        />
 
         {/*
           Poignée de redimensionnement.

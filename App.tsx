@@ -333,8 +333,6 @@ const App: React.FC = () => {
   const handleQuestionMergeUp = (exerciseId: string, questionPath: (string | number)[]) => {
     updateExercise(exerciseId, exercise => {
       if (!exercise.questions) return exercise;
-      const pathStr = questionPath.join('.');
-      
       // We only support merging up top-level questions for now
       if (questionPath.length === 1 && typeof questionPath[0] === 'number') {
         const index = questionPath[0];

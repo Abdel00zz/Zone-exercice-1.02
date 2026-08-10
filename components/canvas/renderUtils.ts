@@ -1,4 +1,4 @@
-import { Stroke, Point } from './types';
+import { Stroke } from './types';
 import { drawArrowhead } from './utils';
 import { getStroke } from 'perfect-freehand';
 

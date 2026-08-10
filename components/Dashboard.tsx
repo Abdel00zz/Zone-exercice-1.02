@@ -71,7 +71,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [isCreatingClass, setIsCreatingClass] = useState(false);
     const [newClassName, setNewClassName] = useState('');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const [activeActionMenuId, setActiveActionMenuId] = useState<string | null>(null);
     const [treeFilter, setTreeFilter] = useState<TreeFilter>(null);
 
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -87,11 +86,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             content: normalized,
         };
         onAddWorksheet(newWorksheet);
-    };
-
-    const handleRename = (worksheet: Worksheet) => {
-        setRenamingId(worksheet.id);
-        setNewName(worksheet.name);
     };
 
     const handleSaveRename = (e: React.FormEvent) => {

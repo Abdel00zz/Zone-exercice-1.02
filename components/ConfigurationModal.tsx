@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { 
   Settings, Type, Sigma, UserRound, CalendarDays, PenTool, X, 
-  Folder, FolderPlus, Pencil, Trash2, ChevronUp, ChevronDown, 
+  Folder, Pencil, Trash2, ChevronUp, ChevronDown, 
   RotateCcw, Check, GraduationCap, Plus, BookOpen
 } from 'lucide-react';
 import type { AppConfiguration, Worksheet } from '../types';

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback, useId } from 'react';
-import { Minus, Plus, Trash2, Lightbulb, HelpCircle, Sparkles } from 'lucide-react';
+import { Minus, Plus, Trash2 } from 'lucide-react';
 import { Stroke, DrawingCanvasProps, Point, ToolType } from './types';
 import { drawStroke } from './renderUtils';
 import { pointInPolygon, strokeIntersectsPoint, isPointInImage, isPointOnImageResizeHandle } from './utils';
@@ -12,7 +12,7 @@ import { calibratePressure, constrainShapePoint, recognizeStrokeShape, StrokeSmo
 import CanvasTextLayer from './CanvasTextLayer';
 import CanvasTextEditor, { CanvasTextDraft } from './CanvasTextEditor';
 import CorrectionProgressControl from './CorrectionProgressControl';
-import { useCanvasHistory, HistoryAction } from './hooks/useCanvasHistory';
+import { useCanvasHistory } from './hooks/useCanvasHistory';
 import { useSelection } from './hooks/useSelection';
 
 /**
@@ -27,7 +27,6 @@ const getRenderScale = () => Math.min(2, Math.max(1, window.devicePixelRatio || 
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   instanceId: providedInstanceId,
-  height,
   isResizing = false,
   styleName,
   colorName,
@@ -61,7 +60,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const redrawFrameRef = useRef(0);
 
   const {
-    historyRef,
     eraseGestureRef,
     redoStack,
     setRedoStack,
@@ -86,8 +84,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     lassoPathRef,
     selectionBoxRef,
     dragStartRef,
-    originalSelectedStrokesRef,
-    draggedIndexesRef,
     isDraggingSelectionRef,
     beginSelectionDrag,
     moveSelectionBy,
@@ -114,14 +110,12 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const selectionMode = useToolValue(snapshot => snapshot.selectionMode);
   const showMeasurements = useToolValue(snapshot => snapshot.showMeasurements);
   const palmRejection = useToolValue(snapshot => snapshot.palmRejection);
-  const penOnly = useToolValue(snapshot => snapshot.penOnly);
   // Couleur de repli de la couche texte DOM (le canvas 2D ne rend pas le LaTeX).
   const color = useToolValue(snapshot => snapshot.color);
 
   const [textInput, setTextInput] = useState<CanvasTextDraft | null>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const lastPenInputAtRef = useRef(0);
-  const lastTouchTapRef = useRef<{ at: number; x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!textInput?.visible) return;

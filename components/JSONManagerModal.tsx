@@ -1,11 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, FileUp, Download, Code, Save, AlertCircle, CheckCircle2, AlignLeft, AlignJustify, HelpCircle, BookOpen, UploadCloud, Terminal } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, FileUp, Download, Code } from 'lucide-react';
 import type { WorksheetContent, Worksheet } from '../types';
 import { normalizeWorksheetJson, validateWorksheetWithZod } from '../utils/worksheetUtils';
-
-// [NOTE: Ported from original JSONEditorModal for editor functionality]
-const BRACKET_PAIRS: Record<string, string> = { '{': '}', '[': ']', '"': '"' };
-const CLOSING_BRACKETS = new Set(['}', ']', '"']);
 
 function getErrorLine(code: string, errorMsg: string): number | null {
   const posMatch = errorMsg.match(/position\s+(\d+)/i);
@@ -32,8 +28,7 @@ const JSONManagerModal: React.FC<JSONManagerModalProps> = ({
     worksheets,
     onRestoreBackup,
     onSaveWorksheet,
-    initialValue,
-    mode
+    initialValue
 }) => {
     // Editor State
     const [code, setCode] = useState('');

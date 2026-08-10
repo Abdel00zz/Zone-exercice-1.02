@@ -13,7 +13,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Check, ChevronDown, ChevronUp, Circle, Crosshair, Diamond,
+  Check, ChevronDown, Circle, Crosshair, Diamond,
   Hexagon, Image as ImageIcon, Lasso, Minus, MousePointer2,
   MoveDiagonal2, MoveHorizontal, Palette, Pen, Pentagon, Plus, Ruler,
   Settings2, Square, Trash2, Triangle, Type, X, ArrowRight, Pencil, Printer, MoreVertical,
@@ -41,18 +41,14 @@ const PEN_STYLES: Array<{ value: PenType; label: string; title: string; image: s
 ];
 
 const CANVAS_ICONS = {
-  highlighter: {
-    chisel: `${CANVAS_REFERENCE_2D_ROOT}/highlight-chisel.png`,
-    round: `${CANVAS_REFERENCE_2D_ROOT}/highlight-round.png`,
-  },
   highlighterToolbar: {
     chisel: {
-      base: `${CANVAS_REFERENCE_2D_ROOT}/highlight-chisel-toolbar-base-neutral.png`,
-      mask: `${CANVAS_REFERENCE_2D_ROOT}/highlight-chisel-toolbar-mask.png`,
+      base: `${CANVAS_REFERENCE_2D_ROOT}/highlight-chisel-toolbar-base-premium.png`,
+      mask: `${CANVAS_REFERENCE_2D_ROOT}/highlight-chisel-toolbar-mask-premium.png`,
     },
     round: {
-      base: `${CANVAS_REFERENCE_2D_ROOT}/highlight-round-toolbar-base-neutral.png`,
-      mask: `${CANVAS_REFERENCE_2D_ROOT}/highlight-round-toolbar-mask.png`,
+      base: `${CANVAS_REFERENCE_2D_ROOT}/highlight-round-toolbar-base-premium.png`,
+      mask: `${CANVAS_REFERENCE_2D_ROOT}/highlight-round-toolbar-mask-premium.png`,
     },
   },
   eraser: `${CANVAS_REFERENCE_2D_ROOT}/toolbar-eraser-retina.png`,
@@ -92,8 +88,6 @@ const BACKGROUND_COLORS: Array<{ id: 'white' | 'black' | 'green' | 'blue' | 'cre
   { id: 'cream', name: 'Crème', color: '#fef3c7' },
 ];
 
-const TOOLBAR_HEIGHT = 50;
-
 // ── Fragments visuels ───────────────────────────────────────────────────────
 
 const PngIcon: React.FC<{ src: string; size?: number }> = ({ src, size = 26 }) => (
@@ -105,12 +99,13 @@ const PenIcon: React.FC<{ src: string; size?: number }> = ({ src, size = 34 }) =
 );
 
 const HighlighterIcon: React.FC<{ base: string; mask: string; color: string; size?: number }> = ({ base, mask, color, size = 32 }) => (
-  <span aria-hidden="true" className="relative inline-block shrink-0 overflow-hidden rounded-full bg-[#f6f6f1]" style={{ width: size, height: size }}>
+  <span aria-hidden="true" className="relative inline-block shrink-0 overflow-hidden rounded-full" style={{ width: size, height: size, isolation: 'isolate' }}>
     <img src={base} alt="" className="absolute inset-0 h-full w-full object-contain" />
     <span
       className="absolute inset-0"
       style={{
         backgroundColor: color,
+        mixBlendMode: 'color',
         WebkitMaskImage: `url("${mask}")`,
         maskImage: `url("${mask}")`,
         WebkitMaskPosition: 'center',
@@ -144,6 +139,7 @@ const ShapeGlyph: React.FC<{ type: ShapeType; size?: number; strokeWidth?: numbe
 interface RailButtonProps {
   label: string;
   active?: boolean;
+  activeSurface?: boolean;
   disabled?: boolean;
   tone?: 'neutral' | 'danger';
   onClick: () => void;
@@ -154,7 +150,7 @@ interface RailButtonProps {
  * Bouton visuel de 40 px ; la feuille de style élargit discrètement la cible à
  * 42 px sur écran tactile. La barre reste ainsi compacte sans devenir imprécise.
  */
-const RailButton: React.FC<RailButtonProps> = ({ label, active, disabled, tone = 'neutral', onClick, children }) => (
+const RailButton: React.FC<RailButtonProps> = ({ label, active, activeSurface = true, disabled, tone = 'neutral', onClick, children }) => (
   <button
     type="button"
     onClick={onClick}
@@ -164,7 +160,11 @@ const RailButton: React.FC<RailButtonProps> = ({ label, active, disabled, tone =
     aria-pressed={active}
     className={`canvas-rail-button relative grid h-10 w-10 shrink-0 place-items-center rounded-full transition active:scale-95 disabled:pointer-events-none disabled:opacity-25 ${
       active
-        ? tone === 'danger' ? 'bg-rose-100 text-rose-600' : 'bg-[#dceceb] text-[#19788c]'
+        ? tone === 'danger'
+          ? 'bg-rose-100 text-rose-600'
+          : activeSurface
+            ? 'bg-[#dceceb] text-[#19788c]'
+            : 'bg-transparent text-[#435054]'
         : tone === 'danger'
           ? 'text-rose-500 hover:bg-rose-50'
           : 'text-[#5b676a] hover:bg-[#fffefa] hover:text-[#172126]'
@@ -367,7 +367,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
           <PenIcon src={activePen.image} size={30} />
         </RailButton>
 
-        <RailButton label="Surligneur" active={tools.tool === 'highlighter'} onClick={() => selectTool('highlighter', 'highlighter')}>
+        <RailButton label="Surligneur" active={tools.tool === 'highlighter'} activeSurface={false} onClick={() => selectTool('highlighter', 'highlighter')}>
           <HighlighterIcon
             base={CANVAS_ICONS.highlighterToolbar[tools.highlighterType].base}
             mask={CANVAS_ICONS.highlighterToolbar[tools.highlighterType].mask}
@@ -499,17 +499,35 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
       {openMenu === 'highlighter' && panel('Surligneur', (
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-5 px-6">
-            {([
-              { value: 'chisel' as HighlighterType, label: 'Biseau', image: CANVAS_ICONS.highlighter.chisel },
-              { value: 'round' as HighlighterType, label: 'Rond', image: CANVAS_ICONS.highlighter.round },
+            {([ 
+              { value: 'chisel' as HighlighterType, label: 'Biseau' },
+              { value: 'round' as HighlighterType, label: 'Rond' },
             ]).map(style => {
               const selected = tools.highlighterType === style.value;
+              const icon = CANVAS_ICONS.highlighterToolbar[style.value];
               return (
-                <button key={style.value} type="button" onClick={() => setToolState({ highlighterType: style.value })} className="flex flex-col items-center gap-1.5" title={`Pointe ${style.label}`}>
-                  <span className={`h-[76px] w-[76px] overflow-hidden rounded-full bg-[#f1f1ee] transition ${selected ? 'shadow-md ring-2 ring-[#e56861] ring-offset-2' : 'hover:ring-2 hover:ring-slate-300 hover:ring-offset-1'}`}>
-                    <img src={style.image} alt="" className="h-full w-full object-contain" />
-                  </span>
-                  <span className={`text-xs font-semibold ${selected ? 'text-[#a43b36]' : 'text-slate-500'}`}>{style.label}</span>
+                <button
+                  key={style.value}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setToolState({ highlighterType: style.value })}
+                  className={`relative flex min-h-[112px] flex-col items-center justify-center gap-1.5 rounded-2xl border p-2 transition-[transform,background-color,border-color,box-shadow] duration-200 active:scale-[0.97] ${
+                    selected
+                      ? 'scale-[1.02] border-slate-300 bg-white/75 shadow-[0_8px_20px_rgba(15,23,42,0.10)]'
+                      : 'border-transparent hover:border-slate-200 hover:bg-slate-50/80 hover:shadow-sm'
+                  }`}
+                  title={`Pointe ${style.label}`}
+                >
+                  {selected && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-slate-700 text-white shadow-sm"
+                    >
+                      <Check size={12} strokeWidth={3} />
+                    </span>
+                  )}
+                  <HighlighterIcon base={icon.base} mask={icon.mask} color={tools.highlighterColor} size={76} />
+                  <span className={`text-xs font-semibold ${selected ? 'text-slate-800' : 'text-slate-500'}`}>{style.label}</span>
                 </button>
               );
             })}

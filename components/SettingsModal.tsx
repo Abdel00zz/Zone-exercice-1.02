@@ -82,30 +82,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 			}));
 	};
 
-	const handleHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const newHeight = parseInt(e.target.value, 10);
-		setEditableContent(prev => ({
-			...prev,
-			settings: { ...prev.settings, answerSpaceMinHeight: newHeight },
-		}));
-	};
-
-	const handleStyleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-		const newStyle = e.target.value as 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
-		setEditableContent(prev => ({
-			...prev,
-			settings: { ...prev.settings, answerSpaceStyle: newStyle },
-		}));
-	};
-
-	const handleColorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-		const newColor = e.target.value as 'black' | 'green' | 'blue' | 'white' | 'cream';
-		setEditableContent(prev => ({
-			...prev,
-			settings: { ...prev.settings, answerSpaceColor: newColor },
-		}));
-	};
-
 	const handleDeleteExercise = (index: number) => {
 		if (window.confirm("Êtes-vous sûr de vouloir supprimer cet exercice ? Cette action est irréversible.")) {
 			const newExercises = [...editableContent.exercises];

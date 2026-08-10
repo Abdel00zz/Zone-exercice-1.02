@@ -1,11 +1,10 @@
 import React from 'react';
-import type { Worksheet } from '../types';
 import type { CloudSyncStatus } from '../hooks/useCloudSync';
 import type { TreeFilter, WorksheetTreeClass } from '../utils/worksheetUtils';
 import { 
     Cloud, Settings, Folder, FolderPlus, ChevronDown, 
     BookOpen, FileText, FolderInput, Pencil, Trash2, 
-    ChevronRight, PanelLeftOpen, HelpCircle
+    ChevronRight, HelpCircle
 } from 'lucide-react';
 
 interface DashboardSidebarProps {

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import type { Exercise, QuestionPart, ImageConfig } from '../types';
-import MathText from './MathText';
 import EditableMathText from './EditableMathText';
 import AnswerSpace from './AnswerSpace';
 import ImageModal from './ImageModal';
@@ -26,15 +25,6 @@ interface ExerciseCardProps {
   onExerciseMergeUp?: (exerciseId: string) => void;
   onQuestionMergeUp?: (exerciseId: string, questionPath: (string | number)[]) => void;
 }
-
-/**
- * Hauteur exacte de la première ligne d'énoncé : `text-[1.05rem]` combiné à
- * `leading-relaxed` (1.625). Le numéro reprend cette hauteur de ligne afin que
- * son glyphe tombe sur la première ligne du texte, et non sur la dernière — un
- * énoncé terminé par une formule centrée faisait auparavant glisser le numéro
- * jusqu'en bas du bloc.
- */
-const QUESTION_LINE_BOX = '1.70625em';
 
 /**
  * Numéro en pastille. La hauteur de la pastille vaut exactement celle de la
@@ -375,7 +365,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
 };
 
 
-const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, totalExercisesCount, hideExerciseBadge, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onExerciseUpdate, onExerciseMergeUp, onQuestionMergeUp }) => {
+const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, totalExercisesCount, hideExerciseBadge, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onExerciseUpdate, onQuestionMergeUp }) => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   // Mécanisme intelligent : si la fiche ne contient qu'un seul exercice ou si le titre indique "Partie X", masquer le badge "Exercice 1"

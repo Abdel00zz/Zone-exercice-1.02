@@ -123,9 +123,7 @@ const ThumbnailQuestion: React.FC<{
 
 /** Miniature de document A4, volontairement dépourvue de toute zone de réponse. */
 const WorksheetThumbnail: React.FC<WorksheetThumbnailProps> = ({ worksheet }) => {
-  const settings = worksheet.content.settings ?? {};
   const title = worksheet.name;
-  const className = settings.className?.trim();
 
   return (
     <div
