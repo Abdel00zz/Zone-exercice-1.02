@@ -2,13 +2,19 @@ import React, { useRef, useState, useEffect, useCallback, useId } from 'react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { Stroke, DrawingCanvasProps, Point, ToolType } from './types';
 import { drawStroke } from './renderUtils';
-import { pointInPolygon, strokeIntersectsPoint, isPointInImage, isPointOnImageResizeHandle } from './utils';
+import {
+  boundsIntersect, getPointsBounds, getStrokeBounds, pointInPolygon,
+  strokeIntersectsPoint, isPointInImage, isPointOnImageResizeHandle,
+} from './utils';
 import {
   setActiveCanvas, isActiveCanvas, clearActiveCanvas, isTypingTarget, useCanvasIsActive,
   registerCanvas, notifyCanvasChanged, type CanvasHandle,
 } from './canvasRegistry';
-import { closeToolMenu, getToolState, setToolState, useToolValue } from './toolStore';
-import { calibratePressure, constrainShapePoint, recognizeStrokeShape, StrokeSmoother } from './inkEngine';
+import { closeToolMenu, getToolState, setToolState, useToolValue, type CanvasToolState } from './toolStore';
+import {
+  calibratePressure, constrainShapePoint, optimizeStrokePoints,
+  recognizeStrokeShape, simplifyPoints, StrokeSmoother,
+} from './inkEngine';
 import CanvasTextLayer from './CanvasTextLayer';
 import CanvasTextEditor, { CanvasTextDraft } from './CanvasTextEditor';
 import CorrectionProgressControl from './CorrectionProgressControl';
@@ -450,11 +456,15 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   // Coordonnées en pixels CSS : le contexte 2D est déjà mis à l'échelle par la
   // densité d'écran dans `redrawAll`, il ne faut pas l'appliquer deux fois.
-  const getCoordinates = (e: React.PointerEvent | PointerEvent) => {
+  const getCoordinates = (
+    e: React.PointerEvent | PointerEvent,
+    knownRect?: DOMRect,
+    knownSettings?: CanvasToolState,
+  ): Point | null => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    const { pressureCurve, penType } = getToolState();
+    const rect = knownRect || canvas.getBoundingClientRect();
+    const { pressureCurve, penType } = knownSettings || getToolState();
 
     return {
       x: e.clientX - rect.left,
@@ -590,7 +600,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     closeToolMenu();
     setActiveCanvas(instanceId);
 
-    const coords = getCoordinates(e);
+    const coords = getCoordinates(e, undefined, settings);
     if (!coords) return;
 
     const stylusEraser = isStylusEraser(e);
@@ -753,15 +763,23 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     if (e.pointerType === 'pen') lastPenInputAtRef.current = Date.now();
     if (e.cancelable) e.preventDefault();
     const settings = getToolState();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    // Une seule mesure de layout par paquet coalescé. Auparavant cette lecture
+    // était répétée pour chaque échantillon d'un stylet 120/240 Hz.
+    const canvasRect = canvas.getBoundingClientRect();
 
-    const nativeE = e.nativeEvent as any;
+    const nativeE = e.nativeEvent as PointerEvent;
     const coalescedEvents: PointerEvent[] | undefined = nativeE.getCoalescedEvents?.();
     // Certains navigateurs exposent l'API mais renvoient ponctuellement une
     // liste vide. Le pointermove principal doit alors rester utilisable.
     const events = coalescedEvents?.length ? coalescedEvents : [nativeE];
     
+    let recognitionTool: ToolType | null = null;
+    if (currentStrokeRef.current) clearShapeRecognition();
+
     events.forEach((event: PointerEvent) => {
-        const rawCoords = getCoordinates(event);
+        const rawCoords = getCoordinates(event, canvasRect, settings);
         if (rawCoords) {
             const stylusEraser = isStylusEraser(event);
             const activeTool: ToolType = stylusEraser ? 'eraser' : settings.tool;
@@ -833,7 +851,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                 if (currentStrokeRef.current) {
                   currentStrokeRef.current.isEraser = true;
                   currentStrokeRef.current.width = pixelEraserWidth;
-                  currentStrokeRef.current.points.push(coords);
+                  const points = currentStrokeRef.current.points;
+                  const last = points[points.length - 1];
+                  if (Math.hypot(coords.x - last.x, coords.y - last.y) >= Math.max(0.8, pixelEraserWidth * 0.04)) {
+                    points.push(coords);
+                  }
                 } else {
                   currentStrokeRef.current = {
                     points: [coords],
@@ -850,10 +872,12 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                 selectionBoxRef.current.w = coords.x - dragStartRef.current.x;
                 selectionBoxRef.current.h = coords.y - dragStartRef.current.y;
               } else {
-                lassoPathRef.current.push(coords);
+                const last = lassoPathRef.current[lassoPathRef.current.length - 1];
+                if (!last || Math.hypot(coords.x - last.x, coords.y - last.y) >= 0.8) {
+                  lassoPathRef.current.push(coords);
+                }
               }
               } else if (currentStrokeRef.current) {
-              clearShapeRecognition();
               if (activeTool === 'shape') {
                 const start = currentStrokeRef.current.points[0];
                 const constrained = constrainShapePoint(start, coords, settings.shapeType, {
@@ -878,14 +902,22 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                 const pts = currentStrokeRef.current.points;
                 const last = pts[pts.length - 1];
                 const dist = Math.hypot(coords.x - last.x, coords.y - last.y);
-                if (dist > 0.3) {
+                const minDistance = activeTool === 'highlighter'
+                  ? Math.max(0.7, Math.min(2, currentStrokeRef.current.width * 0.07))
+                  : Math.max(0.4, Math.min(1.25, currentStrokeRef.current.width * 0.12));
+                const pressureChanged = currentStrokeRef.current.usesRealPressure
+                  && Math.abs(coords.pressure - last.pressure) >= 0.025;
+                if (dist >= minDistance || pressureChanged) {
                   pts.push(coords);
                 }
               }
-              scheduleShapeRecognition(activeTool);
+              recognitionTool = activeTool;
             }
         }
     });
+
+    // Un seul timer de reconnaissance par paquet, pas un par point coalescé.
+    if (recognitionTool) scheduleShapeRecognition(recognitionTool);
 
     // Rendu seul pendant le geste. La persistance (clone de la fiche +
     // écriture localStorage) est reportée au relâchement du pointeur.
@@ -973,9 +1005,12 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         dragModeRef.current = null;
       } else if (lassoPathRef.current.length > 2) {
         const newSelection = new Set<number>();
-        const lassoPoly = lassoPathRef.current;
+        const lassoPoly = simplifyPoints(lassoPathRef.current, 1.25);
+        const lassoBounds = getPointsBounds(lassoPoly);
         
         strokesRef.current.forEach((stroke, idx) => {
+          const strokeBounds = getStrokeBounds(stroke);
+          if (!lassoBounds || !strokeBounds || !boundsIntersect(lassoBounds, strokeBounds)) return;
           let isSelected = false;
           if (settings.includePartialSelection) {
             isSelected = stroke.points.some(p => pointInPolygon(p, lassoPoly));
@@ -1022,8 +1057,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         if (dist > 25 && (maxDeviation < dist * 0.15 || maxDeviation < 18)) {
            currentStrokeRef.current.shapeType = 'line';
            currentStrokeRef.current.points = [p1, p2];
-        }
+         }
       }
+      currentStrokeRef.current.points = optimizeStrokePoints(currentStrokeRef.current);
       const committedStroke = currentStrokeRef.current;
       strokesRef.current.push(committedStroke);
       recordAdd(committedStroke);

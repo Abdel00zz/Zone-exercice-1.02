@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Worksheet } from '../types';
+import type { PaperTheme, Worksheet } from '../types';
 import { Info, X, Pencil, Code, Trash2, Check, ExternalLink, AlertTriangle, BookOpen, Layers, Calendar, Tag } from 'lucide-react';
 import WorksheetThumbnail from './WorksheetThumbnail';
 
@@ -13,6 +13,7 @@ interface WorksheetInfoModalProps {
     onDeleteWorksheet?: (id: string) => void;
     onSelectWorksheet?: (id: string) => void;
     onAssignWorksheetClass?: (worksheetId: string, className: string) => void;
+    fallbackPaperTheme?: PaperTheme;
 }
 
 export const WorksheetInfoModal: React.FC<WorksheetInfoModalProps> = ({
@@ -25,6 +26,7 @@ export const WorksheetInfoModal: React.FC<WorksheetInfoModalProps> = ({
     onDeleteWorksheet,
     onSelectWorksheet,
     onAssignWorksheetClass,
+    fallbackPaperTheme = 'classic',
 }) => {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [nameInput, setNameInput] = useState('');
@@ -104,7 +106,7 @@ export const WorksheetInfoModal: React.FC<WorksheetInfoModalProps> = ({
                             </span>
                             
                             <div className="aspect-[210/297] w-full overflow-hidden rounded-xl bg-white shadow-md border border-[#dedbd2] relative group">
-                                <WorksheetThumbnail worksheet={worksheet} />
+                                <WorksheetThumbnail worksheet={worksheet} fallbackPaperTheme={fallbackPaperTheme} />
                             </div>
 
                             {onSelectWorksheet && (

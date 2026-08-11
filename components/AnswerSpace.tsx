@@ -1,6 +1,7 @@
 import React, { useRef, useCallback, useId, useState, useEffect } from 'react';
 import type { PedagogicalGuidance } from '../types';
-import { DrawingCanvas } from './DrawingCanvas';
+import { DrawingCanvas } from './canvas/DrawingCanvas';
+import type { Stroke } from './canvas/types';
 import SolutionViewer from './SolutionViewer';
 import { useQuestionProgress } from './QuestionBeamerScope';
 import { setActiveCanvas, useCanvasIsActive } from './canvas/canvasRegistry';
@@ -105,13 +106,14 @@ interface AnswerSpaceProps {
   onHeightChange: (newHeight: number) => void;
   onStyleChange?: (style: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank') => void;
   onColorChange?: (color: 'black' | 'green' | 'blue' | 'white' | 'cream' | '') => void;
-  strokes?: any[];
-  onStrokesChange?: (strokes: any[]) => void;
+  strokes?: Stroke[];
+  onStrokesChange?: (strokes: Stroke[]) => void;
   solution?: string;
   answer?: string;
   guidance?: PedagogicalGuidance;
   isEditMode?: boolean;
   onSolutionUpdate?: (newSol: string) => void;
+  revealSolution?: boolean;
 }
 
 const AnswerSpace: React.FC<AnswerSpaceProps> = ({
@@ -128,6 +130,7 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   guidance,
   isEditMode,
   onSolutionUpdate,
+  revealSolution = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasInstanceId = useId();
@@ -152,6 +155,10 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   // L'aide appartient à cette zone uniquement : chaque canvas démarre fermé
   // et son bouton local ne modifie aucune autre question.
   const [isSolutionVisible, setIsSolutionVisible] = useState(false);
+
+  useEffect(() => {
+    if (revealSolution && hasSolutionContent) setIsSolutionVisible(true);
+  }, [hasSolutionContent, revealSolution]);
 
   useEffect(() => {
     if (isSolutionVisible && hasSolutionContent && height < solutionMinHeight) {

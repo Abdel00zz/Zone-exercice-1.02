@@ -1,11 +1,8 @@
-import React, { useState, useMemo, useRef } from 'react';
-import type { Worksheet, WorksheetContent } from '../types';
-import { Search, Folder, FileText, Plus, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import JSONManagerModal from './JSONManagerModal';
+import React, { useState, useMemo, useRef, useEffect, useDeferredValue } from 'react';
+import type { PaperTheme, Worksheet, WorksheetContent } from '../types';
+import { Search, Folder, FileText, Plus, PanelLeftClose, PanelLeftOpen, Sparkles, X } from 'lucide-react';
 import WorksheetCard from './WorksheetCard';
-import WorksheetInfoModal from './WorksheetInfoModal';
 import DashboardSidebar from './DashboardSidebar';
-import HelpModal from './HelpModal';
 import type { CloudSyncStatus } from '../hooks/useCloudSync';
 import { 
     getWorksheetClassName, 
@@ -15,11 +12,21 @@ import {
     normalizeWorksheetJson,
     type TreeFilter 
 } from '../utils/worksheetUtils';
+import {
+    buildWorksheetSearchDocument,
+    searchWorksheet,
+    type WorksheetSearchMatch,
+    type WorksheetSearchNavigation,
+} from '../utils/worksheetSearch';
+
+const JSONManagerModal = React.lazy(() => import('./JSONManagerModal'));
+const WorksheetInfoModal = React.lazy(() => import('./WorksheetInfoModal'));
+const HelpModal = React.lazy(() => import('./HelpModal'));
 
 interface DashboardProps {
     worksheets: Worksheet[];
     worksheetClasses: string[];
-    onSelectWorksheet: (id: string) => void;
+    onSelectWorksheet: (id: string, navigation?: WorksheetSearchNavigation) => void;
     onAddWorksheet: (worksheet: Worksheet) => void;
     onDeleteWorksheet: (id: string) => void;
     onRenameWorksheet: (id: string, newName: string) => void;
@@ -33,6 +40,7 @@ interface DashboardProps {
     onOpenSyncPanel: () => void;
     onOpenConfiguration: () => void;
     cloudSyncStatus: CloudSyncStatus;
+    defaultPaperTheme: PaperTheme;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -51,7 +59,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     setImportError,
     onOpenSyncPanel,
     onOpenConfiguration,
-    cloudSyncStatus
+    cloudSyncStatus,
+    defaultPaperTheme,
 }) => {
     const [renamingId, setRenamingId] = useState<string | null>(null);
     const [newName, setNewName] = useState('');
@@ -74,7 +83,21 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [treeFilter, setTreeFilter] = useState<TreeFilter>(null);
 
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const deferredSearchQuery = useDeferredValue(searchQuery);
+
+    useEffect(() => {
+        const handleSearchShortcut = (event: KeyboardEvent) => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase('fr') === 'k') {
+                event.preventDefault();
+                setIsSearchExpanded(true);
+                searchInputRef.current?.focus();
+            }
+        };
+        window.addEventListener('keydown', handleSearchShortcut);
+        return () => window.removeEventListener('keydown', handleSearchShortcut);
+    }, []);
 
     const processImport = (jsonData: any, fallbackName: string = 'Nouvelle Fiche') => {
         const normalized = normalizeWorksheetJson(jsonData);
@@ -124,8 +147,23 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     };
 
+    const searchDocuments = useMemo(
+        () => worksheets.map(buildWorksheetSearchDocument),
+        [worksheets],
+    );
+
+    const searchMatches = useMemo(() => {
+        const matches = new Map<string, WorksheetSearchMatch>();
+        if (!deferredSearchQuery.trim()) return matches;
+        searchDocuments.forEach(document => {
+            const match = searchWorksheet(document, deferredSearchQuery);
+            if (match) matches.set(document.worksheet.id, match);
+        });
+        return matches;
+    }, [deferredSearchQuery, searchDocuments]);
+
     const filteredWorksheets = useMemo(() => {
-        const normalizedSearch = searchQuery.trim().toLocaleLowerCase('fr');
+        const hasSearch = Boolean(deferredSearchQuery.trim());
 
         return worksheets.filter((worksheet) => {
             const className = getWorksheetClassName(worksheet);
@@ -135,21 +173,23 @@ const Dashboard: React.FC<DashboardProps> = ({
                 || (treeFilter.type === 'chapter' && className === treeFilter.className && chapterName === treeFilter.chapterName)
                 || (treeFilter.type === 'worksheet' && worksheet.id === treeFilter.worksheetId);
 
-            if (!isInSelectedBranch || !normalizedSearch) return isInSelectedBranch;
-
-            return [worksheet.name, worksheet.content?.chapter, className]
-                .filter(Boolean)
-                .some((value) => value!.toLocaleLowerCase('fr').includes(normalizedSearch));
+            return isInSelectedBranch && (!hasSearch || searchMatches.has(worksheet.id));
         });
-    }, [worksheets, searchQuery, treeFilter]);
+    }, [worksheets, deferredSearchQuery, searchMatches, treeFilter]);
 
     const sortedWorksheets = useMemo(() => {
-        return [...filteredWorksheets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, [filteredWorksheets]);
+        return [...filteredWorksheets].sort((a, b) => {
+            if (deferredSearchQuery.trim()) {
+                const relevance = (searchMatches.get(b.id)?.score || 0) - (searchMatches.get(a.id)?.score || 0);
+                if (relevance !== 0) return relevance;
+            }
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+    }, [deferredSearchQuery, filteredWorksheets, searchMatches]);
 
     const dynamicSubtitle = useMemo(() => {
-        return generateDynamicSubtitle(searchQuery, treeFilter, sortedWorksheets.length, worksheets);
-    }, [searchQuery, treeFilter, sortedWorksheets.length, worksheets]);
+        return generateDynamicSubtitle(deferredSearchQuery, treeFilter, sortedWorksheets.length, worksheets);
+    }, [deferredSearchQuery, treeFilter, sortedWorksheets.length, worksheets]);
 
     const visibleWorksheets = sortedWorksheets.slice(0, visibleCount);
 
@@ -307,9 +347,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                         </div>
 
-                        <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center h-[38px] justify-end">
+                        <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center sm:min-h-[42px] justify-end">
                             <div 
-                                className={`relative flex items-center transition-all duration-300 ease-in-out ${isSearchExpanded || searchQuery ? 'w-full sm:w-[210px] lg:w-[240px]' : 'w-[38px]'}`}
+                                className={`relative z-30 flex items-center transition-[width] duration-300 ease-out ${isSearchExpanded || searchQuery ? 'w-full sm:w-[330px] lg:w-[390px]' : 'w-[42px]'}`}
                             >
                                 <button
                                     type="button"
@@ -317,23 +357,83 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         setIsSearchExpanded(true); 
                                         setTimeout(() => searchInputRef.current?.focus(), 100); 
                                     }}
-                                    className={`absolute left-0 z-10 grid h-[38px] w-[38px] place-items-center rounded-full text-dash-teal transition-colors ${isSearchExpanded || searchQuery ? 'pointer-events-none' : 'cursor-pointer bg-dash-card border border-dash-border hover:bg-dash-teal-light'}`}
+                                    className={`absolute left-0 z-10 grid h-[42px] w-[42px] place-items-center rounded-2xl text-dash-teal transition-all ${isSearchExpanded || searchQuery ? 'pointer-events-none bg-transparent' : 'cursor-pointer border border-dash-border bg-dash-card shadow-sm hover:-translate-y-0.5 hover:border-dash-teal/40 hover:bg-dash-teal-light hover:shadow-md'}`}
                                     title="Rechercher"
                                     aria-label="Rechercher"
                                 >
-                                    <Search className="h-4 w-4" />
+                                    <Search className="h-[18px] w-[18px]" />
                                 </button>
-                                
+                                 
                                 <input
                                     ref={searchInputRef}
                                     type="text"
-                                    placeholder="Rechercher..."
+                                    placeholder="Rechercher dans tout le contenu…"
                                     value={searchQuery}
                                     onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(6); }}
-                                    onBlur={() => { if (!searchQuery) setIsSearchExpanded(false); }}
-                                    className={`h-[38px] w-full rounded-full border border-dash-border bg-dash-card py-1.5 pl-9 pr-3 text-xs font-semibold text-dash-main outline-none transition-all placeholder:text-dash-muted hover:border-dash-teal/40 focus:border-dash-teal focus:ring-4 focus:ring-dash-teal/10 ${isSearchExpanded || searchQuery ? 'opacity-100 cursor-text' : 'opacity-0 cursor-default pointer-events-none'}`}
-                                    aria-label="Rechercher une fiche par nom"
+                                    onFocus={() => setIsSearchFocused(true)}
+                                    onBlur={() => {
+                                        setIsSearchFocused(false);
+                                        if (!searchQuery) setIsSearchExpanded(false);
+                                    }}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Escape') {
+                                            setSearchQuery('');
+                                            setIsSearchExpanded(false);
+                                            searchInputRef.current?.blur();
+                                        }
+                                    }}
+                                    className={`h-[42px] w-full rounded-2xl border border-dash-border bg-white/95 py-2 pl-10 pr-20 text-[13px] font-semibold text-dash-main shadow-sm outline-none backdrop-blur-xl transition-all placeholder:font-medium placeholder:text-dash-muted/80 hover:border-dash-teal/40 focus:border-dash-teal focus:shadow-[0_10px_30px_rgba(25,120,140,0.12)] focus:ring-4 focus:ring-dash-teal/10 ${isSearchExpanded || searchQuery ? 'cursor-text opacity-100' : 'pointer-events-none cursor-default opacity-0'}`}
+                                    aria-label="Recherche avancée dans toutes les fiches"
                                 />
+                                {(isSearchExpanded || searchQuery) && (
+                                    <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+                                        {searchQuery && (
+                                            <span className="hidden rounded-md bg-dash-teal-light px-1.5 py-0.5 text-[9px] font-extrabold tabular-nums text-dash-teal sm:inline">
+                                                {searchQuery !== deferredSearchQuery ? '…' : sortedWorksheets.length}
+                                            </span>
+                                        )}
+                                        {searchQuery && (
+                                            <button
+                                                type="button"
+                                                onMouseDown={(event) => event.preventDefault()}
+                                                onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}
+                                                className="grid h-7 w-7 place-items-center rounded-lg text-dash-muted transition hover:bg-dash-bg hover:text-dash-main"
+                                                aria-label="Effacer la recherche"
+                                                title="Effacer"
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        )}
+                                        {!searchQuery && <kbd className="hidden rounded-md border border-dash-border bg-dash-bg px-1.5 py-0.5 text-[9px] font-bold text-dash-muted sm:block">Ctrl K</kbd>}
+                                    </div>
+                                )}
+
+                                {isSearchFocused && (isSearchExpanded || searchQuery) && (
+                                    <div className="absolute right-0 top-[50px] w-full min-w-[300px] overflow-hidden rounded-2xl border border-dash-border/90 bg-white/95 p-3 shadow-[0_20px_55px_rgba(23,33,38,0.16)] backdrop-blur-xl">
+                                        <div className="flex items-center gap-2 text-[11px] font-extrabold text-dash-main">
+                                            <span className="grid h-6 w-6 place-items-center rounded-lg bg-gradient-to-br from-cyan-100 to-blue-100 text-dash-teal">
+                                                <Sparkles className="h-3.5 w-3.5" />
+                                            </span>
+                                            Recherche intelligente dans toute la fiche
+                                        </div>
+                                        <p className="mt-2 text-[10px] font-medium leading-relaxed text-dash-muted">
+                                            Titres, énoncés, questions, réponses, solutions et aides. Accents et petites fautes sont tolérés.
+                                        </p>
+                                        <div className="mt-2.5 flex flex-wrap gap-1.5 text-[9px] font-bold text-dash-teal">
+                                            {['"phrase exacte"', 'solution:preuve', 'classe:terminale', 'question:fonction'].map(example => (
+                                                <button
+                                                    key={example}
+                                                    type="button"
+                                                    onMouseDown={(event) => event.preventDefault()}
+                                                    onClick={() => { setSearchQuery(example); searchInputRef.current?.focus(); }}
+                                                    className="rounded-full border border-dash-teal/15 bg-dash-teal-light px-2 py-1 transition hover:border-dash-teal/35 hover:bg-dash-teal-hover"
+                                                >
+                                                    {example}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <button
                                 type="button"
@@ -360,6 +460,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     onSaveRename={handleSaveRename}
                                     onNewNameChange={setNewName}
                                     onShowInfo={setInfoModalWorksheet}
+                                    fallbackPaperTheme={defaultPaperTheme}
+                                    searchMatch={searchMatches.get(ws.id)}
                                 />
                             ))}
                         </div>
@@ -410,32 +512,42 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </main>
             </div>
 
-            <JSONManagerModal 
-                isOpen={isManagerModalOpen}
-                onClose={() => setIsManagerModalOpen(false)}
-                worksheets={worksheets}
-                onRestoreBackup={onRestoreBackup}
-                onSaveWorksheet={handleJsonSave}
-                initialValue={jsonMode === 'edit' && editingWorksheet ? editingWorksheet.content : undefined}
-                mode={jsonMode}
-            />
+            {isManagerModalOpen && (
+                <React.Suspense fallback={null}>
+                    <JSONManagerModal
+                        isOpen
+                        onClose={() => setIsManagerModalOpen(false)}
+                        worksheets={worksheets}
+                        onRestoreBackup={onRestoreBackup}
+                        onSaveWorksheet={handleJsonSave}
+                        initialValue={jsonMode === 'edit' && editingWorksheet ? editingWorksheet.content : undefined}
+                        mode={jsonMode}
+                    />
+                </React.Suspense>
+            )}
 
-            <WorksheetInfoModal
-                worksheet={infoModalWorksheet ? (worksheets.find(w => w.id === infoModalWorksheet.id) || infoModalWorksheet) : null}
-                worksheetClasses={worksheetClasses}
-                onClose={() => setInfoModalWorksheet(null)}
-                getClassName={getWorksheetClassName}
-                onRenameWorksheet={onRenameWorksheet}
-                onEditJson={handleEditJson}
-                onDeleteWorksheet={handleDeleteWorksheet}
-                onSelectWorksheet={onSelectWorksheet}
-                onAssignWorksheetClass={onAssignWorksheetClass}
-            />
+            {infoModalWorksheet && (
+                <React.Suspense fallback={null}>
+                    <WorksheetInfoModal
+                        worksheet={worksheets.find(w => w.id === infoModalWorksheet.id) || infoModalWorksheet}
+                        worksheetClasses={worksheetClasses}
+                        onClose={() => setInfoModalWorksheet(null)}
+                        getClassName={getWorksheetClassName}
+                        onRenameWorksheet={onRenameWorksheet}
+                        onEditJson={handleEditJson}
+                        onDeleteWorksheet={handleDeleteWorksheet}
+                        onSelectWorksheet={onSelectWorksheet}
+                        onAssignWorksheetClass={onAssignWorksheetClass}
+                        fallbackPaperTheme={defaultPaperTheme}
+                    />
+                </React.Suspense>
+            )}
 
-            <HelpModal 
-                isOpen={isHelpModalOpen}
-                onClose={() => setIsHelpModalOpen(false)}
-            />
+            {isHelpModalOpen && (
+                <React.Suspense fallback={null}>
+                    <HelpModal isOpen onClose={() => setIsHelpModalOpen(false)} />
+                </React.Suspense>
+            )}
 
         </div>
     );

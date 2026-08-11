@@ -4,14 +4,17 @@ import useLocalStorage from './hooks/useLocalStorage';
 import { useCloudSync } from './hooks/useCloudSync';
 import Dashboard from './components/Dashboard';
 import ExerciseCard from './components/ExerciseCard';
-import SettingsModal from './components/SettingsModal';
 import EditableMathText from './components/EditableMathText';
-import SyncPanel from './components/SyncPanel';
 import CanvasFloatingToolbar from './components/canvas/FloatingToolbar';
-import ConfigurationModal from './components/ConfigurationModal';
 import { MathJaxContext } from 'better-react-mathjax';
 import { DEFAULT_MATHJAX_FONT, resolveMathJaxFont } from './utils/mathjaxFonts';
 import { DEFAULT_OFFICIAL_CLASSES } from './utils/worksheetUtils';
+import { resolvePaperTheme } from './utils/paperThemes';
+import { WORKSHEET_TITLE_SEARCH_ANCHOR, type WorksheetSearchNavigation } from './utils/worksheetSearch';
+
+const SettingsModal = React.lazy(() => import('./components/SettingsModal'));
+const ConfigurationModal = React.lazy(() => import('./components/ConfigurationModal'));
+const SyncPanel = React.lazy(() => import('./components/SyncPanel'));
 
 import { initialJson } from "./data/initialWorksheet";
 const createDefaultWorksheet = (): Worksheet => ({ id: "ws_default_3", name: initialJson.chapter || "Fiche de Démarrage", createdAt: new Date().toISOString(), content: initialJson }); const computeDefaultSchoolYear = (): string => { const now = new Date(); const year = now.getFullYear(); const month = now.getMonth(); const startYear = month >= 7 ? year : year - 1; return `${startYear}-${startYear + 1}`; };
@@ -23,6 +26,7 @@ const DEFAULT_CONFIGURATION: AppConfiguration = {
   handwritingFont: "'Playwrite FR Trad', 'Caveat', cursive",
   textScale: 100,
   mathScale: 100,
+  paperTheme: 'classic',
 };
 
 const App: React.FC = () => {
@@ -38,6 +42,7 @@ const App: React.FC = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isConfigurationOpen, setIsConfigurationOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [searchNavigation, setSearchNavigation] = useState<WorksheetSearchNavigation | null>(null);
 
   const mathJaxFont = resolveMathJaxFont(configuration.mathFont);
   const mathJaxScale = Math.min(140, Math.max(80, configuration.mathScale)) / 100;
@@ -136,11 +141,45 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleSelectWorksheet = (id: string) => {
+  const handleSelectWorksheet = (id: string, navigation?: WorksheetSearchNavigation) => {
+    setSearchNavigation(navigation || null);
     setSelectedWorksheetId(id);
     setActiveView('worksheet');
     window.history.pushState({ view: 'worksheet', id }, '');
   };
+
+  React.useEffect(() => {
+    if (activeView !== 'worksheet' || !searchNavigation) return;
+    let frame = 0;
+    let retryTimer = 0;
+    let settleTimer = 0;
+    let clearTimer = 0;
+    let attempts = 0;
+
+    const focusResult = () => {
+      const target = document.getElementById(searchNavigation.anchorId);
+      if (!target && attempts++ < 12) {
+        retryTimer = window.setTimeout(focusResult, 35);
+        return;
+      }
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      // La correction peut agrandir le canvas après son ouverture : un second
+      // centrage stabilise la destination sans saut visible.
+      settleTimer = window.setTimeout(() => {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }, searchNavigation.revealSolution ? 280 : 80);
+      clearTimer = window.setTimeout(() => setSearchNavigation(null), 3600);
+    };
+
+    frame = window.requestAnimationFrame(focusResult);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(retryTimer);
+      window.clearTimeout(settleTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [activeView, searchNavigation, selectedWorksheetId]);
 
   const handleBackToDashboard = () => {
     if (window.history.state && window.history.state.view === 'worksheet') {
@@ -386,6 +425,8 @@ const App: React.FC = () => {
   const handwritingFont = worksheetSettings.handwritingFont ?? configuration.handwritingFont ?? "'Playwrite FR Trad', 'Caveat', cursive";
   const textScale = worksheetSettings.textScale ?? configuration.textScale;
   const mathScale = worksheetSettings.mathScale ?? configuration.mathScale;
+  const globalPaperTheme = resolvePaperTheme(configuration.paperTheme);
+  const paperTheme = resolvePaperTheme(worksheetSettings.paperTheme, globalPaperTheme);
   const logoDataUrl = worksheetSettings.logoDataUrl ?? '';
   const hasExercises = exercises.length > 0;
   const firstExercise = hasExercises ? exercises[0] : null;
@@ -460,11 +501,13 @@ const App: React.FC = () => {
           onOpenSyncPanel={() => setIsSyncPanelOpen(true)}
           onOpenConfiguration={() => setIsConfigurationOpen(true)}
           cloudSyncStatus={cloudSync.status}
+          defaultPaperTheme={globalPaperTheme}
         />
       ) : selectedWorksheet ? (
         <>
           <main
-            className="worksheet-typography max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 transition-all duration-300 print:max-w-none print:p-0 print:py-0"
+            className={`worksheet-typography paper-theme-${paperTheme} max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 transition-all duration-300 print:max-w-none print:p-0 print:py-0`}
+            data-paper-theme={paperTheme}
             style={{
               fontFamily: textFont,
               fontSize: `${Math.min(130, Math.max(80, textScale))}%`,
@@ -474,13 +517,13 @@ const App: React.FC = () => {
               '--worksheet-math-font': 'inherit',
             } as React.CSSProperties}
           >
-            <div className="bg-[#f4f1ea] rounded-xl w-full px-6 sm:px-12 md:px-16 pt-10 pb-12 border border-[#e2ddd0] shadow-[0_4px_20px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] print:shadow-none print:bg-transparent print:p-0 print:border-none" style={{ backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.5), rgba(255,255,255,0) 20%), url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.04"/></svg>')` }}>
+            <div className="worksheet-paper rounded-xl w-full px-6 sm:px-12 md:px-16 pt-10 pb-12 border shadow-[0_4px_20px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] print:shadow-none print:bg-transparent print:p-0 print:border-none">
               <div className="space-y-8 print:space-y-6">
                 <div className="title-and-first-exercise-container space-y-6 print:space-y-4">
                 <div className="latex-document-header mb-8 mt-0 print:mb-6 print:mt-0 relative">
-                  <div className="flex items-start justify-between text-[0.75em] font-semibold uppercase tracking-widest text-[#697478] print:text-black mb-8">
+                  <div className="flex items-start justify-between text-[0.75em] font-semibold uppercase tracking-widest text-[var(--paper-text-muted)] print:text-black mb-8">
                     <div className="flex flex-col gap-1.5 text-left">
-                      {userNameLabel && <span className="text-[#172126] print:text-black">{userNameLabel}</span>}
+                      {userNameLabel && <span className="text-[var(--paper-text-main)] print:text-black">{userNameLabel}</span>}
                       <span>Classe {classNameLabel || '\u2014'}</span>
                     </div>
                     <div className="flex flex-col gap-1.5 text-right">
@@ -491,19 +534,28 @@ const App: React.FC = () => {
                   <div className="mb-10 flex flex-col items-center">
                     <div className="text-center">
                       <div className="inline-flex items-center justify-center mb-4">
-                        <span className="text-[#19788c] print:text-black text-[0.7em] font-bold uppercase tracking-[0.2em]">
+                        <span className="text-[var(--paper-accent)] print:text-black text-[0.7em] font-bold uppercase tracking-[0.2em]">
                           Le {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
                         </span>
                       </div>
-                      <div role="heading" aria-level={1} className="font-chapter text-[1.58em] sm:text-[1.85em] md:text-[2.2em] font-medium leading-tight text-[#172126] print:text-[1.8em] tracking-tight">
-                        <EditableMathText 
-                          text={selectedWorksheet.name} 
-                          isEditMode={isEditMode} 
-                          onChange={(newTitle) => {
-                            handleRenameWorksheet(selectedWorksheet.id, newTitle);
-                          }} 
-                        />
+                      <div
+                        id={WORKSHEET_TITLE_SEARCH_ANCHOR}
+                        data-search-active={searchNavigation?.anchorId === WORKSHEET_TITLE_SEARCH_ANCHOR || undefined}
+                        className="search-navigation-target worksheet-title-frame"
+                      >
+                        <span className="worksheet-title-rule" aria-hidden="true" />
+                        <div role="heading" aria-level={1} className="worksheet-title font-chapter text-[1.58em] leading-tight sm:text-[1.85em] md:text-[2.2em] print:text-[1.8em]">
+                          <EditableMathText 
+                            text={selectedWorksheet.name} 
+                            isEditMode={isEditMode} 
+                            onChange={(newTitle) => {
+                              handleRenameWorksheet(selectedWorksheet.id, newTitle);
+                            }} 
+                          />
+                        </div>
+                        <span className="worksheet-title-rule" aria-hidden="true" />
                       </div>
+                      <div className="worksheet-title-crown" aria-hidden="true"><span>◆</span></div>
                     </div>
                   </div>
                 </div>
@@ -526,6 +578,7 @@ const App: React.FC = () => {
                       onExerciseMergeUp={handleExerciseMergeUp}
                       onQuestionMergeUp={handleQuestionMergeUp}
                       isEditMode={isEditMode}
+                      searchNavigation={searchNavigation}
                     />
                   </div>
                 )}
@@ -548,6 +601,7 @@ const App: React.FC = () => {
                   onExerciseMergeUp={handleExerciseMergeUp}
                   onQuestionMergeUp={handleQuestionMergeUp}
                   isEditMode={isEditMode}
+                  searchNavigation={searchNavigation}
                 />
               ))}
 
@@ -582,41 +636,51 @@ const App: React.FC = () => {
             onPrint={handlePrintWorksheet}
           />
           {isSettingsModalOpen && (
-            <SettingsModal
-              isOpen={isSettingsModalOpen}
-              onClose={() => setIsSettingsModalOpen(false)}
-              worksheet={selectedWorksheet}
-              worksheetClasses={worksheetClasses}
-              onSave={(newContent) => {
-                handleUpdateWorksheetContent(selectedWorksheet.id, newContent);
-                setIsSettingsModalOpen(false);
-              }}
-            />
+            <React.Suspense fallback={null}>
+              <SettingsModal
+                isOpen
+                onClose={() => setIsSettingsModalOpen(false)}
+                worksheet={selectedWorksheet}
+                worksheetClasses={worksheetClasses}
+                onSave={(newContent) => {
+                  handleUpdateWorksheetContent(selectedWorksheet.id, newContent);
+                  setIsSettingsModalOpen(false);
+                }}
+              />
+            </React.Suspense>
           )}
         </>
       ) : (
         <div className="py-16 text-center">
-            <h2 className="text-2xl font-semibold text-[#697478]">Fiche non trouvée.</h2>
+            <h2 className="text-2xl font-semibold text-[var(--paper-text-muted)]">Fiche non trouvée.</h2>
             <button onClick={handleBackToDashboard} className="mt-6 rounded-full bg-[#172126] px-6 py-2.5 font-medium text-white shadow-sm transition hover:bg-[#25363c] hover:shadow-md">Retour au Dashboard</button>
         </div>
       )}
-      <ConfigurationModal
-        isOpen={isConfigurationOpen}
-        onClose={() => setIsConfigurationOpen(false)}
-        configuration={configuration}
-        onSave={(nextConfiguration) => {
-          setConfiguration(nextConfiguration);
-          setIsConfigurationOpen(false);
-        }}
-        worksheetClasses={worksheetClasses}
-        worksheets={worksheets}
-        onCreateClass={handleCreateClass}
-        onRenameClass={handleRenameClass}
-        onDeleteClass={handleDeleteClass}
-        onReorderClasses={(newClasses) => setWorksheetClasses(newClasses)}
-        onResetClasses={() => setWorksheetClasses(DEFAULT_OFFICIAL_CLASSES)}
-      />
-      <SyncPanel isOpen={isSyncPanelOpen} onClose={() => setIsSyncPanelOpen(false)} sync={cloudSync} />
+      {isConfigurationOpen && (
+        <React.Suspense fallback={null}>
+          <ConfigurationModal
+            isOpen
+            onClose={() => setIsConfigurationOpen(false)}
+            configuration={configuration}
+            onSave={(nextConfiguration) => {
+              setConfiguration(nextConfiguration);
+              setIsConfigurationOpen(false);
+            }}
+            worksheetClasses={worksheetClasses}
+            worksheets={worksheets}
+            onCreateClass={handleCreateClass}
+            onRenameClass={handleRenameClass}
+            onDeleteClass={handleDeleteClass}
+            onReorderClasses={(newClasses) => setWorksheetClasses(newClasses)}
+            onResetClasses={() => setWorksheetClasses(DEFAULT_OFFICIAL_CLASSES)}
+          />
+        </React.Suspense>
+      )}
+      {isSyncPanelOpen && (
+        <React.Suspense fallback={null}>
+          <SyncPanel isOpen onClose={() => setIsSyncPanelOpen(false)} sync={cloudSync} />
+        </React.Suspense>
+      )}
         </div>
       </MathJaxContext>
   );

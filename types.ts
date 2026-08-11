@@ -1,3 +1,5 @@
+import type { Stroke } from './components/canvas/types';
+
 export interface ImageConfig {
   id: string;
   src: string; // Base64 or URL
@@ -25,7 +27,7 @@ export interface QuestionPart {
   answerStyle?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
   answerColor?: 'black' | 'green' | 'blue' | 'white' | 'cream';
   image?: ImageConfig;
-  strokes?: any[];
+  strokes?: Stroke[];
 }
 
 export interface Exercise {
@@ -40,9 +42,11 @@ export interface Exercise {
   statementAnswerStyle?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
   statementAnswerColor?: 'black' | 'green' | 'blue' | 'white' | 'cream';
   image?: ImageConfig;
-  statementStrokes?: any[];
+  statementStrokes?: Stroke[];
   hideBadge?: boolean;
 }
+
+export type PaperTheme = 'classic' | 'white' | 'dark' | 'amber' | 'rose' | 'slate';
 
 export interface WorksheetContent {
   chapter: string;
@@ -66,6 +70,7 @@ export interface WorksheetContent {
     handwritingFont?: string;
     textScale?: number;
     mathScale?: number;
+    paperTheme?: PaperTheme;
   };
 }
 
@@ -78,6 +83,7 @@ export interface AppConfiguration {
   handwritingFont: string;
   textScale: number;
   mathScale: number;
+  paperTheme?: PaperTheme;
 }
 
 export interface Worksheet {

@@ -7,6 +7,11 @@ import { Image as ImageIcon } from 'lucide-react';
 import QuestionBeamerScope from './QuestionBeamerScope';
 import { computeQuestionLayout, joinAroundFigure } from '../utils/questionLayout';
 import { formatPartieTitle } from '../utils/worksheetUtils';
+import {
+  getExerciseSearchAnchor,
+  getQuestionSearchAnchor,
+  type WorksheetSearchNavigation,
+} from '../utils/worksheetSearch';
 
 interface ExerciseCardProps {
   exercise: Exercise;
@@ -24,6 +29,7 @@ interface ExerciseCardProps {
   onExerciseUpdate: (exerciseId: string, newProps: Partial<Exercise>) => void;
   onExerciseMergeUp?: (exerciseId: string) => void;
   onQuestionMergeUp?: (exerciseId: string, questionPath: (string | number)[]) => void;
+  searchNavigation?: WorksheetSearchNavigation | null;
 }
 
 /**
@@ -57,7 +63,7 @@ const badgeStyle = (level: number): React.CSSProperties => {
       ...base,
       fontSize: '1.05em',
       fontWeight: 700,
-      color: '#0f172a',
+      color: 'var(--paper-text-main)',
     };
   }
 
@@ -66,7 +72,7 @@ const badgeStyle = (level: number): React.CSSProperties => {
       ...base,
       fontSize: '1.05em',
       fontWeight: 700,
-      color: '#0369a1',
+      color: 'var(--paper-accent)',
     };
   }
 
@@ -74,7 +80,7 @@ const badgeStyle = (level: number): React.CSSProperties => {
     ...base,
     fontSize: '1.05em',
     fontWeight: 700,
-    color: '#334155',
+    color: 'var(--paper-text-muted)',
   };
 };
 
@@ -85,10 +91,10 @@ const slideBadgeStyle: React.CSSProperties = {
   fontFamily: 'Fredoka, Quicksand, sans-serif',
   lineHeight: 1,
   fontSize: '2em',
-  color: '#19788c',
+  color: 'var(--paper-accent)',
   fontWeight: 700,
   marginBottom: '1.5rem',
-  backgroundColor: '#dceceb',
+  backgroundColor: 'color-mix(in srgb, var(--paper-accent) 16%, var(--paper-bg))',
   borderRadius: '9999px',
   width: '4rem',
   height: '4rem',
@@ -118,7 +124,7 @@ const QuestionFigure: React.FC<{ image: ImageConfig; isSlide?: boolean; inline?:
         className={`print:max-w-full ${isSlide ? 'max-h-[40vh]' : ''}`}
       />
       {image.caption && (
-        <span className={`text-slate-600 font-medium italic print:text-black mt-1 ${isSlide ? 'text-lg mt-4' : 'text-xs'}`}>
+        <span className={`text-[var(--paper-text-muted)] font-medium italic print:text-black mt-1 ${isSlide ? 'text-lg mt-4' : 'text-xs'}`}>
           {image.caption}
         </span>
       )}
@@ -147,9 +153,10 @@ interface QuestionListProps {
    */
   leadLabel?: string;
   leadLevel?: number;
+  searchNavigation?: WorksheetSearchNavigation | null;
 }
 
-const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onQuestionMergeUp, exerciseId, path, leadLabel, leadLevel = 0 }) => {
+const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onQuestionMergeUp, exerciseId, path, leadLabel, leadLevel = 0, searchNavigation }) => {
   const [activeImageModal, setActiveImageModal] = useState<number | null>(null);
 
   if (!questions || questions.length === 0) {
@@ -170,6 +177,8 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
     >
       {questions.map((q, index) => {
         const currentPath = [...path, index];
+        const searchAnchor = getQuestionSearchAnchor(exerciseId, currentPath);
+        const isSearchTarget = searchNavigation?.anchorId === searchAnchor;
         const layout = computeQuestionLayout(q, { level, index, presentationMode, showCanvas });
         const { subquestions, hasSubquestions, collapsed, isSlide: isPresentationSlide, figure } = layout;
         const shouldBreakBefore = (oneQuestionPerPage && level === 0 && index > 0) || (isPresentationSlide && index > 0);
@@ -191,6 +200,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
             isEditMode={isEditMode}
             leadLabel={collapsed ? layout.label : undefined}
             leadLevel={level}
+            searchNavigation={searchNavigation}
           />
         );
 
@@ -203,7 +213,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
         if (collapsed) {
           return (
             <QuestionBeamerScope key={index} content={{ text: q.text, answer: q.answer, solution: q.solution, guidance: q.guidance }}>
-              <div className={`question-block question-block-collapsed relative ${shouldBreakBefore ? 'print:break-before-page print:mt-10' : ''}`}>
+              <div id={searchAnchor} data-search-active={isSearchTarget || undefined} className={`search-navigation-target question-block question-block-collapsed relative ${shouldBreakBefore ? 'print:break-before-page print:mt-10' : ''}`}>
                 {subquestionList}
               </div>
             </QuestionBeamerScope>
@@ -213,7 +223,9 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
         return (
           <QuestionBeamerScope key={index} content={{ text: q.text, answer: q.answer, solution: q.solution, guidance: q.guidance }}>
           <div
-            className={`question-block group/question relative ${shouldBreakBefore ? 'print:break-before-page print:mt-10' : ''}`}
+            id={searchAnchor}
+            data-search-active={isSearchTarget || undefined}
+            className={`search-navigation-target question-block group/question relative ${shouldBreakBefore ? 'print:break-before-page print:mt-10' : ''}`}
           >
             {/*
                 MÉCANISME D'ALIGNEMENT INTELLIGENT & PRÉSENTATION
@@ -271,7 +283,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                 }}
               >
                 <div
-                  className={`question-text-wrapper text-[#263337] print:text-black leading-relaxed font-beamer ${isPresentationSlide ? 'text-[1.5em] print:!text-[1.5em] text-center print:!leading-relaxed' : 'text-[1.05em] print:!text-[1.05em] pr-8'}`}
+                  className={`question-text-wrapper text-[var(--paper-text-main)] print:text-black leading-relaxed font-beamer ${isPresentationSlide ? 'text-[1.5em] print:!text-[1.5em] text-center print:!leading-relaxed' : 'text-[1.05em] print:!text-[1.05em] pr-8'}`}
                   style={{ margin: 0, padding: 0 }}
                 >
                   {figure && q.image ? (
@@ -303,7 +315,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                 {isEditMode && (
                   <button
                     onClick={() => setActiveImageModal(index)}
-                    className="absolute top-0 right-0 rounded-lg p-1.5 text-[#8a9293] opacity-0 transition-opacity hover:bg-[#e7f0ef] hover:text-[#19788c] group-hover/question:opacity-100 no-print"
+                    className="absolute top-0 right-0 rounded-lg p-1.5 text-[var(--paper-text-muted)] opacity-0 transition-opacity hover:bg-black/5 hover:text-[var(--paper-accent)] group-hover/question:opacity-100 no-print"
                     title="Image de la question — affichée au-dessus de la zone de réponse"
                     aria-label="Ajouter ou modifier l'image de la question hors canvas"
                   >
@@ -344,6 +356,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                  guidance={q.guidance}
                  isEditMode={isEditMode}
                  onSolutionUpdate={(newSol) => onQuestionUpdate(exerciseId, currentPath, { solution: newSol })}
+                 revealSolution={Boolean(isSearchTarget && searchNavigation?.revealSolution)}
                />
             ) : null}
 
@@ -365,7 +378,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
 };
 
 
-const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, totalExercisesCount, hideExerciseBadge, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onExerciseUpdate, onQuestionMergeUp }) => {
+const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, totalExercisesCount, hideExerciseBadge, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onExerciseUpdate, onQuestionMergeUp, searchNavigation }) => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   // Mécanisme intelligent : si la fiche ne contient qu'un seul exercice ou si le titre indique "Partie X", masquer le badge "Exercice 1"
@@ -373,11 +386,11 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
   const shouldHideBadge = hideExerciseBadge || totalExercisesCount === 1 || exercise.hideBadge === true || isPartieTitle;
 
   return (
-    <div className={`exercise-card bg-transparent text-black py-4 mb-8 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
+    <div id={getExerciseSearchAnchor(exercise.id)} data-search-active={searchNavigation?.anchorId === getExerciseSearchAnchor(exercise.id) || undefined} className={`search-navigation-target exercise-card bg-transparent text-[var(--paper-text-main)] py-4 mb-8 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
       {/* En-tête : Badge "Exercice X" affiché uniquement lorsqu'il y a plusieurs exercices et pas de "Partie X" */}
       {!shouldHideBadge && (
         <h2 className="exercise-title flex items-center mb-6 print:mb-4">
-          <div className="relative inline-flex items-center justify-center bg-[linear-gradient(135deg,#e6e6e6_0%,#a0a0a0_100%)] px-5 py-2 rounded-[4px_8px_8px_4px] font-sans font-bold text-[0.85em] text-[#333] uppercase tracking-[1px] shadow-[4px_6px_10px_rgba(0,0,0,0.3),inset_1px_1px_2px_rgba(255,255,255,0.9),inset_-1px_-1px_2px_rgba(0,0,0,0.2)] border border-[#999] [text-shadow:1px_1px_0px_rgba(255,255,255,0.6)] -ml-[calc(1.5rem+8px)] sm:-ml-[calc(3rem+8px)] md:-ml-[calc(4rem+8px)] print:-ml-0 print:border-none print:shadow-none print:bg-none print:text-black">
+          <div className="relative inline-flex items-center justify-center bg-[var(--badge-bg)] px-5 py-2 rounded-[4px_8px_8px_4px] font-sans font-bold text-[0.85em] text-[var(--badge-text)] uppercase tracking-[1px] shadow-[4px_6px_10px_rgba(0,0,0,0.3),inset_1px_1px_2px_rgba(255,255,255,0.9),inset_-1px_-1px_2px_rgba(0,0,0,0.2)] border border-transparent [text-shadow:1px_1px_0px_rgba(255,255,255,0.6)] -ml-[calc(1.5rem+8px)] sm:-ml-[calc(3rem+8px)] md:-ml-[calc(4rem+8px)] print:-ml-0 print:border-none print:shadow-none print:bg-none print:text-black">
             Exercice {exerciseNumber}
             <div className="absolute top-[100%] left-0 w-2 h-3 bg-[linear-gradient(to_bottom,#777,transparent)] [clip-path:polygon(0_0,100%_0,100%_100%)] print:hidden" />
           </div>
@@ -387,12 +400,12 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
       {(exercise.title || isEditMode) && (
         <div className={`exercise-part-title flex w-full items-center justify-center text-center ${isPartieTitle ? 'my-3 mb-5' : 'mb-6 print:mb-4'}`}>
           <div className={`flex-1 h-[1px] mr-2.5 ${isPartieTitle ? 'bg-gradient-to-r from-transparent via-[#bfae9c] to-[#bfae9c] max-w-[60px] sm:max-w-[130px]' : 'border-b border-[#cbd5e1] max-w-[80px] sm:max-w-[160px]'}`} />
-          <div className={`print:text-black ${isPartieTitle ? "font-itim text-[1.15em] sm:text-[1.25em] font-medium text-[#423a31] px-3 tracking-wide" : "text-[1.15em] italic text-[#5c5953] tracking-[0.5px]"}`}>
+          <div className={`print:text-black ${isPartieTitle ? "font-itim text-[1.15em] sm:text-[1.25em] font-medium text-[var(--paper-text-main)] px-3 tracking-wide" : "text-[1.15em] italic text-[var(--paper-text-muted)] tracking-[0.5px]"}`}>
             <EditableMathText
               text={exercise.title ? formatPartieTitle(exercise.title) : ""}
               isEditMode={!!isEditMode}
               onChange={(newTitle) => onExerciseUpdate && onExerciseUpdate(exercise.id, { title: newTitle })}
-              className={!exercise.title && isEditMode ? "min-w-[150px] text-[#aaa29b]" : ""}
+              className={!exercise.title && isEditMode ? "min-w-[150px] text-[var(--paper-text-muted)]" : ""}
             />
           </div>
           <div className={`flex-1 h-[1px] ml-2.5 ${isPartieTitle ? 'bg-gradient-to-l from-transparent via-[#bfae9c] to-[#bfae9c] max-w-[60px] sm:max-w-[130px]' : 'border-b border-[#cbd5e1] max-w-[80px] sm:max-w-[160px]'}`} />
@@ -403,7 +416,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
       {isEditMode && (
         <button
           onClick={() => setIsImageModalOpen(true)}
-          className="absolute top-6 right-6 rounded-lg p-2 text-[#8a9293] opacity-0 transition-opacity hover:bg-[#e7f0ef] hover:text-[#19788c] group-hover/exercise:opacity-100 no-print"
+          className="absolute top-6 right-6 rounded-lg p-2 text-[var(--paper-text-muted)] opacity-0 transition-opacity hover:bg-black/5 hover:text-[var(--paper-accent)] group-hover/exercise:opacity-100 no-print"
           title="Image de l'énoncé — affichée au-dessus de la zone de réponse"
           aria-label="Ajouter ou modifier l'image de l'énoncé hors canvas"
         >
@@ -412,7 +425,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
       )}
 
       {exercise.statement && (
-        <div className="exercise-statement text-[1.15em] sm:text-[1.2em] text-[#2b2b2b] mb-6 leading-[1.7] font-serif print:text-black print:text-[1.1em] text-left">
+        <div className="exercise-statement text-[1.15em] sm:text-[1.2em] text-[var(--paper-text-main)] mb-6 leading-[1.7] font-serif print:text-black print:text-[1.1em] text-left">
           <EditableMathText
             text={exercise.statement}
             isEditMode={!!isEditMode}
@@ -440,7 +453,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
               className="print:max-w-full"
             />
             {exercise.image.caption && (
-              <span className="text-xs text-slate-600 font-medium italic print:text-black mt-1">
+              <span className="text-xs text-[var(--paper-text-muted)] font-medium italic print:text-black mt-1">
                 {exercise.image.caption}
               </span>
             )}
@@ -463,6 +476,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
             guidance={exercise.guidance}
             isEditMode={isEditMode}
             onSolutionUpdate={(newSol) => onExerciseUpdate(exercise.id, { solution: newSol })}
+            revealSolution={Boolean(searchNavigation?.anchorId === getExerciseSearchAnchor(exercise.id) && searchNavigation.revealSolution)}
           />
       )}
 
@@ -482,6 +496,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
             exerciseId={exercise.id}
             path={['questions']}
             isEditMode={isEditMode}
+            searchNavigation={searchNavigation}
           />
         </div>
       )}

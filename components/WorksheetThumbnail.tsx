@@ -1,11 +1,13 @@
 import React from 'react';
-import type { ImageConfig, QuestionPart, Worksheet } from '../types';
+import type { ImageConfig, PaperTheme, QuestionPart, Worksheet } from '../types';
 import MathText from './MathText';
 import { formatNumbering } from '../utils/questionLayout';
 import { formatPartieTitle } from '../utils/worksheetUtils';
+import { resolvePaperTheme } from '../utils/paperThemes';
 
 interface WorksheetThumbnailProps {
   worksheet: Worksheet;
+  fallbackPaperTheme?: PaperTheme;
 }
 
 /**
@@ -83,7 +85,7 @@ const ThumbnailImage: React.FC<{ image?: ImageConfig }> = ({ image }) => {
           height: image.height ? `${Math.min(image.height, 150)}px` : 'auto',
         }}
       />
-      {image.caption && <figcaption className="text-[5px] italic text-[#555]">{image.caption}</figcaption>}
+      {image.caption && <figcaption className="text-[5px] italic text-[var(--paper-text-muted)]">{image.caption}</figcaption>}
     </figure>
   );
 };
@@ -98,10 +100,10 @@ const ThumbnailQuestion: React.FC<{
 
   return (
     <li className={`relative grid grid-cols-[auto_1fr] gap-1 items-baseline ${level > 0 ? 'mt-0.5' : 'mt-1'}`}>
-      <span className={`text-right font-bold text-[#1e293b] shrink-0 select-none ${level === 0 ? 'text-[5.5px] min-w-[7px]' : 'text-[5px] min-w-[6px]'}`}>
+      <span className={`shrink-0 select-none text-right font-bold text-[var(--paper-title)] ${level === 0 ? 'text-[5.5px] min-w-[7px]' : 'text-[5px] min-w-[6px]'}`}>
         {label}
       </span>
-      <div className="min-w-0 text-[5.8px] font-normal leading-[1.3] text-[#334155]">
+      <div className="min-w-0 text-[5.8px] font-normal leading-[1.3] text-[var(--paper-text-main)]">
         <ThumbnailMath text={question.text} />
         <ThumbnailImage image={question.image} />
         {!!question.subquestions?.length && (
@@ -122,46 +124,45 @@ const ThumbnailQuestion: React.FC<{
 };
 
 /** Miniature de document A4, volontairement dépourvue de toute zone de réponse. */
-const WorksheetThumbnail: React.FC<WorksheetThumbnailProps> = ({ worksheet }) => {
+const WorksheetThumbnail: React.FC<WorksheetThumbnailProps> = ({ worksheet, fallbackPaperTheme = 'classic' }) => {
   const title = worksheet.name;
+  const paperTheme = resolvePaperTheme(worksheet.content.settings?.paperTheme, fallbackPaperTheme);
 
   return (
     <div
-      className="worksheet-thumbnail relative h-full w-full overflow-hidden bg-[#f4f1ea] shadow-inner text-[#334155] font-latex font-normal"
-      style={{ 
-        fontWeight: 400,
-        backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.5), rgba(255,255,255,0) 20%), url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.04"/></svg>')` 
-      }}
+      className={`worksheet-thumbnail worksheet-paper paper-theme-${paperTheme} relative h-full w-full overflow-hidden font-latex font-normal shadow-inner`}
+      style={{ fontWeight: 400 }}
+      data-paper-theme={paperTheme}
       aria-hidden="true"
     >
       <div className="h-full px-[8%] pb-[8%] pt-[8%]">
         <header className="mb-3.5 text-center flex flex-col items-center">
-          <h4 className="text-[10px] font-semibold leading-[1.3] text-[#19788c] w-4/5">
+          <h4 className="worksheet-thumbnail-title w-4/5 text-[10px] font-semibold leading-[1.3]">
             <ThumbnailMath text={title} />
           </h4>
           <div className="mt-1 flex items-center justify-center w-full gap-1">
-            <div className="h-[0.5px] w-8 bg-gradient-to-r from-transparent to-[#19788c]/40" />
-            <div className="h-0.5 w-0.5 rotate-45 bg-[#19788c]/60" />
-            <div className="h-[0.5px] w-8 bg-gradient-to-l from-transparent to-[#19788c]/40" />
+            <div className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--paper-title-ornament)]" />
+            <div className="h-1 w-1 rotate-45 border border-[var(--paper-title-ornament)] bg-[var(--paper-bg)]" />
+            <div className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--paper-title-ornament)]" />
           </div>
         </header>
 
-        <div className="text-[6.5px] font-normal leading-[1.4] text-justify text-[#334155]">
+        <div className="text-justify text-[6.5px] font-normal leading-[1.4] text-[var(--paper-text-main)]">
           {worksheet.content.exercises?.length ? worksheet.content.exercises.map((exercise, exerciseIndex) => {
             const isPartie = exercise.title && exercise.title.toLowerCase().includes('partie');
             return (
               <section key={exercise.id || exerciseIndex} className={exerciseIndex > 0 ? 'mt-3' : ''}>
                 {isPartie ? (
                    <div className="mb-1.5 mt-2.5 text-center">
-                      <span className="text-[7px] font-semibold text-[#1e293b] uppercase tracking-wider">
+                      <span className="text-[7px] font-semibold uppercase tracking-wider text-[var(--paper-title)]">
                         <ThumbnailMath text={exercise.title ? formatPartieTitle(exercise.title) : `Partie ${String.fromCharCode(65 + (exerciseIndex % 26))}`} />
                       </span>
                    </div>
                 ) : (
-                  <div className="mb-0.5 text-[7px] font-semibold text-[#1e293b] flex items-baseline gap-1">
+                  <div className="mb-0.5 flex items-baseline gap-1 text-[7px] font-semibold text-[var(--paper-title)]">
                     <span className="shrink-0">Exercice {exerciseIndex + 1}.</span>
                     {exercise.title && (
-                      <span className="font-normal text-[#334155]">
+                      <span className="font-normal text-[var(--paper-text-main)]">
                          <ThumbnailMath text={exercise.title} />
                       </span>
                     )}
@@ -190,13 +191,13 @@ const WorksheetThumbnail: React.FC<WorksheetThumbnailProps> = ({ worksheet }) =>
               </section>
             );
           }) : (
-            <div className="grid min-h-32 place-items-center text-center text-[6.5px] text-[#777]">
+            <div className="grid min-h-32 place-items-center text-center text-[6.5px] text-[var(--paper-text-muted)]">
               Cette fiche ne contient aucun exercice.
             </div>
           )}
         </div>
       </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white via-white/80 to-transparent" />
+      <div className="worksheet-thumbnail-fade pointer-events-none absolute inset-x-0 bottom-0 h-10" />
     </div>
   );
 };

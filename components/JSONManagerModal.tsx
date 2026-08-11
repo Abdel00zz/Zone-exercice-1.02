@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, FileUp, Download, Code } from 'lucide-react';
 import type { WorksheetContent, Worksheet } from '../types';
-import { normalizeWorksheetJson, validateWorksheetWithZod } from '../utils/worksheetUtils';
+import { normalizeWorksheetJson } from '../utils/worksheetUtils';
+import { validateWorksheetWithZod } from '../utils/worksheetValidation';
 
 function getErrorLine(code: string, errorMsg: string): number | null {
   const posMatch = errorMsg.match(/position\s+(\d+)/i);

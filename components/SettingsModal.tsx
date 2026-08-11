@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Worksheet, WorksheetContent } from '../types';
+import type { PaperTheme, Worksheet, WorksheetContent } from '../types';
 import { DEFAULT_OFFICIAL_CLASSES } from '../utils/worksheetUtils';
+import { PAPER_THEME_OPTIONS } from '../utils/paperThemes';
 import { GripVertical, Trash2, X, UploadCloud, ImageOff, Info, Image, LayoutTemplate, ListOrdered, Palette, Settings } from 'lucide-react';
 
 const ACCEPTED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml'];
@@ -196,6 +197,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 		if (cleanedSettings.answerSpaceMinHeight === undefined) delete cleanedSettings.answerSpaceMinHeight;
 		if (!cleanedSettings.answerSpaceStyle) delete cleanedSettings.answerSpaceStyle;
 		if (!cleanedSettings.answerSpaceColor) delete cleanedSettings.answerSpaceColor;
+		if (!cleanedSettings.paperTheme) delete cleanedSettings.paperTheme;
 
 		const finalSettings = Object.keys(cleanedSettings).length > 0 ? cleanedSettings : undefined;
 
@@ -205,6 +207,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 		};
 
 		onSave(contentToSave);
+	};
+
+	const handlePaperThemeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+		const value = event.target.value;
+		setEditableContent(prev => {
+			const settings = { ...prev.settings };
+			if (value) settings.paperTheme = value as PaperTheme;
+			else delete settings.paperTheme;
+			return { ...prev, settings };
+		});
 	};
 
 	const currentSettings = editableContent.settings ?? {};
@@ -403,6 +415,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 										<span className="text-[13px] font-bold text-[#172126]">Mode Diaporama</span>
 										<span className="text-[11px] font-medium text-[#697478]">Affiche l'énoncé de la question centré sur une page séparée si elle contient des sous-questions.</span>
 									</div>
+								</label>
+
+								<label className="text-[13px] font-bold text-[#172126] flex flex-col gap-1.5 mt-2">Thème de la page (Couleur)
+									<select 
+										value={editableContent.settings?.paperTheme || ''} 
+										onChange={handlePaperThemeChange}
+										className="w-full rounded-xl border border-[#e5dcb8]/80 bg-white h-11 px-3 text-sm font-semibold text-[#172126] outline-none focus:ring-2 focus:ring-[#19788c]/20"
+									>
+										<option value="">Par défaut (Général)</option>
+										{PAPER_THEME_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+									</select>
 								</label>
 							</div>
 						</section>

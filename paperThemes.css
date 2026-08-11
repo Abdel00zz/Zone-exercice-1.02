@@ -1,0 +1,221 @@
+.paper-theme-classic {
+  --paper-bg: #f4f1ea;
+  --paper-border: #e2ddd0;
+  --paper-sheen: rgba(255, 255, 255, 0.5);
+  --paper-text-main: #172126;
+  --paper-text-muted: #697478;
+  --paper-accent: #19788c;
+  --paper-title: #155e75;
+  --paper-title-ornament: #c28a2c;
+  --paper-title-shadow: rgba(21, 94, 117, 0.16);
+  --badge-bg: linear-gradient(135deg, #e6e6e6 0%, #a0a0a0 100%);
+  --badge-text: #333;
+}
+.paper-theme-white {
+  --paper-bg: #ffffff;
+  --paper-border: #e2e8f0;
+  --paper-sheen: rgba(241, 245, 249, 0.4);
+  --paper-text-main: #0f172a;
+  --paper-text-muted: #64748b;
+  --paper-accent: #2563eb;
+  --paper-title: #1d4ed8;
+  --paper-title-ornament: #c49124;
+  --paper-title-shadow: rgba(29, 78, 216, 0.14);
+  --badge-bg: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+  --badge-text: #1e293b;
+}
+.paper-theme-dark {
+  --paper-bg: #0f172a;
+  --paper-border: #1e293b;
+  --paper-sheen: rgba(255, 255, 255, 0.035);
+  --paper-text-main: #f1f5f9;
+  --paper-text-muted: #94a3b8;
+  --paper-accent: #38bdf8;
+  --paper-title: #f6c453;
+  --paper-title-ornament: #e2aa35;
+  --paper-title-shadow: rgba(246, 196, 83, 0.2);
+  --badge-bg: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  --badge-text: #f8fafc;
+}
+.paper-theme-amber {
+  --paper-bg: #fffbeb;
+  --paper-border: #fde68a;
+  --paper-sheen: rgba(255, 255, 255, 0.38);
+  --paper-text-main: #451a03;
+  --paper-text-muted: #92400e;
+  --paper-accent: #d97706;
+  --paper-title: #a53b18;
+  --paper-title-ornament: #c18518;
+  --paper-title-shadow: rgba(165, 59, 24, 0.16);
+  --badge-bg: linear-gradient(135deg, #fef3c7 0%, #fcd34d 100%);
+  --badge-text: #78350f;
+}
+.paper-theme-rose {
+  --paper-bg: #fff1f2;
+  --paper-border: #ffe4e6;
+  --paper-sheen: rgba(255, 255, 255, 0.42);
+  --paper-text-main: #4c0519;
+  --paper-text-muted: #9f1239;
+  --paper-accent: #e11d48;
+  --paper-title: #be123c;
+  --paper-title-ornament: #d18b2d;
+  --paper-title-shadow: rgba(190, 18, 60, 0.15);
+  --badge-bg: linear-gradient(135deg, #ffe4e6 0%, #fda4af 100%);
+  --badge-text: #881337;
+}
+.paper-theme-slate {
+  --paper-bg: #f8fafc;
+  --paper-border: #e2e8f0;
+  --paper-sheen: rgba(255, 255, 255, 0.35);
+  --paper-text-main: #1e293b;
+  --paper-text-muted: #64748b;
+  --paper-accent: #334155;
+  --paper-title: #1e4fa3;
+  --paper-title-ornament: #b9852a;
+  --paper-title-shadow: rgba(30, 79, 163, 0.14);
+  --badge-bg: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+  --badge-text: #0f172a;
+}
+
+.worksheet-paper {
+  background-color: var(--paper-bg);
+  border-color: var(--paper-border);
+  color: var(--paper-text-main);
+  background-image:
+    linear-gradient(to right, var(--paper-sheen), transparent 20%),
+    url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='noise'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/></svg>");
+  transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease;
+}
+
+/* Titre éditorial : royal sans surcharge, et entièrement piloté par le thème. */
+.worksheet-title-frame {
+  display: grid;
+  grid-template-columns: minmax(24px, 72px) minmax(0, auto) minmax(24px, 72px);
+  align-items: center;
+  justify-content: center;
+  column-gap: clamp(10px, 2.2vw, 22px);
+  width: min(100%, 760px);
+  margin-inline: auto;
+}
+
+/* Destination d'un résultat de recherche : l'anneau suit la palette de la
+   fiche et disparaît seul, sans modifier le document imprimé. */
+.search-navigation-target {
+  scroll-margin-block: 18vh;
+}
+
+.search-navigation-target[data-search-active='true'] {
+  position: relative;
+  z-index: 1;
+  border-radius: 0.85rem;
+  animation: search-navigation-arrival 3.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes search-navigation-arrival {
+  0% {
+    background-color: color-mix(in srgb, var(--paper-title) 22%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--paper-title) 42%, transparent);
+  }
+  18% {
+    background-color: color-mix(in srgb, var(--paper-title) 12%, transparent);
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--paper-title) 16%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 1px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-navigation-target[data-search-active='true'] {
+    animation-duration: 0.01ms;
+    outline: 3px solid color-mix(in srgb, var(--paper-title) 45%, transparent);
+  }
+}
+
+@media print {
+  .search-navigation-target[data-search-active='true'] {
+    animation: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+}
+
+.worksheet-title-rule {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--paper-title-ornament));
+  opacity: 0.82;
+}
+
+.worksheet-title-rule:last-child {
+  background: linear-gradient(to left, transparent, var(--paper-title-ornament));
+}
+
+.worksheet-title-rule::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -3px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--paper-title-ornament);
+  background: var(--paper-bg);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.worksheet-title-rule:last-child::after {
+  right: auto;
+  left: -3px;
+}
+
+.worksheet-title {
+  color: var(--paper-title);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  text-shadow: 0 2px 14px var(--paper-title-shadow);
+}
+
+.worksheet-title-crown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 10px;
+  color: var(--paper-title-ornament);
+  opacity: 0.8;
+}
+
+.worksheet-title-crown::before,
+.worksheet-title-crown::after {
+  content: '';
+  width: 22px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+.worksheet-thumbnail-title {
+  color: var(--paper-title);
+  text-shadow: 0 1px 5px var(--paper-title-shadow);
+  text-wrap: balance;
+}
+
+.worksheet-thumbnail-fade {
+  background: linear-gradient(to top, var(--paper-bg), color-mix(in srgb, var(--paper-bg) 82%, transparent), transparent);
+}
+
+@media print {
+  .worksheet-title {
+    color: #111827;
+    text-shadow: none;
+  }
+
+  .worksheet-title-rule,
+  .worksheet-title-crown {
+    color: #4b5563;
+    filter: grayscale(1);
+  }
+}

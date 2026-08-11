@@ -4,9 +4,10 @@ import {
   Folder, Pencil, Trash2, ChevronUp, ChevronDown, 
   RotateCcw, Check, GraduationCap, Plus, BookOpen
 } from 'lucide-react';
-import type { AppConfiguration, Worksheet } from '../types';
+import type { AppConfiguration, PaperTheme, Worksheet } from '../types';
 import { MATHJAX_FONTS, resolveMathJaxFont } from '../utils/mathjaxFonts';
 import { DEFAULT_OFFICIAL_CLASSES } from '../utils/worksheetUtils';
+import { PAPER_THEME_OPTIONS, resolvePaperTheme } from '../utils/paperThemes';
 import MathText from './MathText';
 
 const TEXT_FONTS = [
@@ -78,6 +79,7 @@ const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
         ...configuration,
         mathFont: resolveMathJaxFont(configuration.mathFont),
         handwritingFont: configuration.handwritingFont || "'Playwrite FR Trad', 'Caveat', cursive",
+        paperTheme: resolvePaperTheme(configuration.paperTheme),
       });
       setEditingClassIndex(null);
       setNewClassInput('');
@@ -184,6 +186,17 @@ const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
               <section className="grid gap-4 sm:grid-cols-2">
                 <label className="rounded-2xl border border-[#dedbd2] bg-[#fbf8f2] p-3 sm:p-4"><span className="mb-2 flex items-center gap-2 text-[13px] font-bold text-[#435054]"><UserRound className="h-4 w-4 text-[#19788c]" />Nom utilisateur</span><input value={draft.userName} onChange={(event) => update('userName', event.target.value)} placeholder="Votre nom" className="w-full bg-transparent text-sm font-semibold text-[#172126] outline-none placeholder:text-[#9aa1a1]" /></label>
                 <label className="rounded-2xl border border-[#dedbd2] bg-[#fbf8f2] p-3 sm:p-4"><span className="mb-2 flex items-center gap-2 text-[13px] font-bold text-[#435054]"><CalendarDays className="h-4 w-4 text-[#b88700]" />Année scolaire</span><input value={draft.schoolYear} onChange={(event) => update('schoolYear', event.target.value)} placeholder="2026-2027" className="w-full bg-transparent text-sm font-semibold text-[#172126] outline-none placeholder:text-[#9aa1a1]" /></label>
+              </section>
+
+              <section className="rounded-2xl border border-[#dedbd2] bg-[#fbf8f2] p-4 sm:p-5">
+                <div className="mb-4 flex items-center gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#e2ddd0] text-[#435054]"><BookOpen className="h-4 w-4" /></span><div><h3 className="text-sm font-bold text-[#172126]">Thème du Papier</h3><p className="text-xs text-[#697478]">Couleur de fond et style visuel global de la fiche.</p></div></div>
+                <div className="grid gap-5">
+                  <label className="text-[13px] font-bold text-[#435054] flex flex-col gap-1.5">Style de page
+                    <select value={resolvePaperTheme(draft.paperTheme)} onChange={(event) => update('paperTheme', event.target.value as PaperTheme)} className="w-full rounded-xl border border-[#dedbd2] bg-white h-11 px-3 text-sm font-semibold text-[#172126] outline-none focus:ring-2 focus:ring-[#19788c]/20">
+                      {PAPER_THEME_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                  </label>
+                </div>
               </section>
               
               <section className="rounded-2xl border border-[#cbe0df] bg-[#f1f8f7] p-4 sm:p-5">
