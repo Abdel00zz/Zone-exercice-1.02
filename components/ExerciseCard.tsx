@@ -390,7 +390,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
       {/* En-tête : Badge "Exercice X" affiché uniquement lorsqu'il y a plusieurs exercices et pas de "Partie X" */}
       {!shouldHideBadge && (
         <h2 className="exercise-title flex items-center mb-6 print:mb-4">
-          <div className="relative inline-flex items-center justify-center bg-[var(--badge-bg)] px-5 py-2 rounded-[4px_8px_8px_4px] font-sans font-bold text-[0.85em] text-[var(--badge-text)] uppercase tracking-[1px] shadow-[4px_6px_10px_rgba(0,0,0,0.3),inset_1px_1px_2px_rgba(255,255,255,0.9),inset_-1px_-1px_2px_rgba(0,0,0,0.2)] border border-transparent [text-shadow:1px_1px_0px_rgba(255,255,255,0.6)] -ml-[calc(1.5rem+8px)] sm:-ml-[calc(3rem+8px)] md:-ml-[calc(4rem+8px)] print:-ml-0 print:border-none print:shadow-none print:bg-none print:text-black">
+          <div className="exercise-badge-pill relative inline-flex items-center justify-center bg-[var(--badge-bg)] px-5 py-2 rounded-[4px_8px_8px_4px] font-sans font-bold text-[0.85em] text-[var(--badge-text)] uppercase tracking-[1px] shadow-[4px_6px_10px_rgba(0,0,0,0.3),inset_1px_1px_2px_rgba(255,255,255,0.9),inset_-1px_-1px_2px_rgba(0,0,0,0.2)] border border-transparent [text-shadow:1px_1px_0px_rgba(255,255,255,0.6)] -ml-[calc(1.5rem+8px)] sm:-ml-[calc(3rem+8px)] md:-ml-[calc(4rem+8px)] print:-ml-0">
             Exercice {exerciseNumber}
             <div className="absolute top-[100%] left-0 w-2 h-3 bg-[linear-gradient(to_bottom,#777,transparent)] [clip-path:polygon(0_0,100%_0,100%_100%)] print:hidden" />
           </div>

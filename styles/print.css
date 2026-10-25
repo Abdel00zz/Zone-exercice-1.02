@@ -1,10 +1,10 @@
 /**
  * styles/print.css
- * High-Resolution A4 Print — badges match screen exactly
+ * Moteur de mise en page A4 Haute Précision (KaTeX + MathJax 4 + Canvas 336 DPI)
  */
 
-/* Miniatures vectorielles : MathJax conserve son SVG natif et la composition
-   reste nette à tous les niveaux de zoom, sans marges de formule surdimensionnées. */
+/* Miniatures vectorielles : KaTeX & MathJax conservent leur rendu vectoriel natif
+   et la composition reste nette à tous les niveaux de zoom. */
 .worksheet-thumbnail {
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
@@ -18,12 +18,14 @@
   overflow: visible;
 }
 
-.worksheet-thumbnail mjx-container[jax="SVG"] {
+.worksheet-thumbnail mjx-container[jax="SVG"],
+.worksheet-thumbnail .katex {
   color: currentColor;
   max-width: 100%;
 }
 
-.worksheet-thumbnail mjx-container[jax="SVG"][display="true"] {
+.worksheet-thumbnail mjx-container[jax="SVG"][display="true"],
+.worksheet-thumbnail .katex-display {
   margin: 0 !important;
   overflow: visible;
 }
@@ -36,14 +38,12 @@
 
 @media print {
 
-  /* ── Resolution & color fidelity ── */
+  /* ── Résolution & fidélité typographique TeX/LaTeX ── */
   :root {
     color-scheme: light;
     --print-font-size: 10.5pt;
     --print-line-height: 1.5;
-    /* Hauteur de la première ligne d'énoncé : 11pt × 1.625 (leading-relaxed).
-       Les numéros reprennent cette valeur pour tomber sur cette ligne. */
-    --print-question-line-box: 17.875pt;
+    --print-question-line-box: 15.75pt;
   }
 
   * {
@@ -55,92 +55,133 @@
 
   @page {
     size: A4 portrait;
-    margin: 20mm 14mm 15mm 14mm;
+    margin: 12mm 14mm 14mm 14mm;
   }
 
   @page :first {
-    margin-top: 20mm;
+    margin-top: 12mm;
   }
 
   html, body {
     margin: 0 !important;
     padding: 0 !important;
-    padding-top: 10mm !important; /* Prevent horizontal cut-off at the top */
-    background: white !important;
-    color: #000 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
     font-size: var(--print-font-size);
+    font-weight: 400 !important;
     line-height: var(--print-line-height);
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: subpixel-antialiased;
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
     font-feature-settings: "kern" 1, "liga" 1;
     image-rendering: high-quality;
   }
 
-  /* ── Hide UI elements ── */
+  /* ── Masquage strict des éléments d'interface ── */
   .no-print,
   header,
   button,
   .cursor-row-resize,
-  [role="button"],
   [role="slider"],
   .fixed,
   ::-webkit-scrollbar {
     display: none !important;
   }
 
-  /* ── Layout ── */
-  main.container {
+  /* ── Structure principale sans marges parasites en haut de page ── */
+  main,
+  main.container,
+  .worksheet-typography,
+  .worksheet-paper {
     max-width: 100% !important;
     width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
   }
 
-  .space-y-10 > * + * { margin-top: 6mm !important; }
-  .space-y-8 > * + * { margin-top: 4mm !important; }
+  .space-y-10 > * + * { margin-top: 5mm !important; }
+  .space-y-8 > * + * { margin-top: 3.5mm !important; }
+  .space-y-6 > * + * { margin-top: 2.5mm !important; }
 
-  /* ── Typography — pure black ── */
-  h1, h2, h3, h4, h5, h6, p, span, div, li, strong, em,
-  .prose, .prose * {
-    color: #000 !important;
-    background-color: transparent !important;
+  /* ── Typographie de l'énoncé — Noir éditorial pur & contraste gras/normal ── */
+  .latex-document-header,
+  .latex-document-header *:not(.worksheet-title-rule),
+  .exercise-title,
+  .exercise-part-title,
+  .exercise-statement,
+  .exercise-statement *,
+  .question-text-wrapper,
+  .question-text-wrapper *:not(mark):not(.math-highlight-rounded),
+  .question-number-badge,
+  .question-lead-badge {
+    color: #000000 !important;
   }
 
-  h1 {
+  .worksheet-typography,
+  .exercise-statement,
+  .question-text-wrapper {
+    font-weight: 400 !important;
+  }
+
+  .worksheet-typography strong,
+  .worksheet-typography b,
+  .worksheet-typography .font-bold,
+  .question-text-wrapper strong,
+  .exercise-statement strong {
+    font-weight: 700 !important;
+  }
+
+  /* Les formules à l'intérieur d'un \textbf{...} gardent leur finesse TeX */
+  .math-in-bold .katex,
+  .math-in-bold mjx-container {
+    font-weight: 400 !important;
+  }
+
+  /* ── En-tête de la fiche ── */
+  .latex-document-header {
     margin-top: 0 !important;
     padding-top: 0 !important;
-    margin-bottom: 5mm !important;
-    font-size: 20pt !important;
-    letter-spacing: -0.01em;
+    margin-bottom: 4mm !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   /* ══════════════════════════════════════════════
-     EXERCISE BADGE — CHIC STYLE
+     EXERCISE BADGE & PART TITLE — STYLE ACADÉMIQUE CONCOURS
   ══════════════════════════════════════════════ */
-  .exercise-badge {
-    background-color: #fff !important;
-    color: #000 !important;
-    border: 1pt solid #000 !important;
-    padding: 1.5mm 4mm !important;
-    border-radius: 4pt !important;
-    font-family: 'Fredoka', 'Quicksand', sans-serif !important;
-    font-weight: 600 !important;
-    font-size: 9pt !important;
-    letter-spacing: 0.1em !important;
-    display: inline-flex !important;
+  .exercise-title {
+    margin-top: 0 !important;
+    margin-bottom: 3mm !important;
+    font-size: 11pt !important;
+    line-height: 1.2 !important;
+    display: flex !important;
     align-items: center !important;
-    line-height: 1 !important;
-    box-shadow: none !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
-  /* TITRE EXERCICE — numéro puis titre de partie centré, sans badge */
-  .exercise-title {
-    margin-bottom: 2mm !important;
-    font-size: 14pt !important;
-    line-height: 1.2 !important;
-    display: block !important;
-    padding-bottom: 2mm !important;
-    border-bottom: 0.5pt solid #d8d3cc !important;
+  .exercise-badge-pill {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1.2mm 4mm !important;
+    background-color: #f8fafc !important;
+    border: 0.8pt solid #0f172a !important;
+    border-radius: 2pt !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    font-size: 9.5pt !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
   }
 
   .exercise-part-title {
@@ -149,27 +190,22 @@
     justify-content: center !important;
     gap: 3mm !important;
     width: 100% !important;
-    margin: 0 0 4mm !important;
+    margin: 0 0 3mm !important;
     padding: 0 !important;
     border: none !important;
     background: transparent !important;
-    color: #403b37 !important;
-    font-family: 'Itim', 'Cormorant Garamond', 'Lora', serif !important;
-    font-size: 12pt !important;
-    font-weight: 400 !important;
-    letter-spacing: 0.025em !important;
+    color: #1e293b !important;
+    font-size: 11.5pt !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em !important;
     line-height: 1.2 !important;
     text-align: center !important;
-  }
-
-  .exercise-part-title > span {
-    width: 12mm !important;
-    height: 0.4pt !important;
-    background: #aaa39b !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   /* ══════════════════════════════════════════════
-     QUESTION BADGES — CHIC & PRO STYLE
+     QUESTION BADGES & ALIGNEMENT SUR LA LIGNE DE BASE
   ══════════════════════════════════════════════ */
   .question-number-badge,
   .question-lead-badge {
@@ -177,107 +213,76 @@
     display: inline-block !important;
     text-align: right !important;
     white-space: nowrap !important;
-    line-height: inherit !important;
+    line-height: var(--print-line-height) !important;
     margin-top: 0 !important;
+    padding: 0 1mm 0 0 !important;
     flex-shrink: 0 !important;
-  }
-
-  /* Level 0: Elegant Text */
-  .question-badge-level-0 {
     background-color: transparent !important;
-    color: #000 !important;
     border: none !important;
-    width: auto !important;
-    height: auto !important;
-    line-height: inherit !important;
-    text-align: right !important;
-    font-size: 11pt !important;
+    font-size: var(--print-font-size) !important;
     font-weight: 700 !important;
-    font-family: inherit !important;
-    padding: 0 !important;
-    margin-top: 0 !important;
-  }
-  
-  .question-badge-level-0::after {
-    content: "" !important;
   }
 
-  /* Level 1: Elegant Text */
-  .question-badge-level-1 {
-    background-color: transparent !important;
-    color: #000 !important;
-    border: none !important;
-    width: auto !important;
-    height: auto !important;
-    line-height: inherit !important;
-    text-align: right !important;
-    font-size: 11pt !important;
-    font-style: normal !important;
-    font-weight: 700 !important;
-    font-family: inherit !important;
-    justify-content: flex-end !important;
-    padding: 0 !important;
-    margin-top: 0 !important;
-  }
-  
-  .question-badge-level-1::after {
-    content: "" !important; /* Managed by JS text content */
-  }
-
-  /* Levels 2+ : i. ii. iii. puis α. β. — même sobriété */
+  .question-badge-level-0,
+  .question-badge-level-1,
   .question-badge-level-2,
   .question-badge-level-3,
   .question-badge-level-4 {
     background-color: transparent !important;
-    color: #000 !important;
+    color: #000000 !important;
     border: none !important;
     width: auto !important;
     height: auto !important;
-    line-height: inherit !important;
-    text-align: right !important;
-    font-size: 11pt !important;
+    line-height: var(--print-line-height) !important;
+    font-size: var(--print-font-size) !important;
     font-style: normal !important;
     font-weight: 700 !important;
-    font-family: inherit !important;
-    justify-content: flex-end !important;
     padding: 0 !important;
-    margin-top: 0 !important;
+    margin: 0 !important;
   }
 
   /* ══════════════════════════════════════════════
-     QUESTION ROWS — GRID LAYOUT
+     QUESTION ROWS — GRILLE ALIGNÉE SUR FIRST BASELINE
   ══════════════════════════════════════════════ */
   .question-row {
     display: grid !important;
-    gap: 4mm !important;
+    gap: 2.5mm !important;
     align-items: first baseline !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
-  /* ── Question content ── */
   .question-content {
     min-width: 0 !important;
     overflow-wrap: break-word !important;
     font-size: var(--print-font-size) !important;
     line-height: var(--print-line-height) !important;
-    padding-top: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
-  /* ── Question list spacing ── */
+  .question-text-wrapper {
+    font-size: var(--print-font-size) !important;
+    line-height: var(--print-line-height) !important;
+    padding-right: 0 !important;
+  }
+
+  .math-text-root {
+    display: inline !important;
+  }
+
+  /* ── Espacement des listes de questions ── */
   .question-list-main {
-    gap: 4mm !important;
+    gap: 3mm !important;
     padding-left: 0 !important;
   }
 
   .question-list-sub {
     gap: 2mm !important;
-    padding-left: 8mm !important;
+    padding-left: 6mm !important;
     margin-top: 0 !important;
   }
 
-  /* Numéro chapeau « 1.  a. … » : la gouttière est portée par la colonne du
-     numéro, la liste ne doit donc pas la redoubler. */
   .question-list-lead {
     padding-left: 0 !important;
   }
@@ -286,13 +291,30 @@
     break-inside: auto !important;
   }
 
-  /* Formule centrée : marge unique, portée par le conteneur */
+  /* ══════════════════════════════════════════════
+     MOTEURS MATHÉMATIQUES VECTORIELS (KaTeX & MathJax 4)
+     Aucune surcharge de `stroke` qui épaissirait les glyphes !
+  ══════════════════════════════════════════════ */
+  .katex {
+    font-size: 1.06em !important;
+    line-height: 1.2 !important;
+    text-rendering: geometricPrecision !important;
+  }
+
+  .katex-display {
+    margin: 0 !important;
+    text-align: center !important;
+  }
+
+  /* Formule centrée : marge unique portée par .math-display */
   .math-display,
   .math-center {
     display: block !important;
     text-align: center !important;
-    margin: 1.2mm 0 !important;
+    margin: 1.5mm 0 !important;
     break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    overflow: visible !important;
   }
 
   .math-display:first-child,
@@ -301,6 +323,24 @@
   .math-display:last-child,
   .math-center:last-child { margin-bottom: 0 !important; }
 
+  mjx-container[jax="SVG"] {
+    color: currentColor !important;
+    max-width: 100% !important;
+  }
+
+  mjx-container[display="true"] {
+    display: block !important;
+    margin: 0 auto !important;
+    text-align: center !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  mjx-container[display="true"] > svg {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
   /* Une figure ancrée reste solidaire de la phrase qui l'introduit */
   .question-figure {
     break-inside: avoid !important;
@@ -308,131 +348,87 @@
   }
 
   .subquestions-container {
-    margin-top: 2mm !important;
+    margin-top: 1.5mm !important;
   }
 
   /* ══════════════════════════════════════════════
-     MATHJAX SVG
+     SAUTS DE PAGE NATURELS (ZÉRO VIDE EN HAUT DE PAGE)
   ══════════════════════════════════════════════ */
-  mjx-container[jax="SVG"] * {
-    stroke: #000 !important;
-    fill: #000 !important;
+  .title-and-first-exercise-container {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
-  /* La marge verticale appartient à .math-display : MathJax n'en ajoute pas. */
-  mjx-container[display="true"] {
-    display: block !important;
-    margin: 0 !important;
-    text-align: center !important;
-  }
-
-  .question-content mjx-container[jax="SVG"] {
-    max-width: 100% !important;
-  }
-
-  .question-content mjx-container[display="true"] {
-    display: block !important;
-    margin: 0 auto !important;
-    max-width: 100% !important;
-    overflow-x: visible !important;
-  }
-
-  .question-content mjx-container[display="true"] svg {
-    max-width: 100% !important;
-    height: auto !important;
-  }
-
-  /* ══════════════════════════════════════════════
-     EXERCISE CARDS — page breaks
-  ══════════════════════════════════════════════ */
   .exercise-card {
     page-break-inside: auto !important;
     break-inside: auto !important;
-    margin-bottom: 6mm !important;
+    margin-bottom: 5mm !important;
     border: none !important;
     padding: 0 !important;
   }
 
-  .exercise-card .exercise-title {
+  .exercise-statement {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
     page-break-after: avoid !important;
     break-after: avoid !important;
-  }
-
-  .exercise-statement {
-    page-break-inside: auto !important; /* Allow statement to break across pages */
-    break-inside: auto !important;
-    page-break-after: auto !important; /* Don't force avoid after, let it flow naturally */
-    break-after: auto !important;
-    margin-bottom: 3mm !important;
+    margin-bottom: 2.5mm !important;
     font-size: var(--print-font-size) !important;
+    line-height: var(--print-line-height) !important;
   }
 
   .question-block {
-    page-break-inside: auto !important; /* Allow long blocks to break */
+    page-break-inside: auto !important;
     break-inside: auto !important;
-    margin-bottom: 2mm !important;
+    margin-bottom: 1.5mm !important;
   }
 
-  .question-block .answer-space {
-    page-break-before: avoid !important;
-    break-before: avoid !important;
-  }
-
-  .exercise-statement + .answer-space {
-    page-break-before: avoid !important;
-    break-before: avoid !important;
-  }
-
-  .exercise-statement + .exercise-questions-wrapper {
-    page-break-before: avoid !important;
-    break-before: avoid !important;
-  }
-
-  .exercise-questions-wrapper {
-    margin-top: 3mm !important;
-  }
-
+  .question-block .answer-space,
+  .exercise-statement + .answer-space,
+  .exercise-statement + .exercise-questions-wrapper,
   .exercise-questions-wrapper > .question-list-main > .question-block:first-child {
     page-break-before: avoid !important;
     break-before: avoid !important;
   }
 
-  /* ── Title + first exercise grouping ── */
-  .title-and-first-exercise-container {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  .title-and-first-exercise-container > div:first-child {
-    page-break-after: avoid !important;
-    break-after: avoid !important;
-  }
-
-  .title-and-first-exercise-container .text-center {
-    page-break-after: avoid !important;
-    break-after: avoid !important;
+  .exercise-questions-wrapper {
+    margin-top: 2.5mm !important;
   }
 
   /* ══════════════════════════════════════════════
-     ANSWER SPACES
+     ZONES DE RÉPONSE & ANNOTATIONS (PAPIER BLANC PROPRE)
   ══════════════════════════════════════════════ */
   .answer-space {
-    margin-top: 3mm !important;
-    margin-bottom: 2mm !important;
-    page-break-inside: auto !important; /* Allow long answer spaces to break across pages */
-    break-inside: auto !important;
+    margin-top: 2mm !important;
+    margin-bottom: 2.5mm !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
     width: 100% !important;
   }
 
   .answer-space > div {
     box-sizing: border-box !important;
     width: 100% !important;
-    border: 0.75pt solid #000 !important;
+    border: 0.8pt solid #334155 !important;
     border-radius: 2pt !important;
-    background-color: transparent !important;
+    background-color: #ffffff !important;
     background-image: none !important;
     overflow: hidden !important;
     display: block !important;
+  }
+
+  /* Masquer complètement les canvas vierges pour ne pas masquer le motif vectoriel sous-jacent */
+  .answer-space:not([data-has-strokes="true"]) canvas,
+  .answer-space canvas:not([data-has-strokes="true"]) {
+    display: none !important;
+  }
+
+  .answer-space canvas {
+    width: 100% !important;
+    height: 100% !important;
+    background: transparent !important;
+    image-rendering: high-quality !important;
+    -webkit-font-smoothing: antialiased !important;
   }
 
   .answer-space svg.print\:hidden {
@@ -443,41 +439,46 @@
   .answer-space svg.hidden {
     display: block !important;
     width: 100% !important;
+    height: 100% !important;
   }
 
   .answer-space svg {
     display: block !important;
     overflow: hidden !important;
     opacity: 1 !important;
-    shape-rendering: crispEdges !important;
+    shape-rendering: geometricPrecision !important;
   }
 
-  .answer-space svg line {
-    stroke-width: 0.35pt !important;
+  /* Couches d'annotations et corrigés sur fond papier blanc :
+     le texte manuscrit clair (prévu pour ardoise noire) passe en encre bleue/noire lisible */
+  .answer-space .canvas-help-text {
+    color: #1e3a8a !important;
+    filter: none !important;
   }
 
-  /* ── SVG general ── */
+  .answer-space .canvas-compiled-text {
+    background: transparent !important;
+  }
+
+  .answer-space .canvas-compiled-text[data-light-chalk="true"] {
+    color: #1e3a8a !important;
+  }
+
+  /* ── Rendu général des images et SVG ── */
   svg {
-    display: block !important;
-    overflow: visible !important;
     max-width: 100% !important;
     shape-rendering: geometricPrecision !important;
-    image-rendering: optimizeQuality !important;
   }
 
   img {
     image-rendering: high-quality;
-    -ms-interpolation-mode: bicubic;
   }
 
-  /* ── Orphans / widows ── */
-  p, li { orphans: 3; widows: 3; }
-
-  .exercise-card:last-of-type {
-    page-break-after: auto !important;
+  p, li {
+    orphans: 3;
+    widows: 3;
   }
 
-  /* ── Prose reset ── */
   .prose {
     font-size: var(--print-font-size) !important;
     line-height: var(--print-line-height) !important;

@@ -29,7 +29,14 @@ import { useSelection } from './hooks/useSelection';
  * Plafonné à 2 pour ne pas exploser la mémoire : une fiche affiche facilement
  * une dizaine de canvas simultanément.
  */
-const getRenderScale = () => Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+const getRenderScale = (isPrinting = false) => {
+  if (isPrinting) return 4.5; // ~432 DPI pour une impression PDF ultra-haute résolution livre d'art
+  return Math.min(2.5, Math.max(2, window.devicePixelRatio || 2));
+};
+
+const LIGHT_CHALK_COLORS = new Set([
+  '#ffffff', '#fff', '#f8fafc', '#f1f5f9', '#e2e8f0', '#cbd5e1',
+]);
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   instanceId: providedInstanceId,
@@ -63,6 +70,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const resizeCanvasRef = useRef<() => void>(() => {});
   const isResizingRef = useRef(isResizing);
   const wasResizingRef = useRef(isResizing);
+  const isPrintingRef = useRef(false);
   const redrawFrameRef = useRef(0);
 
   const {
@@ -155,13 +163,22 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     // pour que tout le code de dessin (coordonnées, épaisseurs) reste inchangé.
     const scale = dimensionsRef.current.scale || 1;
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.clearRect(0, 0, dimensionsRef.current.width, dimensionsRef.current.height);
+
+    const isDarkTheme = ['black', 'green', 'blue'].includes(colorName || (styleName === 'slate' ? 'black' : ''));
+    const adaptPrintColor = isPrintingRef.current && isDarkTheme;
 
     strokesRef.current.forEach((stroke, idx) => {
       // Le texte est rendu dans une couche DOM : MathText peut ainsi compiler
       // LaTeX/Beamer, contrairement à CanvasRenderingContext2D.fillText().
       if (stroke.isText) return;
-      drawStroke(ctx, stroke, selectedStrokeIndexes.has(idx), true);
+      if (adaptPrintColor && stroke.color && LIGHT_CHALK_COLORS.has(stroke.color.toLowerCase())) {
+        drawStroke(ctx, { ...stroke, color: '#0f172a' }, false, true);
+      } else {
+        drawStroke(ctx, stroke, isPrintingRef.current ? false : selectedStrokeIndexes.has(idx), true);
+      }
     });
 
     const previewStroke = recognizedStrokeRef.current || currentStrokeRef.current;
@@ -340,8 +357,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       const cssHeight = Math.round(rect.height);
       if (cssWidth === 0 || cssHeight === 0) return;
 
-      const scale = getRenderScale();
-      const bitmapWidth = Math.round(cssWidth * scale);
+      const isPrintMedia = isPrintingRef.current || (typeof window !== 'undefined' && window.matchMedia?.('print').matches);
+      // Sur papier A4 portrait (210mm - 28mm marges = 182mm), la largeur standard vaut ~688px à 96 DPI.
+      const printTargetWidth = 688;
+      const targetCssWidth = isPrintMedia ? Math.max(cssWidth, printTargetWidth) : cssWidth;
+
+      const scale = getRenderScale(isPrintMedia);
+      const bitmapWidth = Math.round(targetCssWidth * scale);
       const bitmapHeight = Math.round(cssHeight * scale);
       if (canvas.width === bitmapWidth && canvas.height === bitmapHeight) return;
 
@@ -349,16 +371,18 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
       canvas.width = bitmapWidth;
       canvas.height = bitmapHeight;
-      canvas.style.width = `${cssWidth}px`;
-      canvas.style.height = `${cssHeight}px`;
-      dimensionsRef.current = { width: cssWidth, height: cssHeight, scale };
+      if (!isPrintMedia) {
+        canvas.style.width = `${cssWidth}px`;
+        canvas.style.height = `${cssHeight}px`;
+      }
+      dimensionsRef.current = { width: targetCssWidth, height: cssHeight, scale };
 
       // Les traits sont stockés en pixels absolus. Sans cette remise à l'échelle,
       // une rotation de tablette ou un redimensionnement de fenêtre décalait le
       // tracé par rapport aux lignes de la zone de réponse. On ne réagit qu'à la
-      // largeur : agrandir la hauteur sert à gagner de la place, pas à étirer
-      // l'écriture.
-      const needsRescale = previousWidth > 0 && cssWidth !== previousWidth && strokesRef.current.length > 0;
+      // largeur, et JAMAIS pendant l'aperçu d'impression pour ne pas déformer les
+      // figures géométriques (cercles -> ellipses) ni altérer la sauvegarde.
+      const needsRescale = !isPrintMedia && previousWidth > 0 && cssWidth !== previousWidth && strokesRef.current.length > 0;
       if (needsRescale) {
         const ratio = cssWidth / previousWidth;
         strokesRef.current.forEach(stroke => {
@@ -372,6 +396,18 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       redrawAllRef.current();
     };
     resizeCanvasRef.current = resizeCanvas;
+
+    const handlePreparePrint = () => {
+      isPrintingRef.current = true;
+      resizeCanvas();
+      redrawAllRef.current();
+    };
+
+    const handleAfterPrint = () => {
+      isPrintingRef.current = false;
+      resizeCanvas();
+      redrawAllRef.current();
+    };
 
     // Throttle visuel via rAF : au plus un redimensionnement par frame.
     const handleResize = () => {
@@ -398,12 +434,19 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       resizeObserver.observe(containerRef.current);
     }
 
+    window.addEventListener('worksheet-prepare-print', handlePreparePrint);
+    window.addEventListener('beforeprint', handlePreparePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+
     return () => {
       resizeObserver.disconnect();
+      window.removeEventListener('worksheet-prepare-print', handlePreparePrint);
+      window.removeEventListener('beforeprint', handlePreparePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
       cancelAnimationFrame(rafId);
       clearTimeout(commitTimer);
     };
-  }, [commitStrokes]);
+  }, [commitStrokes, colorName, styleName]);
 
   // Le ResizeObserver peut ne pas recevoir un nouvel événement au relâchement :
   // le DOM possède déjà la hauteur finale appliquée directement pendant le drag.
@@ -1221,6 +1264,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       >
         <canvas
           ref={canvasRef}
+          data-has-strokes={strokesRef.current.some(s => !s.isText && s.points && s.points.length > 0) ? 'true' : 'false'}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}

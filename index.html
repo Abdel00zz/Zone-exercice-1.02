@@ -87,10 +87,33 @@
       .worksheet-typography .font-beamer,
       .worksheet-typography .prose {
         font-family: var(--worksheet-text-font) !important;
+        font-weight: 400;
       }
 
-      .worksheet-typography mjx-container[jax="SVG"] {
+      .worksheet-typography strong,
+      .worksheet-typography b,
+      .worksheet-typography .font-bold {
+        font-weight: 700 !important;
+      }
+
+      /* Dans un bloc \textbf{...}, les variables mathématiques conservent leur
+         graisse mathématique standard sauf si \mathbf est utilisé explicitement. */
+      .math-in-bold .katex,
+      .math-in-bold mjx-container {
+        font-weight: 400;
+      }
+
+      .math-text-root {
+        display: inline;
+      }
+
+      .worksheet-typography mjx-container[jax="SVG"],
+      .worksheet-typography .katex {
         font-size: var(--worksheet-math-scale, 100%) !important;
+      }
+
+      .worksheet-typography .katex-display {
+        margin: 0 !important;
       }
 
       .worksheet-typography mjx-container[jax="SVG"] mjx-mtext {
@@ -98,7 +121,7 @@
       }
 
       /* Écriture scolaire française réservée aux rappels et indices affichés
-         dans le canvas. Les formules conservent le dessin MathJax moderne. */
+         dans le canvas. Les formules conservent le dessin MathJax/KaTeX moderne. */
       .canvas-help-text {
         font-family: var(--worksheet-handwriting-font, 'Playwrite FR Trad', 'Caveat', cursive);
         font-weight: 300;
@@ -111,7 +134,8 @@
         font-weight: 400;
       }
 
-      .canvas-help-text mjx-container {
+      .canvas-help-text mjx-container,
+      .canvas-help-text .katex {
         letter-spacing: normal;
       }
       
@@ -123,14 +147,16 @@
         text-align: initial !important;
       }
 
-      mjx-container[jax="SVG"] {
+      mjx-container[jax="SVG"],
+      .katex {
         color: currentColor;
       }
 
       /* Formule centrée sur sa propre ligne, comme dans un sujet imprimé.
-         La marge appartient au conteneur `.math-display` : MathJax ne doit
+         La marge appartient au conteneur `.math-display` : MathJax/KaTeX ne doit
          pas en ajouter une seconde. */
-      mjx-container[jax="SVG"][display="true"] {
+      mjx-container[jax="SVG"][display="true"],
+      .katex-formula-block {
         display: block !important;
         width: auto !important;
         text-align: center !important;

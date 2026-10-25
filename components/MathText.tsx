@@ -1,6 +1,18 @@
 import React from 'react';
+import katex from 'katex';
 import { MathJax } from 'better-react-mathjax';
 import { matchesOverlaySpec, useBeamerPresentation } from './BeamerPresentation';
+import { DEFAULT_MATHJAX_FONT, isKatexPrimaryFont } from '../utils/mathjaxFonts';
+
+export interface MathEngineConfig {
+  mathFont: string;
+  mathScale: number;
+}
+
+export const MathEngineContext = React.createContext<MathEngineConfig>({
+  mathFont: DEFAULT_MATHJAX_FONT,
+  mathScale: 100,
+});
 
 interface MathTextProps {
   text: string;
@@ -26,162 +38,279 @@ function repairJsonTextCommandEscapes(value: string): string {
 }
 
 /**
+ * Extrait le code TeX brut d'un délimiteur inline ($...$, \(...\))
+ * ou display ($$...$$, \[...\]).
+ */
+function stripMathDelimiters(raw: string): { tex: string; displayMode: boolean } {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('$$') && trimmed.endsWith('$$') && trimmed.length >= 4) {
+    return { tex: trimmed.slice(2, -2).trim(), displayMode: true };
+  }
+  if (trimmed.startsWith('\\[') && trimmed.endsWith('\\]') && trimmed.length >= 4) {
+    return { tex: trimmed.slice(2, -2).trim(), displayMode: true };
+  }
+  if (trimmed.startsWith('\\(') && trimmed.endsWith('\\)') && trimmed.length >= 4) {
+    return { tex: trimmed.slice(2, -2).trim(), displayMode: false };
+  }
+  if (trimmed.startsWith('$') && trimmed.endsWith('$') && trimmed.length >= 2) {
+    return { tex: trimmed.slice(1, -1).trim(), displayMode: false };
+  }
+  if (/^\\begin\{(?:align|align\*|equation|equation\*|cases|matrix|pmatrix|bmatrix)\}/.test(trimmed)) {
+    return { tex: trimmed, displayMode: true };
+  }
+  return { tex: trimmed, displayMode: false };
+}
+
+const KATEX_MACROS: Record<string, string> = {
+  '\\R': '\\mathbb{R}',
+  '\\N': '\\mathbb{N}',
+  '\\Z': '\\mathbb{Z}',
+  '\\Q': '\\mathbb{Q}',
+  '\\C': '\\mathbb{C}',
+  '\\llbracket': '[\\![',
+  '\\rrbracket': ']\\!]',
+  '\\parallel': '\\Vert',
+};
+
+/**
+ * Rend une formule mathématique avec KaTeX (moteur vectoriel synchrone ultra-net
+ * pour l'écran et le PDF imprimé), et bascule automatiquement sur MathJax 4
+ * si une police spécialisée (ex: Neo Euler, Fira Math) est sélectionnée ou si
+ * une macro exotique n'est pas reconnue par KaTeX.
+ */
+const MathFormula: React.FC<{ rawMath: string; display?: boolean }> = React.memo(({ rawMath, display = false }) => {
+  const { mathFont } = React.useContext(MathEngineContext);
+  const useKatex = isKatexPrimaryFont(mathFont);
+
+  const katexHtml = React.useMemo(() => {
+    if (!useKatex) return null;
+    const { tex, displayMode } = stripMathDelimiters(rawMath);
+    if (!tex) return '';
+    try {
+      return katex.renderToString(tex, {
+        displayMode: display || displayMode,
+        throwOnError: true,
+        strict: false,
+        trust: true,
+        output: 'htmlAndMathml',
+        macros: { ...KATEX_MACROS },
+      });
+    } catch {
+      return null;
+    }
+  }, [rawMath, display, useKatex]);
+
+  if (katexHtml !== null) {
+    if (display) {
+      return (
+        <span
+          className="katex-formula-block"
+          dangerouslySetInnerHTML={{ __html: katexHtml }}
+        />
+      );
+    }
+    return (
+      <span
+        className="katex-formula-inline"
+        dangerouslySetInnerHTML={{ __html: katexHtml }}
+      />
+    );
+  }
+
+  if (display) {
+    return <MathJax dynamic>{rawMath}</MathJax>;
+  }
+  return (
+    <MathJax inline dynamic>
+      <span>{rawMath}</span>
+    </MathJax>
+  );
+});
+
+/**
  * Auto-detects loose mathematical expressions/variables in plain text
- * and wraps them in inline math delimiters ($...$) so MathJax compiles them.
+ * and wraps them in inline math delimiters ($...$) so KaTeX/MathJax compiles them.
  */
 function autoWrapMathInSegment(segment: string): string {
   if (!segment) return '';
-  if (segment.includes('$') || segment.includes('\\[')) return segment;
+  if (segment.includes('$') || segment.includes('\\[') || segment.includes('\\(')) return segment;
 
   // Key TeX math indicators
   const hasMathKeywords = /(\\(?:forall|exists|in|notin|subset|cap|cup|implies|iff|le|ge|neq|approx|times|div|frac|sqrt|vec|hat|overline|mathbb|mathcal|alpha|beta|gamma|delta|theta|pi|sigma|Delta|lim|sum|int|infty)|[a-zA-Z]_[a-zA-Z0-9{}']+|[a-zA-Z]\^[a-zA-Z0-9{}']+)/.test(segment);
 
   if (!hasMathKeywords) return segment;
 
-  // Match expressions containing math commands or variables with operators/numbers
   const mathPhraseRegex = /((?:\\(?:mathbb|mathcal)\{[^{}]+\}|\\frac\{[^{}]*\}\{[^{}]*\}|\\sqrt(?:\[[^\]]+\])?\{[^{}]*\}|\\(?:vec|hat|overline)\{[^{}]*\}|\\(?:forall|exists|in|notin|subset|cap|cup|implies|iff|le|ge|neq|approx|times|div|alpha|beta|gamma|delta|theta|pi|sigma|Delta|lim|sum|int|infty)|[a-zA-Z]_[a-zA-Z0-9{}']+|[a-zA-Z]\^[a-zA-Z0-9{}']+|[0-9]+|<|>|=|\+|-|\/|\*|\(|\)|\s)+)/g;
 
   return segment.replace(mathPhraseRegex, (match) => {
     const trimmed = match.trim();
     if (!trimmed) return match;
-    const isExplicitMath = /(\\(?:forall|exists|in|notin|subset|cap|cup|implies|iff|le|ge|neq|approx|times|div|frac|sqrt|vec|hat|overline|mathbb|mathcal|alpha|beta|gamma|delta|theta|pi|sigma|Delta|lim|sum|int|infty)|[a-zA-Z]_[a-zA-Z0-9{}']+|[a-zA-Z]\^[a-zA-Z0-9{}']+|[<>=+\-*/])/;
+    const isExplicitMath = /(\\(?:forall|exists|in|notin|subset|cap|cup|implies|iff|le|ge|neq|approx|times|div|frac|sqrt|vec|hat|overline|mathbb|mathcal|alpha|beta|gamma|delta|theta|pi|sigma|Delta|lim|sum|int|infty)|[a-zA-Z]_[a-zA-Z0-9{}']+|[a-zA-Z]\^[a-zA-Z0-9{}']+)/;
     if (isExplicitMath.test(trimmed)) {
-      return ` $${trimmed}$ `;
+      const leadingSpace = /^\s/.test(match) ? ' ' : '';
+      const trailingSpace = /\s$/.test(match) ? ' ' : '';
+      return `${leadingSpace}$${trimmed}$${trailingSpace}`;
     }
     return match;
   });
 }
 
-/** Repère le premier bloc mathématique inline sans confondre \$ et $$. */
+/**
+ * Repère le premier bloc mathématique inline ($...$ ou \(...\)) sans confondre \$ et $$.
+ */
 function findInlineMathRange(value: string): { start: number; end: number } | null {
-  let start = -1;
+  let dollarStart = -1;
 
   for (let index = 0; index < value.length; index++) {
+    // Support \( ... \)
+    if (dollarStart === -1 && value[index] === '\\' && value[index + 1] === '(') {
+      const closeIdx = value.indexOf('\\)', index + 2);
+      if (closeIdx !== -1) {
+        return { start: index, end: closeIdx + 1 };
+      }
+    }
+
     if (value[index] !== '$' || value[index - 1] === '\\') continue;
     if (value[index - 1] === '$' || value[index + 1] === '$') continue;
 
-    if (start === -1) start = index;
-    else return { start, end: index };
+    if (dollarStart === -1) dollarStart = index;
+    else return { start: dollarStart, end: index };
   }
 
   return null;
 }
 
 /**
- * Render inline formatting commands like \textbf{...}, \textit{...}, \underline{...}, \textcolor{color}{...}, \quad, \qquad
+ * Trouve l'accolade fermante équilibrée `{ ... }` en ignorant les accolades
+ * échappées (`\{`, `\}`) et en traversant proprement les blocs `$ ... $`.
+ */
+function findClosingBraceRespectingMath(value: string, openingIndex: number): number {
+  let depth = 0;
+  let inMath = false;
+
+  for (let index = openingIndex; index < value.length; index++) {
+    const ch = value[index];
+    if (ch === '\\') {
+      index++;
+      continue;
+    }
+    if (ch === '$' && value[index + 1] !== '$') {
+      inMath = !inMath;
+      continue;
+    }
+    if (ch === '{') {
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Render inline formatting commands like \textbf{...}, \textit{...}, \underline{...},
+ * \textcolor{color}{...}, \quad, \qquad AND inline math ($...$, \(...\)) in strict
+ * left-to-right order so that `\textbf{texte avec $x^2$ en gras}` works flawlessly.
  */
 function renderFormattedSegment(text: string, keyPrefix: string = 'fmt', revealFillBlanks = false): React.ReactNode[] {
   if (!text) return [];
-
-  // Dans $...$, \underline et \text sont des commandes mathématiques :
-  // le bloc complet doit parvenir intact à MathJax.
-  const inlineMath = findInlineMathRange(text);
-  if (inlineMath) {
-    const before = text.slice(0, inlineMath.start);
-    const math = text.slice(inlineMath.start, inlineMath.end + 1);
-    const after = text.slice(inlineMath.end + 1);
-
-    return [
-      ...renderFormattedSegment(before, `${keyPrefix}-before`, revealFillBlanks),
-      <MathJax key={`${keyPrefix}-math`} inline dynamic><span>{math}</span></MathJax>,
-      ...renderFormattedSegment(after, `${keyPrefix}-after`, revealFillBlanks),
-    ];
-  }
 
   const nodes: React.ReactNode[] = [];
   let remaining = text;
   let idxCounter = 0;
 
-  while (remaining.length > 0) {
-    // Find next LaTeX text command
-    const match = remaining.match(/\\(textbf|textit|emph|underline|textsf|texttt|quad|qquad|textcolor|highlight|hl|Large|large|small)\b/);
+  const cmdRegex = /\\(textbf|textit|emph|underline|textsf|texttt|quad|qquad|textcolor|highlight|hl|Large|large|small)\b/;
 
-    if (!match || match.index === undefined) {
-      // No formatting command found in remaining string
-      const processedText = autoWrapMathInSegment(remaining);
-      nodes.push(
-        <MathJax key={`${keyPrefix}-${idxCounter++}`} inline dynamic>
-          <span>{processedText}</span>
-        </MathJax>
-      );
+  while (remaining.length > 0) {
+    const inlineMath = findInlineMathRange(remaining);
+    const cmdMatch = remaining.match(cmdRegex);
+    const cmdPos = cmdMatch?.index !== undefined ? cmdMatch.index : Infinity;
+    const mathPos = inlineMath ? inlineMath.start : Infinity;
+
+    // 1. Aucun bloc math ni commande de formatage restant
+    if (mathPos === Infinity && cmdPos === Infinity) {
+      const processed = autoWrapMathInSegment(remaining);
+      if (processed !== remaining && findInlineMathRange(processed)) {
+        nodes.push(...renderFormattedSegment(processed, `${keyPrefix}-auto-${idxCounter++}`, revealFillBlanks));
+      } else {
+        nodes.push(<span key={`${keyPrefix}-txt-${idxCounter++}`}>{remaining}</span>);
+      }
       break;
     }
 
-    const matchPos = match.index;
-    const cmd = match[1];
-
-    // Push text before the command
-    if (matchPos > 0) {
-      const prior = remaining.substring(0, matchPos);
-      const processedText = autoWrapMathInSegment(prior);
-      nodes.push(
-        <MathJax key={`${keyPrefix}-${idxCounter++}`} inline dynamic>
-          <span>{processedText}</span>
-        </MathJax>
-      );
+    // 2. Un bloc mathématique inline ($...$ ou \(...\)) commence avant toute commande \textbf etc.
+    if (inlineMath && mathPos < cmdPos) {
+      if (mathPos > 0) {
+        const before = remaining.slice(0, mathPos);
+        nodes.push(...renderFormattedSegment(before, `${keyPrefix}-pre-${idxCounter++}`, revealFillBlanks));
+      }
+      const mathToken = remaining.slice(inlineMath.start, inlineMath.end + 1);
+      nodes.push(<MathFormula key={`${keyPrefix}-math-${idxCounter++}`} rawMath={mathToken} />);
+      remaining = remaining.slice(inlineMath.end + 1);
+      continue;
     }
 
-    // Handle standalone commands
+    // 3. Une commande de mise en forme (\textbf, \textit, \underline, \quad...) commence en premier
+    if (!cmdMatch || cmdMatch.index === undefined) break;
+    const matchPos = cmdMatch.index;
+    const cmd = cmdMatch[1];
+
+    if (matchPos > 0) {
+      const prior = remaining.substring(0, matchPos);
+      nodes.push(...renderFormattedSegment(prior, `${keyPrefix}-prior-${idxCounter++}`, revealFillBlanks));
+    }
+
+    // Commandes d'espacement sans argument
     if (cmd === 'quad') {
       nodes.push(<span key={`${keyPrefix}-${idxCounter++}`} className="inline-block w-4" />);
-      remaining = remaining.substring(matchPos + match[0].length);
+      remaining = remaining.substring(matchPos + cmdMatch[0].length);
       continue;
     }
     if (cmd === 'qquad') {
       nodes.push(<span key={`${keyPrefix}-${idxCounter++}`} className="inline-block w-8" />);
-      remaining = remaining.substring(matchPos + match[0].length);
+      remaining = remaining.substring(matchPos + cmdMatch[0].length);
       continue;
     }
 
-    // LaTeX autorise des espaces ou un retour à la ligne entre la commande et
-    // son argument : `\textbf {mot}` doit être équivalent à `\textbf{mot}`.
-    let afterCmd = remaining.substring(matchPos + match[0].length).replace(/^\s+/, '');
+    let afterCmd = remaining.substring(matchPos + cmdMatch[0].length).replace(/^\s+/, '');
 
-    // Color extraction for \textcolor{color}{content}
+    // Extraction de la couleur pour \textcolor{color}{content}
     let textColor = '';
-    if (cmd === 'textcolor') {
-      if (afterCmd.startsWith('{')) {
-        const colorEnd = afterCmd.indexOf('}');
-        if (colorEnd !== -1) {
-          textColor = afterCmd.substring(1, colorEnd);
-          afterCmd = afterCmd.substring(colorEnd + 1).replace(/^\s+/, '');
-        }
+    if (cmd === 'textcolor' && afterCmd.startsWith('{')) {
+      const colorEnd = findClosingBraceRespectingMath(afterCmd, 0);
+      if (colorEnd !== -1) {
+        textColor = afterCmd.substring(1, colorEnd).trim();
+        afterCmd = afterCmd.substring(colorEnd + 1).replace(/^\s+/, '');
       }
     }
 
-    // Parse brace parameter {...}
     if (afterCmd.startsWith('{')) {
-      let braceDepth = 1;
-      let closingIndex = -1;
-      for (let i = 1; i < afterCmd.length; i++) {
-        if (afterCmd[i] === '{') braceDepth++;
-        else if (afterCmd[i] === '}') {
-          braceDepth--;
-          if (braceDepth === 0) {
-            closingIndex = i;
-            break;
-          }
-        }
-      }
-
+      const closingIndex = findClosingBraceRespectingMath(afterCmd, 0);
       if (closingIndex !== -1) {
         const innerContent = afterCmd.substring(1, closingIndex);
         const children = renderFormattedSegment(innerContent, `${keyPrefix}-${idxCounter}`, revealFillBlanks);
 
         if (cmd === 'textbf') {
-          nodes.push(<strong key={`${keyPrefix}-${idxCounter++}`} className="font-bold">{children}</strong>);
+          nodes.push(<strong key={`${keyPrefix}-${idxCounter++}`} className="font-bold math-in-bold">{children}</strong>);
         } else if (cmd === 'textit' || cmd === 'emph') {
           nodes.push(<em key={`${keyPrefix}-${idxCounter++}`} className="italic">{children}</em>);
         } else if (cmd === 'underline') {
-          nodes.push(<u key={`${keyPrefix}-${idxCounter++}`} className="underline">{children}</u>);
+          nodes.push(<u key={`${keyPrefix}-${idxCounter++}`} className="underline decoration-1 underline-offset-2">{children}</u>);
         } else if (cmd === 'textsf') {
           nodes.push(<span key={`${keyPrefix}-${idxCounter++}`} className="font-sans">{children}</span>);
         } else if (cmd === 'texttt') {
-          nodes.push(<code key={`${keyPrefix}-${idxCounter++}`} className="font-mono text-sm bg-black/5 dark:bg-white/10 px-1 rounded">{children}</code>);
+          nodes.push(<code key={`${keyPrefix}-${idxCounter++}`} className="font-mono text-[0.92em] bg-black/5 px-1 rounded">{children}</code>);
         } else if (cmd === 'textcolor') {
           nodes.push(<span key={`${keyPrefix}-${idxCounter++}`} style={{ color: textColor }}>{children}</span>);
         } else if (cmd === 'highlight' || cmd === 'hl') {
           nodes.push(<mark key={`${keyPrefix}-${idxCounter++}`} className="math-highlight-rounded">{children}</mark>);
+        } else if (cmd === 'Large') {
+          nodes.push(<span key={`${keyPrefix}-${idxCounter++}`} className="text-[1.2em]">{children}</span>);
+        } else if (cmd === 'large') {
+          nodes.push(<span key={`${keyPrefix}-${idxCounter++}`} className="text-[1.1em]">{children}</span>);
+        } else if (cmd === 'small') {
+          nodes.push(<span key={`${keyPrefix}-${idxCounter++}`} className="text-[0.9em]">{children}</span>);
         } else {
           nodes.push(<span key={`${keyPrefix}-${idxCounter++}`}>{children}</span>);
         }
@@ -191,13 +320,9 @@ function renderFormattedSegment(text: string, keyPrefix: string = 'fmt', revealF
       }
     }
 
-    // Fallback if formatting structure doesn't match
-    nodes.push(
-      <MathJax key={`${keyPrefix}-${idxCounter++}`} inline dynamic>
-        <span>{remaining}</span>
-      </MathJax>
-    );
-    break;
+    // Repli si la commande n'a pas d'accolade fermante valide
+    nodes.push(<span key={`${keyPrefix}-raw-${idxCounter++}`}>{remaining.slice(matchPos, matchPos + cmdMatch[0].length)}</span>);
+    remaining = remaining.slice(matchPos + cmdMatch[0].length);
   }
 
   return nodes;
@@ -240,15 +365,14 @@ const StaticMathTextImpl: React.FC<MathTextProps> = ({ text, className = '', rev
           token.startsWith('\\begin{align') ||
           token.startsWith('\\begin{equation') ||
           token.startsWith('\\begin{cases') ||
-          token.startsWith('\\begin{matrix');
+          token.startsWith('\\begin{matrix') ||
+          token.startsWith('\\begin{pmatrix') ||
+          token.startsWith('\\begin{bmatrix');
 
         if (isDisplayMath) {
-          /* `math-display` porte seule l'interligne de la formule centrée :
-             MathJax et Tailwind ajoutaient chacun leur marge, ce qui créait un
-             saut visible entre la phrase et la formule. */
           return (
             <div key={`display-${tokenIdx}`} className="math-display">
-              <MathJax dynamic>{token}</MathJax>
+              <MathFormula rawMath={token} display />
             </div>
           );
         }
@@ -262,9 +386,7 @@ const StaticMathTextImpl: React.FC<MathTextProps> = ({ text, className = '', rev
             {lineParts.map((linePart, lineIdx) => {
               if (!linePart) return null;
 
-              // Check if linePart is a line break directive
               if (linePart.startsWith('\\\\[') && linePart.endsWith(']')) {
-                // Extract spacing like 0.5em, 1em
                 const heightVal = linePart.substring(3, linePart.length - 1);
                 return <div key={`lb-${lineIdx}`} style={{ height: heightVal || '0.5em' }} />;
               }
@@ -272,7 +394,7 @@ const StaticMathTextImpl: React.FC<MathTextProps> = ({ text, className = '', rev
                 return <br key={`br-${lineIdx}`} />;
               }
               if (linePart === '\\par') {
-                return <div key={`par-${lineIdx}`} className="h-3" />;
+                return <div key={`par-${lineIdx}`} className="h-2.5 print:h-1.5" />;
               }
               if (linePart === '\\smallskip') {
                 return <div key={`skip-${lineIdx}`} style={{ height: '0.3em' }} />;
@@ -284,7 +406,6 @@ const StaticMathTextImpl: React.FC<MathTextProps> = ({ text, className = '', rev
                 return <div key={`skip-${lineIdx}`} style={{ height: '1.1em' }} />;
               }
 
-              // Render formatted segments
               return (
                 <span key={`line-${lineIdx}`}>
                   {renderFormattedSegment(linePart, `node-${tokenIdx}-${lineIdx}`, revealFillBlanks)}
@@ -298,7 +419,6 @@ const StaticMathTextImpl: React.FC<MathTextProps> = ({ text, className = '', rev
   );
 };
 
-// Évite de re-parser le LaTeX via MathJax à chaque rendu parent quand le texte n'a pas changé.
 const StaticMathText = React.memo(StaticMathTextImpl);
 
 interface ProgressivePiece {
@@ -310,15 +430,7 @@ interface ProgressivePiece {
 }
 
 function findClosingBrace(value: string, openingIndex: number): number {
-  let depth = 0;
-  for (let index = openingIndex; index < value.length; index++) {
-    if (value[index] === '{') depth++;
-    if (value[index] === '}') {
-      depth--;
-      if (depth === 0) return index;
-    }
-  }
-  return -1;
+  return findClosingBraceRespectingMath(value, openingIndex);
 }
 
 /** Convertit \fillblank{...} en soulignement TeX, visible seulement en mode auteur. */
@@ -420,7 +532,6 @@ function parseProgressivePieces(text: string): ProgressivePiece[] {
       }
     }
 
-    // Forme Beamer sans accolades : \onslide<2-> contenu restant.
     if (command === 'onslide') {
       pieces.push({
         kind: 'command',
@@ -493,7 +604,6 @@ interface ItemizeBlock {
   after: string;
 }
 
-/** Repère la première liste, à puces (`itemize`) ou numérotée (`enumerate`). */
 function splitFirstItemize(text: string): ItemizeBlock | null {
   const start = text.match(/\\begin\{(itemize|enumerate)\}(?:\s*\[\s*<([^>]+)>\s*\])?/);
   if (!start || start.index === undefined) return null;
@@ -553,12 +663,12 @@ const handleMathDoubleClick = (e: React.MouseEvent<HTMLSpanElement>) => {
   const target = e.target as HTMLElement | null;
   if (!target) return;
 
-  // 1. Double-clic sur une formule MathJax ou un bloc d'équation centrée
-  const mathJaxContainer = target.closest('mjx-container, .math-display, .math-center, [jax="SVG"]');
-  if (mathJaxContainer) {
+  // 1. Double-clic sur une formule KaTeX / MathJax ou un bloc d'équation centrée
+  const mathContainer = target.closest('.katex-formula-inline, .katex-formula-block, mjx-container, .math-display, .math-center, [jax="SVG"]');
+  if (mathContainer) {
     e.preventDefault();
     e.stopPropagation();
-    mathJaxContainer.classList.toggle('math-highlight-rounded');
+    mathContainer.classList.toggle('math-highlight-rounded');
     return;
   }
 
@@ -613,7 +723,7 @@ const handleMathDoubleClick = (e: React.MouseEvent<HTMLSpanElement>) => {
         selection.removeAllRanges();
         e.preventDefault();
         e.stopPropagation();
-      } catch (err) {
+      } catch {
         if (parentNode && parentNode !== e.currentTarget) {
           parentNode.classList.toggle('math-highlight-rounded');
           selection.removeAllRanges();
@@ -630,13 +740,12 @@ const MathTextImpl: React.FC<MathTextProps> = ({ text, className = '', revealFil
   if (!text) return null;
 
   return (
-    <span className={`inline-block w-full ${className}`} onDoubleClick={disableHighlight ? undefined : handleMathDoubleClick}>
+    <span className={`math-text-root ${className}`} onDoubleClick={disableHighlight ? undefined : handleMathDoubleClick}>
       <ProgressiveContent text={text} step={step} revealFillBlanks={revealFillBlanks} />
     </span>
   );
 };
 
-// Évite de re-parser le LaTeX via MathJax à chaque rendu parent quand le texte n'a pas changé.
 const MathText = React.memo(MathTextImpl);
 
 export default MathText;

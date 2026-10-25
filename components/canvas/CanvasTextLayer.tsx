@@ -31,11 +31,14 @@ const CanvasTextLayer: React.FC<CanvasTextLayerProps> = ({
       const anchor = stroke.points[0];
       if (!anchor) return null;
       const selected = selectedIndexes.has(index);
+      const rawColor = (stroke.color || fallbackColor || '').toLowerCase();
+      const isLightChalk = ['#ffffff', '#fff', '#f8fafc', '#f1f5f9', '#e2e8f0', '#cbd5e1'].includes(rawColor);
       return (
         <div
           key={`canvas-text-${index}`}
           data-canvas-text-index={index}
           data-render-revision={revision}
+          data-light-chalk={isLightChalk || undefined}
           className={`canvas-compiled-text absolute whitespace-pre-wrap rounded-md px-1.5 py-0.5 leading-relaxed ${isEditMode ? 'pointer-events-auto cursor-text' : ''} ${selected && isEditMode ? 'ring-2 ring-blue-400/70 bg-blue-50/35' : ''}`}
           style={{
             left: anchor.x,

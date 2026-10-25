@@ -5,6 +5,7 @@ import { useCloudSync } from './hooks/useCloudSync';
 import Dashboard from './components/Dashboard';
 import ExerciseCard from './components/ExerciseCard';
 import EditableMathText from './components/EditableMathText';
+import { MathEngineContext } from './components/MathText';
 import CanvasFloatingToolbar from './components/canvas/FloatingToolbar';
 import { MathJaxContext } from 'better-react-mathjax';
 import { DEFAULT_MATHJAX_FONT, resolveMathJaxFont } from './utils/mathjaxFonts';
@@ -60,7 +61,7 @@ const App: React.FC = () => {
       merrorInheritFont: true,
       unknownFamily: 'Quicksand, Segoe UI, sans-serif',
     },
-    svg: { fontCache: 'global', blacker: 1.5 },
+    svg: { fontCache: 'local', blacker: 0 },
   }), [mathJaxFont, mathJaxScale]);
 
   React.useEffect(() => {
@@ -441,8 +442,15 @@ const App: React.FC = () => {
     const safeName = selectedWorksheet.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 
     document.title = `${safeName}_${dateStr}_${timeStr}`;
-    window.print();
-    setTimeout(() => { document.title = originalTitle; }, 100);
+    // Force le montage immédiat et le passage en haute résolution (300+ DPI)
+    // de tous les canvas avant l'ouverture de la boîte d'impression.
+    window.dispatchEvent(new CustomEvent('worksheet-prepare-print'));
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.print();
+        setTimeout(() => { document.title = originalTitle; }, 250);
+      });
+    });
   };
 
   const ErrorMessage: React.FC<{ message: string, onClose: () => void }> = ({ message, onClose }) => (
@@ -466,6 +474,7 @@ const App: React.FC = () => {
   );
 
     return (
+      <MathEngineContext.Provider value={{ mathFont, mathScale }}>
       <MathJaxContext
         key={`${mathFont}-${mathScale}`}
         version={4}
@@ -518,22 +527,22 @@ const App: React.FC = () => {
             } as React.CSSProperties}
           >
             <div className="worksheet-paper rounded-xl w-full px-6 sm:px-12 md:px-16 pt-10 pb-12 border shadow-[0_4px_20px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] print:shadow-none print:bg-transparent print:p-0 print:border-none">
-              <div className="space-y-8 print:space-y-6">
-                <div className="title-and-first-exercise-container space-y-6 print:space-y-4">
-                <div className="latex-document-header mb-8 mt-0 print:mb-6 print:mt-0 relative">
-                  <div className="flex items-start justify-between text-[0.75em] font-semibold uppercase tracking-widest text-[var(--paper-text-muted)] print:text-black mb-8">
-                    <div className="flex flex-col gap-1.5 text-left">
+              <div className="space-y-8 print:space-y-4">
+                <div className="title-and-first-exercise-container space-y-6 print:space-y-3">
+                <div className="latex-document-header mb-8 mt-0 print:mb-3 print:mt-0 relative">
+                  <div className="flex items-start justify-between text-[0.75em] font-semibold uppercase tracking-widest text-[var(--paper-text-muted)] print:text-black mb-8 print:mb-2">
+                    <div className="flex flex-col gap-1.5 print:gap-0.5 text-left">
                       {userNameLabel && <span className="text-[var(--paper-text-main)] print:text-black">{userNameLabel}</span>}
                       <span>Classe {classNameLabel || '\u2014'}</span>
                     </div>
-                    <div className="flex flex-col gap-1.5 text-right">
+                    <div className="flex flex-col gap-1.5 print:gap-0.5 text-right">
                       <span>{schoolYearLabel}</span>
                     </div>
                   </div>
 
-                  <div className="mb-10 flex flex-col items-center">
+                  <div className="mb-10 print:mb-3 flex flex-col items-center">
                     <div className="text-center">
-                      <div className="inline-flex items-center justify-center mb-4">
+                      <div className="inline-flex items-center justify-center mb-4 print:mb-1.5">
                         <span className="text-[var(--paper-accent)] print:text-black text-[0.7em] font-bold uppercase tracking-[0.2em]">
                           Le {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
                         </span>
@@ -544,7 +553,7 @@ const App: React.FC = () => {
                         className="search-navigation-target worksheet-title-frame"
                       >
                         <span className="worksheet-title-rule" aria-hidden="true" />
-                        <div role="heading" aria-level={1} className="worksheet-title font-chapter text-[1.58em] leading-tight sm:text-[1.85em] md:text-[2.2em] print:text-[1.8em]">
+                        <div role="heading" aria-level={1} className="worksheet-title font-chapter text-[1.58em] leading-tight sm:text-[1.85em] md:text-[2.2em] print:text-[1.55em]">
                           <EditableMathText 
                             text={selectedWorksheet.name} 
                             isEditMode={isEditMode} 
@@ -555,7 +564,7 @@ const App: React.FC = () => {
                         </div>
                         <span className="worksheet-title-rule" aria-hidden="true" />
                       </div>
-                      <div className="worksheet-title-crown" aria-hidden="true"><span>◆</span></div>
+                      <div className="worksheet-title-crown print:mt-1" aria-hidden="true"><span>◆</span></div>
                     </div>
                   </div>
                 </div>
@@ -683,6 +692,7 @@ const App: React.FC = () => {
       )}
         </div>
       </MathJaxContext>
+      </MathEngineContext.Provider>
   );
 };
 

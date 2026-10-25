@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import './paperThemes.css';
+import 'katex/dist/katex.min.css';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // 🔧 IMPORTANT : Import du fichier CSS pour l'impression

@@ -10,18 +10,18 @@ type FreehandProfile = {
 
 const DEFAULT_FREEHAND_PROFILE: FreehandProfile = {
   thinning: 0.15,
-  smoothing: 0.6,
+  smoothing: 0.72,
   streamline: 0.55,
 };
 
-/** Profils distincts : bille réactif, feutre uniforme, crayon plus sensible. */
+/** Profils distincts : bille réactif et lisse, feutre uniforme, plume calligraphique soyeuse, crayon naturel. */
 const PEN_PROFILES: Partial<Record<NonNullable<Stroke['penType']>, FreehandProfile>> = {
-  ballpoint: { thinning: 0.08, smoothing: 0.55, streamline: 0.38 },
-  marker: { thinning: 0, smoothing: 0.78, streamline: 0.5 },
-  pencil: { thinning: 0.45, smoothing: 0.52, streamline: 0.34 },
-  fountain: { thinning: 0.6, smoothing: 0.62, streamline: 0.5 },
-  brush: { thinning: 0.75, smoothing: 0.68, streamline: 0.55 },
-  calligraphy: { thinning: 0.8, smoothing: 0.64, streamline: 0.5 },
+  ballpoint: { thinning: 0.10, smoothing: 0.70, streamline: 0.52 },
+  marker: { thinning: 0, smoothing: 0.82, streamline: 0.60 },
+  pencil: { thinning: 0.38, smoothing: 0.66, streamline: 0.48 },
+  fountain: { thinning: 0.55, smoothing: 0.74, streamline: 0.58 },
+  brush: { thinning: 0.70, smoothing: 0.80, streamline: 0.65 },
+  calligraphy: { thinning: 0.75, smoothing: 0.78, streamline: 0.62 },
 };
 
 type CachedFreehandPath = { key: string; path: Path2D };
@@ -114,18 +114,41 @@ function getFreehandPath(stroke: Stroke, completed: boolean): Path2D {
   return path;
 }
 
-export function getSvgPathFromStroke(stroke: number[][]) {
-  if (!stroke.length) return '';
-  const d = stroke.reduce(
-    (acc, [x0, y0], i, arr) => {
-      const [x1, y1] = arr[(i + 1) % arr.length];
-      acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
-      return acc;
-    },
-    ['M', ...stroke[0], 'Q']
-  );
-  d.push('Z');
-  return d.join(' ');
+const average = (a: number, b: number) => (a + b) / 2;
+
+export function getSvgPathFromStroke(stroke: number[][], closed: boolean = true): string {
+  const len = stroke.length;
+  if (!len) return '';
+  if (len < 4) {
+    const d = stroke.reduce(
+      (acc, [x0, y0], i, arr) => {
+        const [x1, y1] = arr[(i + 1) % arr.length];
+        acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+        return acc;
+      },
+      ['M', ...stroke[0], 'Q']
+    );
+    if (closed) d.push('Z');
+    return d.join(' ');
+  }
+
+  let a = stroke[0];
+  let b = stroke[1];
+  const c = stroke[2];
+
+  let result = `M${a[0].toFixed(2)},${a[1].toFixed(2)} Q${b[0].toFixed(2)},${b[1].toFixed(2)} ${average(b[0], c[0]).toFixed(2)},${average(b[1], c[1]).toFixed(2)} T`;
+
+  for (let i = 2, max = len - 1; i < max; i++) {
+    a = stroke[i];
+    b = stroke[i + 1];
+    result += `${average(a[0], b[0]).toFixed(2)},${average(a[1], b[1]).toFixed(2)} `;
+  }
+
+  if (closed) {
+    result += 'Z';
+  }
+
+  return result;
 }
 
 export const drawStroke = (
