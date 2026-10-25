@@ -74,16 +74,16 @@ const COLOR_PALETTES: Record<'black' | 'green' | 'blue' | 'white' | 'cream', Col
   }
 };
 
-// Palette d'impression universelle sur papier blanc A4 : évite d'imprimer
-// des aplats noirs/verts/bleus sombres tout en conservant des réglures nettes.
+// Palette d'impression universelle sur papier blanc A4 : réglures nettes,
+// contraste maîtrisé et respect strict des teintes scolaires (Seyes / grille).
 const PRINT_PAPER_PALETTE: ColorPalette = {
   bg: '#ffffff',
-  line: '#cbd5e1',
-  border: '#94a3b8',
-  dot: '#94a3b8',
-  seyesMajor: '#94a3b8',
+  line: '#94a3b8',
+  border: '#64748b',
+  dot: '#64748b',
+  seyesMajor: '#64748b',
   seyesMinor: '#cbd5e1',
-  seyesVertical: '#fca5a5',
+  seyesVertical: '#f87171',
 };
 
 type ThemeMap = Record<'seyes' | 'slate' | 'grid' | 'dotted' | 'blank', { screen: ColorPalette, print: ColorPalette }>;
@@ -425,17 +425,18 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
               width={styleName === 'seyes' ? SEYES_LINE_PX * 4 : GRID_SIZE_PX}
               height={styleName === 'seyes' ? SEYES_LINE_PX * 4 : GRID_SIZE_PX}
               patternUnits="userSpaceOnUse"
+              overflow="visible"
             >
               <rect width="100%" height="100%" fill={theme.screen.bg} />
               
               {styleName === 'slate' && (
-                <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" />
+                <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" shapeRendering="crispEdges" />
               )}
               
               {styleName === 'grid' && (
                 <>
-                  <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" />
-                  <line x1={GRID_SIZE_PX} y1="0" x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" />
+                  <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" shapeRendering="crispEdges" />
+                  <line x1={GRID_SIZE_PX} y1="0" x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" shapeRendering="crispEdges" />
                 </>
               )}
 
@@ -446,13 +447,13 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
               {styleName === 'seyes' && (
                 <>
                   {/* Ligne horizontale mineure (toutes les 2mm) */}
-                  <line x1="0" y1={SEYES_LINE_PX} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX} stroke={theme.screen.seyesMinor} strokeWidth="1" />
-                  <line x1="0" y1={SEYES_LINE_PX * 2} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 2} stroke={theme.screen.seyesMinor} strokeWidth="1" />
-                  <line x1="0" y1={SEYES_LINE_PX * 3} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 3} stroke={theme.screen.seyesMinor} strokeWidth="1" />
+                  <line x1="0" y1={SEYES_LINE_PX} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX} stroke={theme.screen.seyesMinor} strokeWidth="1" shapeRendering="crispEdges" />
+                  <line x1="0" y1={SEYES_LINE_PX * 2} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 2} stroke={theme.screen.seyesMinor} strokeWidth="1" shapeRendering="crispEdges" />
+                  <line x1="0" y1={SEYES_LINE_PX * 3} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 3} stroke={theme.screen.seyesMinor} strokeWidth="1" shapeRendering="crispEdges" />
                   {/* Ligne horizontale majeure (toutes les 8mm) */}
-                  <line x1="0" y1={SEYES_LINE_PX * 4} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.screen.seyesMajor} strokeWidth="1" />
+                  <line x1="0" y1={SEYES_LINE_PX * 4} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.screen.seyesMajor} strokeWidth="1.2" shapeRendering="crispEdges" />
                   {/* Ligne verticale majeure (toutes les 8mm) */}
-                  <line x1={SEYES_LINE_PX * 4} y1="0" x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.screen.seyesMajor} strokeWidth="1" />
+                  <line x1={SEYES_LINE_PX * 4} y1="0" x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.screen.seyesMajor} strokeWidth="1.2" shapeRendering="crispEdges" />
                 </>
               )}
             </pattern>
@@ -475,32 +476,33 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
               width={styleName === 'seyes' ? SEYES_LINE_PX * 4 : GRID_SIZE_PX}
               height={styleName === 'seyes' ? SEYES_LINE_PX * 4 : GRID_SIZE_PX}
               patternUnits="userSpaceOnUse"
+              overflow="visible"
             >
               {styleName === 'slate' && (
-                <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.45" />
+                <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.65" shapeRendering="crispEdges" />
               )}
               
               {styleName === 'grid' && (
                 <>
-                  <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.45" />
-                  <line x1={GRID_SIZE_PX} y1="0" x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.45" />
+                  <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.6" shapeRendering="crispEdges" />
+                  <line x1={GRID_SIZE_PX} y1="0" x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.6" shapeRendering="crispEdges" />
                 </>
               )}
 
               {styleName === 'dotted' && (
-                <circle cx={GRID_SIZE_PX / 2} cy={GRID_SIZE_PX / 2} r="0.85" fill={theme.print.dot} />
+                <circle cx={GRID_SIZE_PX / 2} cy={GRID_SIZE_PX / 2} r="1" fill={theme.print.dot} />
               )}
 
               {styleName === 'seyes' && (
                 <>
                   {/* Lignes horizontales mineures (2mm) */}
-                  <line x1="0" y1={SEYES_LINE_PX} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX} stroke={theme.print.seyesMinor} strokeWidth="0.3" />
-                  <line x1="0" y1={SEYES_LINE_PX * 2} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 2} stroke={theme.print.seyesMinor} strokeWidth="0.3" />
-                  <line x1="0" y1={SEYES_LINE_PX * 3} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 3} stroke={theme.print.seyesMinor} strokeWidth="0.3" />
+                  <line x1="0" y1={SEYES_LINE_PX} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX} stroke={theme.print.seyesMinor} strokeWidth="0.5" shapeRendering="crispEdges" />
+                  <line x1="0" y1={SEYES_LINE_PX * 2} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 2} stroke={theme.print.seyesMinor} strokeWidth="0.5" shapeRendering="crispEdges" />
+                  <line x1="0" y1={SEYES_LINE_PX * 3} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 3} stroke={theme.print.seyesMinor} strokeWidth="0.5" shapeRendering="crispEdges" />
                   {/* Ligne horizontale majeure (8mm) */}
-                  <line x1="0" y1={SEYES_LINE_PX * 4} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.print.seyesMajor} strokeWidth="0.65" />
+                  <line x1="0" y1={SEYES_LINE_PX * 4} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.print.seyesMajor} strokeWidth="0.85" shapeRendering="crispEdges" />
                   {/* Ligne verticale majeure (8mm) */}
-                  <line x1={SEYES_LINE_PX * 4} y1="0" x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.print.seyesMajor} strokeWidth="0.65" />
+                  <line x1={SEYES_LINE_PX * 4} y1="0" x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.print.seyesMajor} strokeWidth="0.85" shapeRendering="crispEdges" />
                 </>
               )}
             </pattern>

@@ -156,13 +156,32 @@
   .exercise-title {
     margin-top: 0 !important;
     margin-bottom: 2.5mm !important;
-    font-size: 12.5pt !important;
+    font-size: 11pt !important;
     line-height: 1.2 !important;
-    display: block !important;
-    padding-bottom: 1.5mm !important;
-    border-bottom: 0.6pt solid #1e293b !important;
+    display: flex !important;
+    align-items: center !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
     page-break-after: avoid !important;
     break-after: avoid !important;
+  }
+
+  .exercise-title > div {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1.2mm 4mm !important;
+    background-color: #f8fafc !important;
+    border: 0.8pt solid #0f172a !important;
+    border-radius: 2pt !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    font-size: 9.5pt !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
   }
 
   .exercise-part-title {
@@ -413,7 +432,7 @@
     display: block !important;
     overflow: hidden !important;
     opacity: 1 !important;
-    shape-rendering: geometricPrecision !important;
+    shape-rendering: auto !important;
   }
 
   /* Couches d'annotations et corrigés sur fond papier blanc :
