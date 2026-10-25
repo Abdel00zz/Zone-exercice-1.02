@@ -20,6 +20,7 @@ import CanvasTextEditor, { CanvasTextDraft } from './CanvasTextEditor';
 import CorrectionProgressControl from './CorrectionProgressControl';
 import { useCanvasHistory } from './hooks/useCanvasHistory';
 import { useSelection } from './hooks/useSelection';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 /**
  * Résolution du canvas. Le bitmap est dimensionné en pixels physiques pour que
@@ -626,8 +627,14 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   }, [isEditMode, openTextEditorByIndex]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    // Rejet de paume explicite ou automatique dès que le S-Pen (stylet actif) vient d'être utilisé
-    if (e.pointerType === 'touch' && (palmRejection || Date.now() - lastPenInputAtRef.current < 2200)) return;
+    // Rejet de paume physique & géométrique (tablette Android / S-Pen) :
+    // Ignore les contacts tactiles larges (paume posée) ou survenus dans la foulée d'une écriture au stylet
+    if (e.pointerType === 'touch') {
+      const touchRadius = Math.max(e.width || 0, e.height || 0);
+      if (touchRadius > 28 || palmRejection || Date.now() - lastPenInputAtRef.current < 2500) {
+        return;
+      }
+    }
     if (e.pointerType === 'pen') lastPenInputAtRef.current = Date.now();
     if (e.cancelable) e.preventDefault();
 
@@ -639,6 +646,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     if (!coords) return;
 
     const stylusEraser = isStylusEraser(e);
+    if (stylusEraser) {
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+    }
     const activeTool: ToolType = stylusEraser ? 'eraser' : settings.tool;
     clearShapeRecognition();
     smootherRef.current = null;
@@ -1108,6 +1118,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   };
 
   const clear = () => {
+    Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
     strokesRef.current = [];
     clearHistory();
     clearSelection();

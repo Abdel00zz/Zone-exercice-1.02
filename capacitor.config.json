@@ -1,18 +1,25 @@
 {
-  "appId": "app.studioalgebre.twa",
+  "appId": "com.zoneexercice.app",
   "appName": "Zone Exercice",
   "webDir": "dist",
   "bundledWebRuntime": false,
-  "backgroundColor": "#f4f3ee",
+  "backgroundColor": "#0f172a",
   "server": {
     "androidScheme": "https",
     "allowNavigation": ["*"]
   },
   "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#0f172a",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    },
     "StatusBar": {
       "overlaysWebView": false,
-      "style": "LIGHT",
-      "backgroundColor": "#f4f3ee"
+      "style": "DARK",
+      "backgroundColor": "#0f172a"
     },
     "Keyboard": {
       "resize": "body",
@@ -24,7 +31,7 @@
     "captureInput": true,
     "webContentsDebuggingEnabled": false,
     "useLegacyBridge": false,
-    "backgroundColor": "#f4f3ee",
+    "backgroundColor": "#0f172a",
     "buildOptions": {
       "keystorePath": "./android.keystore",
       "keystoreAlias": "studioalgebre",

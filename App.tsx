@@ -12,6 +12,9 @@ import { DEFAULT_MATHJAX_FONT, resolveMathJaxFont } from './utils/mathjaxFonts';
 import { DEFAULT_OFFICIAL_CLASSES } from './utils/worksheetUtils';
 import { resolvePaperTheme } from './utils/paperThemes';
 import { WORKSHEET_TITLE_SEARCH_ANCHOR, type WorksheetSearchNavigation } from './utils/worksheetSearch';
+import { App as CapacitorApp } from '@capacitor/app';
+import { StatusBar, Style as StatusBarStyle } from '@capacitor/status-bar';
+import { SplashScreen } from '@capacitor/splash-screen';
 
 const SettingsModal = React.lazy(() => import('./components/SettingsModal'));
 const ConfigurationModal = React.lazy(() => import('./components/ConfigurationModal'));
@@ -141,6 +144,38 @@ const App: React.FC = () => {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  // Intégration native Android (Capacitor) : Splash, Barre d'état & Bouton Retour physique/gestuel
+  React.useEffect(() => {
+    // 1. Fermer le splash screen une fois React prêt
+    SplashScreen.hide().catch(() => {});
+    // 2. Teinter la barre d'état système aux couleurs sombres du dashboard
+    StatusBar.setStyle({ style: StatusBarStyle.Dark }).catch(() => {});
+    StatusBar.setBackgroundColor({ color: '#0f172a' }).catch(() => {});
+
+    // 3. Gestion native du bouton Retour Android
+    const backListener = CapacitorApp.addListener('backButton', () => {
+      // Priorité 1 : fermer les modales ouvertes
+      if (isConfigurationOpen) { setIsConfigurationOpen(false); return; }
+      if (isSettingsModalOpen) { setIsSettingsModalOpen(false); return; }
+      if (isSyncPanelOpen) { setIsSyncPanelOpen(false); return; }
+
+      // Priorité 2 : si on consulte une fiche, retourner au tableau de bord
+      if (activeView === 'worksheet') {
+        setActiveView('dashboard');
+        setSelectedWorksheetId(null);
+        window.history.pushState(null, '', window.location.pathname);
+        return;
+      }
+
+      // Priorité 3 : sur le tableau de bord, quitter l'application
+      CapacitorApp.exitApp();
+    });
+
+    return () => {
+      backListener.then(sub => sub.remove()).catch(() => {});
+    };
+  }, [activeView, isConfigurationOpen, isSettingsModalOpen, isSyncPanelOpen]);
 
   const handleSelectWorksheet = (id: string, navigation?: WorksheetSearchNavigation) => {
     setSearchNavigation(navigation || null);
@@ -447,7 +482,13 @@ const App: React.FC = () => {
     window.dispatchEvent(new CustomEvent('worksheet-prepare-print'));
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        window.print();
+        // Détecte le pont d'impression natif Android (PrintManager A4 système)
+        const androidBridge = (window as any).AndroidNative;
+        if (androidBridge?.printDocument) {
+          androidBridge.printDocument(selectedWorksheet.name || safeName);
+        } else {
+          window.print();
+        }
         setTimeout(() => { document.title = originalTitle; }, 250);
       });
     });
