@@ -1,0 +1,48 @@
+{
+  "packageId": "com.interactivemaths.app",
+  "host": "ais-pre-m6dtvih27rq3qmn5pflusp-86135193813.europe-west2.run.app",
+  "name": "Interactive Maths",
+  "launcherName": "MathsPlus",
+  "display": "standalone",
+  "themeColor": "#0284c7",
+  "themeColorDark": "#0f172a",
+  "navigationColor": "#f8fafc",
+  "navigationColorDark": "#0f172a",
+  "navigationDividerColor": "#e2e8f0",
+  "navigationDividerColorDark": "#1e293b",
+  "backgroundColor": "#f8fafc",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://ais-pre-m6dtvih27rq3qmn5pflusp-86135193813.europe-west2.run.app/icons/icon-512.png",
+  "maskableIconUrl": "https://ais-pre-m6dtvih27rq3qmn5pflusp-86135193813.europe-west2.run.app/icons/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android-keystore/interactive-maths-release.jks",
+    "alias": "interactivemaths"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Mes fiches",
+      "shortName": "Fiches",
+      "url": "/",
+      "chosenIconUrl": "https://ais-pre-m6dtvih27rq3qmn5pflusp-86135193813.europe-west2.run.app/icons/icon-192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://ais-pre-m6dtvih27rq3qmn5pflusp-86135193813.europe-west2.run.app/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://ais-pre-m6dtvih27rq3qmn5pflusp-86135193813.europe-west2.run.app/",
+  "minSdkVersion": 24,
+  "targetSdkVersion": 35,
+  "orientation": "default",
+  "fingerprints": []
+}

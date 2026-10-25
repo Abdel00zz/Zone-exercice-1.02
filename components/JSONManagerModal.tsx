@@ -84,21 +84,11 @@ const JSONManagerModal: React.FC<JSONManagerModalProps> = ({
             const normalized = normalizeWorksheetJson(parsed);
             onSaveWorksheet(normalized);
             onClose();
-        } catch (e: any) {
-            setIsValid(false);
-            setError({
-                message: e instanceof Error ? e.message : "JSON invalide",
-                line: getErrorLine(code, e instanceof Error ? e.message : ""),
-            });
-        }
+        } catch (e: any) { alert(e instanceof Error ? e.message : "JSON invalide"); }
     };
 
     const handleExport = () => {
-        const dataStr = JSON.stringify(
-            worksheets,
-            (propKey, value) => (propKey === 'imgElement' ? undefined : value),
-            2,
-        );
+        const dataStr = JSON.stringify(worksheets, null, 2);
         const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
         const link = document.createElement('a');
         link.href = dataUri;
@@ -121,11 +111,7 @@ const JSONManagerModal: React.FC<JSONManagerModalProps> = ({
                 }
                 onClose();
             } catch (err: any) { 
-                setIsValid(false);
-                setError({
-                    message: err instanceof Error ? err.message : "Erreur lors de l'importation du fichier JSON.",
-                    line: null,
-                });
+                alert(err instanceof Error ? err.message : "Erreur lors de l'importation"); 
             }
         };
         reader.readAsText(file);

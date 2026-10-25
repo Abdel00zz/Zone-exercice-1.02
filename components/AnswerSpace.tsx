@@ -78,12 +78,12 @@ const COLOR_PALETTES: Record<'black' | 'green' | 'blue' | 'white' | 'cream', Col
 // des aplats noirs/verts/bleus sombres tout en conservant des réglures nettes.
 const PRINT_PAPER_PALETTE: ColorPalette = {
   bg: '#ffffff',
-  line: '#64748b',
-  border: '#334155',
-  dot: '#475569',
-  seyesMajor: '#475569',
-  seyesMinor: '#94a3b8',
-  seyesVertical: '#ef4444',
+  line: '#cbd5e1',
+  border: '#94a3b8',
+  dot: '#94a3b8',
+  seyesMajor: '#94a3b8',
+  seyesMinor: '#cbd5e1',
+  seyesVertical: '#fca5a5',
 };
 
 type ThemeMap = Record<'seyes' | 'slate' | 'grid' | 'dotted' | 'blank', { screen: ColorPalette, print: ColorPalette }>;
@@ -391,33 +391,16 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
     };
   }, []);
 
-  // Réception des changements de fond globaux ("Appliquer à toutes les zones"),
-  // même pour les zones situées en bas de fiche qui n'ont pas encore monté leur <DrawingCanvas>.
-  useEffect(() => {
-    const handleBroadcastBackground = (event: Event) => {
-      const detail = (event as CustomEvent<{
-        style?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
-        color?: 'black' | 'green' | 'blue' | 'white' | 'cream' | '';
-      }>).detail;
-      if (!detail) return;
-      if (detail.style !== undefined) onStyleChange?.(detail.style);
-      if (detail.color !== undefined) onColorChange?.(detail.color);
-    };
-    window.addEventListener('canvas-broadcast-background', handleBroadcastBackground);
-    return () => window.removeEventListener('canvas-broadcast-background', handleBroadcastBackground);
-  }, [onColorChange, onStyleChange]);
-
   return (
     <div
       className="mt-3 mb-8 answer-space group relative"
       onPointerDownCapture={() => setActiveCanvas(canvasInstanceId)}
       data-active={isCanvasActive || undefined}
-      data-has-strokes={Boolean(strokes && strokes.length > 0) || undefined}
     >
       <div
         ref={containerRef}
         data-answer-space-surface=""
-        className={`w-full relative rounded-md transition-shadow duration-200 print:rounded-none print:shadow-none box-border ${
+        className={`w-full relative rounded-md transition-shadow duration-200 print:rounded-none print:shadow-none print:border-none box-border ${
           isResizeActive
             ? 'shadow-sm'
             : isCanvasActive
@@ -442,23 +425,22 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
               width={styleName === 'seyes' ? SEYES_LINE_PX * 4 : GRID_SIZE_PX}
               height={styleName === 'seyes' ? SEYES_LINE_PX * 4 : GRID_SIZE_PX}
               patternUnits="userSpaceOnUse"
-              overflow="visible"
             >
               <rect width="100%" height="100%" fill={theme.screen.bg} />
               
               {styleName === 'slate' && (
-                <line x1="0" y1="0" x2={GRID_SIZE_PX} y2="0" stroke={theme.screen.line} strokeWidth="1" />
+                <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" />
               )}
               
               {styleName === 'grid' && (
                 <>
-                  <line x1="0" y1="0" x2={GRID_SIZE_PX} y2="0" stroke={theme.screen.line} strokeWidth="1" />
-                  <line x1="0" y1="0" x2="0" y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" />
+                  <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" />
+                  <line x1={GRID_SIZE_PX} y1="0" x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" />
                 </>
               )}
 
               {styleName === 'dotted' && (
-                <circle cx={GRID_SIZE_PX / 2} cy={GRID_SIZE_PX / 2} r="1.2" fill={theme.screen.dot} />
+                <circle cx={GRID_SIZE_PX / 2} cy={GRID_SIZE_PX / 2} r="1" fill={theme.screen.dot} />
               )}
 
               {styleName === 'seyes' && (
@@ -468,9 +450,9 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
                   <line x1="0" y1={SEYES_LINE_PX * 2} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 2} stroke={theme.screen.seyesMinor} strokeWidth="1" />
                   <line x1="0" y1={SEYES_LINE_PX * 3} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 3} stroke={theme.screen.seyesMinor} strokeWidth="1" />
                   {/* Ligne horizontale majeure (toutes les 8mm) */}
-                  <line x1="0" y1="0" x2={SEYES_LINE_PX * 4} y2="0" stroke={theme.screen.seyesMajor} strokeWidth="1.2" />
+                  <line x1="0" y1={SEYES_LINE_PX * 4} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.screen.seyesMajor} strokeWidth="1" />
                   {/* Ligne verticale majeure (toutes les 8mm) */}
-                  <line x1="0" y1="0" x2="0" y2={SEYES_LINE_PX * 4} stroke={theme.screen.seyesMajor} strokeWidth="1.2" />
+                  <line x1={SEYES_LINE_PX * 4} y1="0" x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.screen.seyesMajor} strokeWidth="1" />
                 </>
               )}
             </pattern>
@@ -493,33 +475,32 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
               width={styleName === 'seyes' ? SEYES_LINE_PX * 4 : GRID_SIZE_PX}
               height={styleName === 'seyes' ? SEYES_LINE_PX * 4 : GRID_SIZE_PX}
               patternUnits="userSpaceOnUse"
-              overflow="visible"
             >
               {styleName === 'slate' && (
-                <line x1="0" y1="0" x2={GRID_SIZE_PX} y2="0" stroke={theme.print.line} strokeWidth="0.65" />
+                <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.45" />
               )}
               
               {styleName === 'grid' && (
                 <>
-                  <line x1="0" y1="0" x2={GRID_SIZE_PX} y2="0" stroke={theme.print.line} strokeWidth="0.65" />
-                  <line x1="0" y1="0" x2="0" y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.65" />
+                  <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.45" />
+                  <line x1={GRID_SIZE_PX} y1="0" x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.45" />
                 </>
               )}
 
               {styleName === 'dotted' && (
-                <circle cx={GRID_SIZE_PX / 2} cy={GRID_SIZE_PX / 2} r="1.0" fill={theme.print.dot} />
+                <circle cx={GRID_SIZE_PX / 2} cy={GRID_SIZE_PX / 2} r="0.85" fill={theme.print.dot} />
               )}
 
               {styleName === 'seyes' && (
                 <>
                   {/* Lignes horizontales mineures (2mm) */}
-                  <line x1="0" y1={SEYES_LINE_PX} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX} stroke={theme.print.seyesMinor} strokeWidth="0.45" />
-                  <line x1="0" y1={SEYES_LINE_PX * 2} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 2} stroke={theme.print.seyesMinor} strokeWidth="0.45" />
-                  <line x1="0" y1={SEYES_LINE_PX * 3} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 3} stroke={theme.print.seyesMinor} strokeWidth="0.45" />
+                  <line x1="0" y1={SEYES_LINE_PX} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX} stroke={theme.print.seyesMinor} strokeWidth="0.3" />
+                  <line x1="0" y1={SEYES_LINE_PX * 2} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 2} stroke={theme.print.seyesMinor} strokeWidth="0.3" />
+                  <line x1="0" y1={SEYES_LINE_PX * 3} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 3} stroke={theme.print.seyesMinor} strokeWidth="0.3" />
                   {/* Ligne horizontale majeure (8mm) */}
-                  <line x1="0" y1="0" x2={SEYES_LINE_PX * 4} y2="0" stroke={theme.print.seyesMajor} strokeWidth="0.85" />
+                  <line x1="0" y1={SEYES_LINE_PX * 4} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.print.seyesMajor} strokeWidth="0.65" />
                   {/* Ligne verticale majeure (8mm) */}
-                  <line x1="0" y1="0" x2="0" y2={SEYES_LINE_PX * 4} stroke={theme.print.seyesMajor} strokeWidth="0.65" />
+                  <line x1={SEYES_LINE_PX * 4} y1="0" x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.print.seyesMajor} strokeWidth="0.65" />
                 </>
               )}
             </pattern>
@@ -632,4 +613,4 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   );
 };
 
-export default React.memo(AnswerSpace);
+export default AnswerSpace;

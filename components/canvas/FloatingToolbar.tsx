@@ -298,29 +298,19 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
 
   const applyBackgroundStyle = (style: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank') => {
     const apply = (handle: { setBackgroundStyle: (s: typeof style) => void }) => handle.setBackgroundStyle(style);
-    if (tools.applyBackgroundToAll) {
-      withEveryCanvas(apply);
-      window.dispatchEvent(new CustomEvent('canvas-broadcast-background', { detail: { style } }));
-    } else {
-      withActiveCanvas(apply);
-    }
+    if (tools.applyBackgroundToAll) withEveryCanvas(apply); else withActiveCanvas(apply);
   };
 
   const applyBackgroundColor = (color: 'black' | 'green' | 'blue' | 'white' | 'cream' | '') => {
     const apply = (handle: { setBackgroundColor: (c: typeof color) => void }) => handle.setBackgroundColor(color);
-    if (tools.applyBackgroundToAll) {
-      withEveryCanvas(apply);
-      window.dispatchEvent(new CustomEvent('canvas-broadcast-background', { detail: { color } }));
-    } else {
-      withActiveCanvas(apply);
-    }
+    if (tools.applyBackgroundToAll) withEveryCanvas(apply); else withActiveCanvas(apply);
   };
 
   if (railCollapsed) {
     return (
       <div
         ref={railRef}
-        className="canvas-toolbar canvas-rail fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-40 print:hidden"
+        className="canvas-toolbar canvas-rail canvas-rail-collapsed fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-40 print:hidden"
       >
         <button
           type="button"
@@ -348,25 +338,18 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
     );
   }
 
-  const panelStyle: React.CSSProperties = {
-    position: 'absolute',
-    right: 'calc(100% + 14px)',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    maxHeight: 'min(85vh, 620px)',
-  };
-
   const panel = (title: string, body: React.ReactNode, width = 320) => (
     <div
-      className="canvas-rail-panel absolute z-50 flex flex-col overflow-y-auto overscroll-contain rounded-2xl border border-[#dedbd2] bg-[#f4f1ea] p-3.5 shadow-[0_20px_50px_rgba(23,33,38,0.22)] animate-in fade-in slide-in-from-right-3 duration-200"
-      style={{ ...panelStyle, width: `min(${width}px, calc(100vw - 80px))` }}
+      className="canvas-rail-panel z-50 flex flex-col overflow-y-auto overscroll-contain rounded-2xl border border-[#dedbd2] bg-[#f4f1ea] p-3.5 shadow-[0_20px_50px_rgba(23,33,38,0.22)] animate-in fade-in slide-in-from-right-3 duration-200"
+      style={{ width: `min(${width}px, calc(100vw - 80px))` }}
     >
       <PanelHeader title={title} onClose={closeToolMenu} />
       {body}
     </div>
   );
 
-  // z-40 : au-dessus de la fiche, ancré verticalement à droite pour ne pas masquer le texte.
+  // z-40 : au-dessus de la fiche, ancré verticalement à droite sur tablette/PC
+  // et en dock flottant horizontal en bas sur smartphone portrait.
   return (
     <div
       ref={railRef}
@@ -410,7 +393,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
           <MousePointer2 size={22} strokeWidth={tools.tool === 'pointer' ? 2.3 : 1.7} />
         </RailButton>
 
-        <div className="my-1 h-px w-7 shrink-0 bg-[#dedbd2]" />
+        <div className="canvas-rail-divider my-1 h-px w-7 shrink-0 bg-[#dedbd2]" />
 
         <RailButton label="Annuler" disabled={!canvas.canUndo} onClick={() => withActiveCanvas(handle => handle.undo())}>
           <PngIcon src={CANVAS_ICONS.undo} size={21} />
@@ -443,7 +426,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
           aria-label="Replier la barre d'outils"
           className="grid h-7 w-9 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-white hover:text-slate-700"
         >
-          <ChevronDown size={17} className="-rotate-90" />
+          <ChevronDown size={17} className="canvas-rail-collapse-icon -rotate-90" />
         </button>
       </div>
 
@@ -806,7 +789,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
           <Section
             title="Fond du canvas"
             summary={canvas.canChangeBackground
-              ? `${BACKGROUND_STYLES.find(s => s.id === canvas.styleName)?.name || canvas.styleName || 'style'} · ${BACKGROUND_COLORS.find(c => c.id === canvas.colorName)?.name || canvas.colorName || 'couleur auto'}`
+              ? `${canvas.styleName || 'style'} · ${canvas.colorName || 'couleur auto'}`
               : 'zone active non modifiable'}
             icon={<Palette size={17} />}
             open={expandedSection === 'background'}
@@ -841,23 +824,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
               <Toggle
                 label="Appliquer à toutes les zones"
                 checked={tools.applyBackgroundToAll}
-                onChange={() => {
-                  const next = !tools.applyBackgroundToAll;
-                  setToolState({ applyBackgroundToAll: next });
-                  if (next && canvas.canChangeBackground) {
-                    const style = canvas.styleName as 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank' | undefined;
-                    const color = canvas.colorName as 'black' | 'green' | 'blue' | 'white' | 'cream' | '' | undefined;
-                    if (style) {
-                      withEveryCanvas(h => h.setBackgroundStyle(style));
-                    }
-                    if (color !== undefined) {
-                      withEveryCanvas(h => h.setBackgroundColor(color));
-                    }
-                    window.dispatchEvent(new CustomEvent('canvas-broadcast-background', {
-                      detail: { style, color },
-                    }));
-                  }
-                }}
+                onChange={() => setToolState({ applyBackgroundToAll: !tools.applyBackgroundToAll })}
               />
             </div>
           </Section>

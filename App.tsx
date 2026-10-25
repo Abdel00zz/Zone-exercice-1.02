@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Worksheet, WorksheetContent, QuestionPart, Exercise, AppConfiguration } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
 import { useCloudSync } from './hooks/useCloudSync';
@@ -28,26 +28,6 @@ const DEFAULT_CONFIGURATION: AppConfiguration = {
   textScale: 100,
   mathScale: 100,
   paperTheme: 'classic',
-};
-
-/**
- * Applique `newProps` au nœud désigné par `path` en ne clonant que les nœuds
- * traversés. Remplace l'ancien `JSON.parse(JSON.stringify(...))` qui recopiait
- * la fiche entière (et tous les tracés) à chaque frappe ou trait de stylet.
- */
-const applyAtPath = (node: any, path: (string | number)[], newProps: object): any => {
-  if (path.length === 0) return { ...node, ...newProps };
-  const [key, ...rest] = path;
-  if (node == null || node[key] === undefined) {
-    throw new Error(`Chemin invalide au segment "${String(key)}"`);
-  }
-  const child = applyAtPath(node[key], rest, newProps);
-  if (Array.isArray(node)) {
-    const copy = node.slice();
-    copy[key as number] = child;
-    return copy;
-  }
-  return { ...node, [key]: child };
 };
 
 const App: React.FC = () => {
@@ -306,12 +286,32 @@ const App: React.FC = () => {
   };
   
   /**
+   * Applique `newProps` au nœud désigné par `path` en ne clonant que les nœuds
+   * traversés. Remplace l'ancien `JSON.parse(JSON.stringify(...))` qui recopiait
+   * la fiche entière (et tous les tracés) à chaque frappe ou trait de stylet.
+   */
+  const applyAtPath = (node: any, path: (string | number)[], newProps: object): any => {
+    if (path.length === 0) return { ...node, ...newProps };
+    const [key, ...rest] = path;
+    if (node == null || node[key] === undefined) {
+      throw new Error(`Chemin invalide au segment "${String(key)}"`);
+    }
+    const child = applyAtPath(node[key], rest, newProps);
+    if (Array.isArray(node)) {
+      const copy = node.slice();
+      copy[key as number] = child;
+      return copy;
+    }
+    return { ...node, [key]: child };
+  };
+
+  /**
    * Mise à jour d'un exercice de la fiche courante. La forme fonctionnelle est
    * indispensable : plusieurs canvas peuvent émettre dans le même tick, et lire
    * `selectedWorksheet` depuis la closure ferait perdre toutes les mises à jour
    * sauf la dernière.
    */
-  const updateExercise = useCallback((exerciseId: string, mutate: (exercise: Exercise) => Exercise) => {
+  const updateExercise = (exerciseId: string, mutate: (exercise: Exercise) => Exercise) => {
     setWorksheets(prev => prev.map(ws => {
       if (ws.id !== selectedWorksheetId) return ws;
       const exercises = ws.content?.exercises;
@@ -327,17 +327,17 @@ const App: React.FC = () => {
         return ws;
       }
     }));
-  }, [selectedWorksheetId, setWorksheets]);
+  };
 
-  const handleQuestionUpdate = useCallback((exerciseId: string, questionPath: (string | number)[], newProps: Partial<QuestionPart>) => {
+  const handleQuestionUpdate = (exerciseId: string, questionPath: (string | number)[], newProps: Partial<QuestionPart>) => {
     updateExercise(exerciseId, exercise => applyAtPath(exercise, questionPath, newProps));
-  }, [updateExercise]);
+  };
 
-  const handleExerciseUpdate = useCallback((exerciseId: string, newProps: Partial<Exercise>) => {
+  const handleExerciseUpdate = (exerciseId: string, newProps: Partial<Exercise>) => {
     updateExercise(exerciseId, exercise => ({ ...exercise, ...newProps }));
-  }, [updateExercise]);
+  };
 
-  const handleExerciseMergeUp = useCallback((exerciseId: string) => {
+  const handleExerciseMergeUp = (exerciseId: string) => {
     setWorksheets(prev => prev.map(ws => {
       if (ws.id !== selectedWorksheetId) return ws;
       const exercises = ws.content?.exercises;
@@ -345,6 +345,7 @@ const App: React.FC = () => {
       const index = exercises.findIndex(ex => ex.id === exerciseId);
       if (index <= 0) {
         if (index === 0) {
+          // If it's the first exercise and it's empty, we just delete it
           const nextExercises = [...exercises];
           nextExercises.splice(index, 1);
           return { ...ws, content: { ...ws.content, exercises: nextExercises } };
@@ -356,6 +357,7 @@ const App: React.FC = () => {
       const currentEx = nextExercises[index];
       const prevEx = nextExercises[index - 1];
       
+      // Merge questions
       const mergedPrevEx = {
         ...prevEx,
         questions: [...(prevEx.questions || []), ...(currentEx.questions || [])]
@@ -366,11 +368,12 @@ const App: React.FC = () => {
       
       return { ...ws, content: { ...ws.content, exercises: nextExercises } };
     }));
-  }, [selectedWorksheetId, setWorksheets]);
+  };
 
-  const handleQuestionMergeUp = useCallback((exerciseId: string, questionPath: (string | number)[]) => {
+  const handleQuestionMergeUp = (exerciseId: string, questionPath: (string | number)[]) => {
     updateExercise(exerciseId, exercise => {
       if (!exercise.questions) return exercise;
+      // We only support merging up top-level questions for now
       if (questionPath.length === 1 && typeof questionPath[0] === 'number') {
         const index = questionPath[0];
         if (index > 0) {
@@ -394,7 +397,7 @@ const App: React.FC = () => {
       }
       return exercise;
     });
-  }, [updateExercise]);
+  };
 
   const selectedWorksheet = useMemo(() => {
     return worksheets.find(ws => ws.id === selectedWorksheetId);
@@ -512,7 +515,7 @@ const App: React.FC = () => {
       ) : selectedWorksheet ? (
         <>
           <main
-            className={`worksheet-typography paper-theme-${paperTheme} max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 transition-all duration-300 print:max-w-none print:p-0 print:py-0`}
+            className={`worksheet-typography paper-theme-${paperTheme} max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-2 sm:px-6 py-3 sm:py-6 transition-all duration-300 print:max-w-none print:p-0 print:py-0`}
             data-paper-theme={paperTheme}
             style={{
               fontFamily: textFont,
@@ -523,7 +526,7 @@ const App: React.FC = () => {
               '--worksheet-math-font': 'inherit',
             } as React.CSSProperties}
           >
-            <div className="worksheet-paper rounded-xl w-full px-6 sm:px-12 md:px-16 pt-10 pb-12 border shadow-[0_4px_20px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] print:shadow-none print:bg-transparent print:p-0 print:border-none">
+            <div className="worksheet-paper rounded-xl w-full px-3.5 sm:px-12 md:px-16 pt-6 sm:pt-10 pb-24 sm:pb-12 border shadow-[0_4px_20px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] print:shadow-none print:bg-transparent print:p-0 print:border-none">
               <div className="space-y-8 print:space-y-4">
                 <div className="title-and-first-exercise-container space-y-6 print:space-y-3">
                 <div className="latex-document-header mb-8 mt-0 print:mb-3 print:mt-0 relative">

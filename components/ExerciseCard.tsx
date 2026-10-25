@@ -283,7 +283,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
                 }}
               >
                 <div
-                  className={`question-text-wrapper text-[var(--paper-text-main)] print:text-black leading-relaxed font-beamer ${isPresentationSlide ? 'text-[1.5em] print:!text-[1.5em] text-center print:!leading-relaxed' : 'text-[1.05em] print:!text-[1.05em] pr-8'}`}
+                  className={`question-text-wrapper text-[var(--paper-text-main)] print:text-black leading-relaxed font-beamer ${isPresentationSlide ? 'text-[1.5em] print:!text-[1.5em] text-center print:!leading-relaxed' : `text-[1.05em] print:!text-[1.05em] ${isEditMode ? 'pr-8' : 'pr-0'}`}`}
                   style={{ margin: 0, padding: 0 }}
                 >
                   {figure && q.image ? (
@@ -390,7 +390,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
       {/* En-tête : Badge "Exercice X" affiché uniquement lorsqu'il y a plusieurs exercices et pas de "Partie X" */}
       {!shouldHideBadge && (
         <h2 className="exercise-title flex items-center mb-6 print:mb-4">
-          <div className="exercise-badge-pill relative inline-flex items-center justify-center bg-[var(--badge-bg)] px-5 py-2 rounded-[4px_8px_8px_4px] font-sans font-bold text-[0.85em] text-[var(--badge-text)] uppercase tracking-[1px] shadow-[4px_6px_10px_rgba(0,0,0,0.3),inset_1px_1px_2px_rgba(255,255,255,0.9),inset_-1px_-1px_2px_rgba(0,0,0,0.2)] border border-transparent [text-shadow:1px_1px_0px_rgba(255,255,255,0.6)] -ml-[calc(1.5rem+8px)] sm:-ml-[calc(3rem+8px)] md:-ml-[calc(4rem+8px)] print:-ml-0">
+          <div className="relative inline-flex items-center justify-center bg-[var(--badge-bg)] px-5 py-2 rounded-[4px_8px_8px_4px] font-sans font-bold text-[0.85em] text-[var(--badge-text)] uppercase tracking-[1px] shadow-[4px_6px_10px_rgba(0,0,0,0.3),inset_1px_1px_2px_rgba(255,255,255,0.9),inset_-1px_-1px_2px_rgba(0,0,0,0.2)] border border-transparent [text-shadow:1px_1px_0px_rgba(255,255,255,0.6)] -ml-1 sm:-ml-[calc(3rem+8px)] md:-ml-[calc(4rem+8px)] print:-ml-0 print:border-none print:shadow-none print:bg-none print:text-black">
             Exercice {exerciseNumber}
             <div className="absolute top-[100%] left-0 w-2 h-3 bg-[linear-gradient(to_bottom,#777,transparent)] [clip-path:polygon(0_0,100%_0,100%_100%)] print:hidden" />
           </div>
@@ -514,4 +514,4 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
   );
 };
 
-export default React.memo(ExerciseCard);
+export default ExerciseCard;

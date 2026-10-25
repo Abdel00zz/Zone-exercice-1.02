@@ -2,7 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
     <title>Interactive Maths – Fiches d'exercices</title>
     <meta name="description" content="Créez, annotez et utilisez vos fiches d’exercices Interactive Maths, même hors connexion." />
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -239,8 +239,24 @@
         display: inline-block !important;
       }
 
-      /* Ergonomie tablette Android : cibles tactiles confortables sans
-         agrandir artificiellement les boutons internes des panneaux. */
+      /* Ergonomie tablette & smartphone Android (Samsung S27 Ultra / Google Pixel) :
+         cibles tactiles confortables, gestion des barres gestuelles (safe-area)
+         et absence de débordement horizontal. */
+      html,
+      body {
+        overflow-x: hidden;
+        -webkit-text-size-adjust: 100%;
+      }
+
+      .math-display,
+      .katex-display {
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+      }
+
       .canvas-toolbar {
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-x: contain;
@@ -252,13 +268,13 @@
         touch-action: manipulation;
       }
 
-      /* La barre horizontale reste compacte sur tablette et devient
-         défilable sur les écrans plus étroits sans masquer la fiche. */
+      /* Sur grand écran / tablette : rail vertical à droite */
       .canvas-rail > div:first-child {
         max-width: calc(100vw - 16px);
+        max-height: calc(100dvh - 20px);
         overflow-x: auto;
-        overflow-y: hidden;
-        overscroll-behavior-x: contain;
+        overflow-y: auto;
+        overscroll-behavior: contain;
         scrollbar-width: none;
       }
 
@@ -267,8 +283,65 @@
       }
 
       .canvas-rail-panel {
+        position: absolute;
+        right: calc(100% + 14px);
+        top: 50%;
+        transform: translateY(-50%);
+        max-height: min(85dvh, 620px);
         scrollbar-width: thin;
         scrollbar-color: #cbd5e1 transparent;
+      }
+
+      /* Sur smartphone en mode portrait (< 640px, ex. Samsung S27 / Google Pixel) :
+         la barre d'outils devient un dock horizontal flottant centré en bas au-dessus
+         de la barre gestuelle Android, libérant 100 % de la largeur de la fiche. */
+      @media (max-width: 639px) {
+        .canvas-rail:not(.canvas-rail-collapsed) {
+          right: auto !important;
+          left: 50% !important;
+          top: auto !important;
+          bottom: max(0.6rem, env(safe-area-inset-bottom, 0.6rem)) !important;
+          transform: translateX(-50%) !important;
+          max-width: calc(100vw - 12px);
+        }
+
+        .canvas-rail.canvas-rail-collapsed {
+          right: 0.75rem !important;
+          top: auto !important;
+          bottom: max(0.85rem, env(safe-area-inset-bottom, 0.85rem)) !important;
+          transform: none !important;
+        }
+
+        .canvas-rail > div:first-child {
+          flex-direction: row !important;
+          padding: 0.35rem 0.5rem !important;
+          gap: 0.25rem !important;
+          max-width: calc(100vw - 14px) !important;
+          max-height: none !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+        }
+
+        .canvas-rail-divider {
+          width: 1px !important;
+          height: 1.75rem !important;
+          margin: 0 0.15rem !important;
+        }
+
+        .canvas-rail-collapse-icon {
+          transform: rotate(0deg) !important;
+        }
+
+        .canvas-rail-panel {
+          position: fixed !important;
+          left: 0.6rem !important;
+          right: 0.6rem !important;
+          top: auto !important;
+          bottom: calc(4.4rem + env(safe-area-inset-bottom, 0px)) !important;
+          transform: none !important;
+          width: auto !important;
+          max-height: min(68dvh, 480px) !important;
+        }
       }
 
       @media (pointer: coarse) {

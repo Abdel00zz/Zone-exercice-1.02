@@ -1,1 +1,8 @@
-{"name":"Zone-exercice-1.02","description":"Une application web pour créer, gérer et imprimer des fiches d\u0027exercices personnalisées. Inclut un dashboard pour gérer plusieurs fiches, une fonction de recherche, et un rendu de formules mathématiques.","requestFramePermissions":[],"majorCapabilities":["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]}
+{
+  "name": "Interactive Maths",
+  "description": "Une application web pour créer, gérer et imprimer des fiches d'exercices personnalisées. Inclut un dashboard pour gérer plusieurs fiches, une fonction de recherche, et un rendu de formules mathématiques.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

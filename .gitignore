@@ -28,6 +28,13 @@ dist-ssr
 *.sln
 *.sw?
 
+# Android build outputs & local sdk paths
+android/local.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+
 # Fichiers de travail archivés (codemods ponctuels déjà appliqués)
 _archive
 

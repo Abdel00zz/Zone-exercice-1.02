@@ -67,45 +67,10 @@ const KATEX_MACROS: Record<string, string> = {
   '\\Z': '\\mathbb{Z}',
   '\\Q': '\\mathbb{Q}',
   '\\C': '\\mathbb{C}',
-  '\\K': '\\mathbb{K}',
   '\\llbracket': '[\\![',
   '\\rrbracket': ']\\!]',
   '\\parallel': '\\Vert',
-  '\\ds': '\\displaystyle',
 };
-
-const MAX_KATEX_CACHE_ENTRIES = 600;
-const katexHtmlCache = new Map<string, string | null>();
-
-function renderKatexCached(tex: string, isDisplay: boolean): string | null {
-  const cacheKey = `${isDisplay ? 'D:' : 'I:'}${tex}`;
-  if (katexHtmlCache.has(cacheKey)) {
-    const cached = katexHtmlCache.get(cacheKey)!;
-    // Rafraîchit l'entrée LRU
-    katexHtmlCache.delete(cacheKey);
-    katexHtmlCache.set(cacheKey, cached);
-    return cached;
-  }
-  let rendered: string | null = null;
-  try {
-    rendered = katex.renderToString(tex, {
-      displayMode: isDisplay,
-      throwOnError: true,
-      strict: false,
-      trust: true,
-      output: 'htmlAndMathml',
-      macros: { ...KATEX_MACROS },
-    });
-  } catch {
-    rendered = null;
-  }
-  if (katexHtmlCache.size >= MAX_KATEX_CACHE_ENTRIES) {
-    const oldestKey = katexHtmlCache.keys().next().value;
-    if (oldestKey !== undefined) katexHtmlCache.delete(oldestKey);
-  }
-  katexHtmlCache.set(cacheKey, rendered);
-  return rendered;
-}
 
 /**
  * Rend une formule mathématique avec KaTeX (moteur vectoriel synchrone ultra-net
@@ -121,7 +86,18 @@ const MathFormula: React.FC<{ rawMath: string; display?: boolean }> = React.memo
     if (!useKatex) return null;
     const { tex, displayMode } = stripMathDelimiters(rawMath);
     if (!tex) return '';
-    return renderKatexCached(tex, Boolean(display || displayMode));
+    try {
+      return katex.renderToString(tex, {
+        displayMode: display || displayMode,
+        throwOnError: true,
+        strict: false,
+        trust: true,
+        output: 'htmlAndMathml',
+        macros: { ...KATEX_MACROS },
+      });
+    } catch {
+      return null;
+    }
   }, [rawMath, display, useKatex]);
 
   if (katexHtml !== null) {

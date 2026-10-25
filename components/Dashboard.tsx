@@ -22,6 +22,7 @@ import {
 const JSONManagerModal = React.lazy(() => import('./JSONManagerModal'));
 const WorksheetInfoModal = React.lazy(() => import('./WorksheetInfoModal'));
 const HelpModal = React.lazy(() => import('./HelpModal'));
+import { useOnlineStatus } from '../hooks/usePwaInstall';
 
 interface DashboardProps {
     worksheets: Worksheet[];
@@ -70,6 +71,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [isManagerModalOpen, setIsManagerModalOpen] = useState(false);
     const [infoModalWorksheet, setInfoModalWorksheet] = useState<Worksheet | null>(null);
     const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+    const isOnline = useOnlineStatus();
     const [jsonMode, setJsonMode] = useState<'create' | 'edit'>('create');
     const [editingWorksheet, setEditingWorksheet] = useState<Worksheet | null>(null);
     const [collapsedClasses, setCollapsedClasses] = useState<Record<string, boolean>>({});
@@ -547,6 +549,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <React.Suspense fallback={null}>
                     <HelpModal isOpen onClose={() => setIsHelpModalOpen(false)} />
                 </React.Suspense>
+            )}
+
+            {!isOnline && (
+                <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-xl bg-amber-600 px-3.5 py-2 text-xs font-bold text-white shadow-lg no-print">
+                    <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                    Mode Hors-Ligne — Vos fiches locales restent accessibles.
+                </div>
             )}
 
         </div>

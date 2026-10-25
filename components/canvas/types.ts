@@ -2,12 +2,6 @@ export interface Point {
   x: number;
   y: number;
   pressure: number;
-  /** Inclinaison horizontale du stylet (-90 à 90 degrés) pour l'ombrage crayon et la plume. */
-  tiltX?: number;
-  /** Inclinaison verticale du stylet (-90 à 90 degrés). */
-  tiltY?: number;
-  /** Horodatage haute précision (ms) pour la dynamique de vélocité de l'encre. */
-  t?: number;
 }
 
 export type ShapeType = 'freeform' | 'line' | 'arrow' | 'double-arrow' | 'angle' | 'axes' | 'rectangle' | 'circle' | 'triangle' | 'right-triangle' | 'diamond' | 'parallelogram' | 'pentagon' | 'hexagon';
@@ -36,10 +30,6 @@ export interface Stroke {
   penType?: PenType;
   lineStyle?: LineStyle;
   highlighterType?: HighlighterType;
-  /** Courbe de pression active lors du tracé ('soft' | 'balanced' | 'firm'). */
-  pressureCurve?: PressureCurve;
-  /** Niveau de stabilisation (0 à 1) réglé dans Encre Interactive Maths. */
-  stabilization?: number;
   isImage?: boolean;
   imgSrc?: string;
   imgElement?: HTMLImageElement;
