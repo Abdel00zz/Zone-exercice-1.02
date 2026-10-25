@@ -391,6 +391,22 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
     };
   }, []);
 
+  // Réception des changements de fond globaux ("Appliquer à toutes les zones"),
+  // même pour les zones situées en bas de fiche qui n'ont pas encore monté leur <DrawingCanvas>.
+  useEffect(() => {
+    const handleBroadcastBackground = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        style?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
+        color?: 'black' | 'green' | 'blue' | 'white' | 'cream' | '';
+      }>).detail;
+      if (!detail) return;
+      if (detail.style !== undefined) onStyleChange?.(detail.style);
+      if (detail.color !== undefined) onColorChange?.(detail.color);
+    };
+    window.addEventListener('canvas-broadcast-background', handleBroadcastBackground);
+    return () => window.removeEventListener('canvas-broadcast-background', handleBroadcastBackground);
+  }, [onColorChange, onStyleChange]);
+
   return (
     <div
       className="mt-3 mb-8 answer-space group relative"
@@ -616,4 +632,4 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   );
 };
 
-export default AnswerSpace;
+export default React.memo(AnswerSpace);

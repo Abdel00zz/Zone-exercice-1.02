@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import type { Worksheet, WorksheetContent, QuestionPart, Exercise, AppConfiguration } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
 import { useCloudSync } from './hooks/useCloudSync';
@@ -28,6 +28,26 @@ const DEFAULT_CONFIGURATION: AppConfiguration = {
   textScale: 100,
   mathScale: 100,
   paperTheme: 'classic',
+};
+
+/**
+ * Applique `newProps` au nœud désigné par `path` en ne clonant que les nœuds
+ * traversés. Remplace l'ancien `JSON.parse(JSON.stringify(...))` qui recopiait
+ * la fiche entière (et tous les tracés) à chaque frappe ou trait de stylet.
+ */
+const applyAtPath = (node: any, path: (string | number)[], newProps: object): any => {
+  if (path.length === 0) return { ...node, ...newProps };
+  const [key, ...rest] = path;
+  if (node == null || node[key] === undefined) {
+    throw new Error(`Chemin invalide au segment "${String(key)}"`);
+  }
+  const child = applyAtPath(node[key], rest, newProps);
+  if (Array.isArray(node)) {
+    const copy = node.slice();
+    copy[key as number] = child;
+    return copy;
+  }
+  return { ...node, [key]: child };
 };
 
 const App: React.FC = () => {
@@ -286,32 +306,12 @@ const App: React.FC = () => {
   };
   
   /**
-   * Applique `newProps` au nœud désigné par `path` en ne clonant que les nœuds
-   * traversés. Remplace l'ancien `JSON.parse(JSON.stringify(...))` qui recopiait
-   * la fiche entière (et tous les tracés) à chaque frappe ou trait de stylet.
-   */
-  const applyAtPath = (node: any, path: (string | number)[], newProps: object): any => {
-    if (path.length === 0) return { ...node, ...newProps };
-    const [key, ...rest] = path;
-    if (node == null || node[key] === undefined) {
-      throw new Error(`Chemin invalide au segment "${String(key)}"`);
-    }
-    const child = applyAtPath(node[key], rest, newProps);
-    if (Array.isArray(node)) {
-      const copy = node.slice();
-      copy[key as number] = child;
-      return copy;
-    }
-    return { ...node, [key]: child };
-  };
-
-  /**
    * Mise à jour d'un exercice de la fiche courante. La forme fonctionnelle est
    * indispensable : plusieurs canvas peuvent émettre dans le même tick, et lire
    * `selectedWorksheet` depuis la closure ferait perdre toutes les mises à jour
    * sauf la dernière.
    */
-  const updateExercise = (exerciseId: string, mutate: (exercise: Exercise) => Exercise) => {
+  const updateExercise = useCallback((exerciseId: string, mutate: (exercise: Exercise) => Exercise) => {
     setWorksheets(prev => prev.map(ws => {
       if (ws.id !== selectedWorksheetId) return ws;
       const exercises = ws.content?.exercises;
@@ -327,17 +327,17 @@ const App: React.FC = () => {
         return ws;
       }
     }));
-  };
+  }, [selectedWorksheetId, setWorksheets]);
 
-  const handleQuestionUpdate = (exerciseId: string, questionPath: (string | number)[], newProps: Partial<QuestionPart>) => {
+  const handleQuestionUpdate = useCallback((exerciseId: string, questionPath: (string | number)[], newProps: Partial<QuestionPart>) => {
     updateExercise(exerciseId, exercise => applyAtPath(exercise, questionPath, newProps));
-  };
+  }, [updateExercise]);
 
-  const handleExerciseUpdate = (exerciseId: string, newProps: Partial<Exercise>) => {
+  const handleExerciseUpdate = useCallback((exerciseId: string, newProps: Partial<Exercise>) => {
     updateExercise(exerciseId, exercise => ({ ...exercise, ...newProps }));
-  };
+  }, [updateExercise]);
 
-  const handleExerciseMergeUp = (exerciseId: string) => {
+  const handleExerciseMergeUp = useCallback((exerciseId: string) => {
     setWorksheets(prev => prev.map(ws => {
       if (ws.id !== selectedWorksheetId) return ws;
       const exercises = ws.content?.exercises;
@@ -345,7 +345,6 @@ const App: React.FC = () => {
       const index = exercises.findIndex(ex => ex.id === exerciseId);
       if (index <= 0) {
         if (index === 0) {
-          // If it's the first exercise and it's empty, we just delete it
           const nextExercises = [...exercises];
           nextExercises.splice(index, 1);
           return { ...ws, content: { ...ws.content, exercises: nextExercises } };
@@ -357,7 +356,6 @@ const App: React.FC = () => {
       const currentEx = nextExercises[index];
       const prevEx = nextExercises[index - 1];
       
-      // Merge questions
       const mergedPrevEx = {
         ...prevEx,
         questions: [...(prevEx.questions || []), ...(currentEx.questions || [])]
@@ -368,12 +366,11 @@ const App: React.FC = () => {
       
       return { ...ws, content: { ...ws.content, exercises: nextExercises } };
     }));
-  };
+  }, [selectedWorksheetId, setWorksheets]);
 
-  const handleQuestionMergeUp = (exerciseId: string, questionPath: (string | number)[]) => {
+  const handleQuestionMergeUp = useCallback((exerciseId: string, questionPath: (string | number)[]) => {
     updateExercise(exerciseId, exercise => {
       if (!exercise.questions) return exercise;
-      // We only support merging up top-level questions for now
       if (questionPath.length === 1 && typeof questionPath[0] === 'number') {
         const index = questionPath[0];
         if (index > 0) {
@@ -397,7 +394,7 @@ const App: React.FC = () => {
       }
       return exercise;
     });
-  };
+  }, [updateExercise]);
 
   const selectedWorksheet = useMemo(() => {
     return worksheets.find(ws => ws.id === selectedWorksheetId);

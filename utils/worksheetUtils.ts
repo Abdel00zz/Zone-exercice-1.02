@@ -90,19 +90,33 @@ export const normalizeWorksheetJson = (jsonData: any): WorksheetContent => {
 
     const isSingleExercise = rawExercises.length === 1;
 
+    const normalizeQuestion = (q: any): any => {
+        if (!q || typeof q !== 'object') return { text: String(q ?? '') };
+        return {
+            ...q,
+            text: typeof q.text === 'string' ? q.text : (typeof q.statement === 'string' ? q.statement : ''),
+            answerHeight: typeof q.answerHeight === 'number'
+                ? q.answerHeight
+                : (typeof q.answerSpaceHeight === 'number' ? q.answerSpaceHeight : undefined),
+            answerStyle: q.answerStyle || q.answerSpaceStyle,
+            answerColor: q.answerColor || q.answerSpaceColor,
+            subquestions: Array.isArray(q.subquestions) ? q.subquestions.map(normalizeQuestion) : undefined,
+        };
+    };
+
     const normalizedExercises: Exercise[] = rawExercises.map((ex, index) => {
         return {
-            id: ex.id || `ex_${index + 1}`,
+            id: ex.id ? String(ex.id) : `ex_${index + 1}`,
             title: ex.title || '',
-            statement: ex.statement || '',
+            statement: ex.statement || ex.text || '',
             answer: ex.answer,
             solution: ex.solution,
             guidance: ex.guidance,
-            questions: Array.isArray(ex.questions) ? ex.questions : [],
+            questions: Array.isArray(ex.questions) ? ex.questions.map(normalizeQuestion) : [],
             statementAnswerHeight: ex.statementAnswerHeight,
             statementAnswerStyle: ex.statementAnswerStyle,
             statementAnswerColor: ex.statementAnswerColor,
-            image: ex.image,
+            image: typeof ex.image === 'string' ? { id: `img_${index}`, src: ex.image } : ex.image,
             statementStrokes: ex.statementStrokes,
             // Si le JSON ne contient qu'un seul exercice, masquer automatiquement le badge "Exercice 1"
             hideBadge: ex.hideBadge !== undefined ? ex.hideBadge : isSingleExercise,

@@ -298,12 +298,22 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
 
   const applyBackgroundStyle = (style: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank') => {
     const apply = (handle: { setBackgroundStyle: (s: typeof style) => void }) => handle.setBackgroundStyle(style);
-    if (tools.applyBackgroundToAll) withEveryCanvas(apply); else withActiveCanvas(apply);
+    if (tools.applyBackgroundToAll) {
+      withEveryCanvas(apply);
+      window.dispatchEvent(new CustomEvent('canvas-broadcast-background', { detail: { style } }));
+    } else {
+      withActiveCanvas(apply);
+    }
   };
 
   const applyBackgroundColor = (color: 'black' | 'green' | 'blue' | 'white' | 'cream' | '') => {
     const apply = (handle: { setBackgroundColor: (c: typeof color) => void }) => handle.setBackgroundColor(color);
-    if (tools.applyBackgroundToAll) withEveryCanvas(apply); else withActiveCanvas(apply);
+    if (tools.applyBackgroundToAll) {
+      withEveryCanvas(apply);
+      window.dispatchEvent(new CustomEvent('canvas-broadcast-background', { detail: { color } }));
+    } else {
+      withActiveCanvas(apply);
+    }
   };
 
   if (railCollapsed) {
@@ -796,7 +806,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
           <Section
             title="Fond du canvas"
             summary={canvas.canChangeBackground
-              ? `${canvas.styleName || 'style'} · ${canvas.colorName || 'couleur auto'}`
+              ? `${BACKGROUND_STYLES.find(s => s.id === canvas.styleName)?.name || canvas.styleName || 'style'} · ${BACKGROUND_COLORS.find(c => c.id === canvas.colorName)?.name || canvas.colorName || 'couleur auto'}`
               : 'zone active non modifiable'}
             icon={<Palette size={17} />}
             open={expandedSection === 'background'}
@@ -831,7 +841,23 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
               <Toggle
                 label="Appliquer à toutes les zones"
                 checked={tools.applyBackgroundToAll}
-                onChange={() => setToolState({ applyBackgroundToAll: !tools.applyBackgroundToAll })}
+                onChange={() => {
+                  const next = !tools.applyBackgroundToAll;
+                  setToolState({ applyBackgroundToAll: next });
+                  if (next && canvas.canChangeBackground) {
+                    const style = canvas.styleName as 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank' | undefined;
+                    const color = canvas.colorName as 'black' | 'green' | 'blue' | 'white' | 'cream' | '' | undefined;
+                    if (style) {
+                      withEveryCanvas(h => h.setBackgroundStyle(style));
+                    }
+                    if (color !== undefined) {
+                      withEveryCanvas(h => h.setBackgroundColor(color));
+                    }
+                    window.dispatchEvent(new CustomEvent('canvas-broadcast-background', {
+                      detail: { style, color },
+                    }));
+                  }
+                }}
               />
             </div>
           </Section>

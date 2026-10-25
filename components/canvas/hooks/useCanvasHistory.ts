@@ -1,9 +1,22 @@
 import { useRef, useState, useCallback } from 'react';
 import { Stroke } from '../types';
+import { invalidateStrokeRenderCache } from '../renderUtils';
 
 export type HistoryAction =
   | { type: 'add'; stroke: Stroke }
-  | { type: 'erase'; items: { index: number; stroke: Stroke }[] };
+  | { type: 'erase'; items: { index: number; stroke: Stroke }[] }
+  | { type: 'snapshot'; before: Stroke[]; after: Stroke[] };
+
+function cloneStroke(s: Stroke): Stroke {
+  return {
+    ...s,
+    points: s.points.map(p => ({ ...p })),
+  };
+}
+
+export function cloneStrokesList(strokes: Stroke[]): Stroke[] {
+  return strokes.map(cloneStroke);
+}
 
 interface UseCanvasHistoryOptions {
   strokesRef: React.MutableRefObject<Stroke[]>;
@@ -33,7 +46,7 @@ export function useCanvasHistory({
   }, [setStrokeCount, setRenderRevision, strokesRef, onStrokesChangeRef]);
 
   const recordAdd = useCallback((stroke: Stroke) => {
-    historyRef.current.push({ type: 'add', stroke });
+    historyRef.current.push({ type: 'add', stroke: cloneStroke(stroke) });
     setRedoStack([]);
   }, []);
 
@@ -45,16 +58,32 @@ export function useCanvasHistory({
     }
   }, []);
 
+  /**
+   * Enregistre une transaction arbitraire (déplacement, redimensionnement, duplication,
+   * changement de couleur/épaisseur, effacement complet) pour un Undo/Redo infaillible.
+   */
+  const recordSnapshot = useCallback((before: Stroke[], after: Stroke[]) => {
+    historyRef.current.push({
+      type: 'snapshot',
+      before: cloneStrokesList(before),
+      after: cloneStrokesList(after),
+    });
+    setRedoStack([]);
+  }, []);
+
   const undo = useCallback(() => {
     const lastAction = historyRef.current.pop();
     if (!lastAction) return;
     if (lastAction.type === 'add') {
       strokesRef.current.pop();
-    } else {
+    } else if (lastAction.type === 'erase') {
       for (let i = lastAction.items.length - 1; i >= 0; i--) {
         const { index, stroke } = lastAction.items[i];
         strokesRef.current.splice(index, 0, stroke);
       }
+    } else if (lastAction.type === 'snapshot') {
+      strokesRef.current = cloneStrokesList(lastAction.before);
+      invalidateStrokeRenderCache();
     }
     setRedoStack(prev => [...prev, lastAction]);
     setSelectedStrokeIndexes(new Set());
@@ -68,17 +97,21 @@ export function useCanvasHistory({
     const actionToRedo = newRedoStack.pop();
     if (actionToRedo) {
       if (actionToRedo.type === 'add') {
-        strokesRef.current.push(actionToRedo.stroke);
-      } else {
+        strokesRef.current.push(cloneStroke(actionToRedo.stroke));
+      } else if (actionToRedo.type === 'erase') {
         const erasedSet = new Set(actionToRedo.items.map(item => item.stroke));
         strokesRef.current = strokesRef.current.filter(s => !erasedSet.has(s));
+      } else if (actionToRedo.type === 'snapshot') {
+        strokesRef.current = cloneStrokesList(actionToRedo.after);
+        invalidateStrokeRenderCache();
       }
       historyRef.current.push(actionToRedo);
       setRedoStack(newRedoStack);
     }
+    setSelectedStrokeIndexes(new Set());
     redrawAll();
     commitStrokes();
-  }, [redoStack, strokesRef, redrawAll, commitStrokes]);
+  }, [redoStack, strokesRef, setSelectedStrokeIndexes, redrawAll, commitStrokes]);
 
   const clearHistory = useCallback(() => {
     historyRef.current = [];
@@ -96,6 +129,7 @@ export function useCanvasHistory({
     commitStrokes,
     recordAdd,
     recordEraseGesture,
+    recordSnapshot,
     undo,
     redo,
     clearHistory,

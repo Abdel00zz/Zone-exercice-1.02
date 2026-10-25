@@ -514,4 +514,4 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
   );
 };
 
-export default ExerciseCard;
+export default React.memo(ExerciseCard);

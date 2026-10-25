@@ -19,6 +19,7 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 .antigravity
+.aistudio
 .idea
 .DS_Store
 *.suo

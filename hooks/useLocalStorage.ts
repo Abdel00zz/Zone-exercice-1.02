@@ -57,7 +57,10 @@ function useLocalStorage<T,>(key: string, initialValue: T): [T, React.Dispatch<R
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      pendingSerializedRef.current = JSON.stringify(storedValue);
+      pendingSerializedRef.current = JSON.stringify(
+        storedValue,
+        (propKey, value) => (propKey === 'imgElement' ? undefined : value),
+      );
       if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = window.setTimeout(flush, SAVE_DELAY_MS);
     } catch (error) {

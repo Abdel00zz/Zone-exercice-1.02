@@ -1,10 +1,10 @@
 import React, { useRef, useState, useEffect, useCallback, useId } from 'react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { Stroke, DrawingCanvasProps, Point, ToolType } from './types';
-import { drawStroke } from './renderUtils';
+import { drawStroke, invalidateStrokeRenderCache } from './renderUtils';
 import {
   boundsIntersect, getPointsBounds, getStrokeBounds, pointInPolygon,
-  strokeIntersectsPoint, isPointInImage, isPointOnImageResizeHandle,
+  strokeIntersectsPoint, isPointInImage,
 } from './utils';
 import {
   setActiveCanvas, isActiveCanvas, clearActiveCanvas, isTypingTarget, useCanvasIsActive,
@@ -12,13 +12,14 @@ import {
 } from './canvasRegistry';
 import { closeToolMenu, getToolState, setToolState, useToolValue, type CanvasToolState } from './toolStore';
 import {
-  calibratePressure, constrainShapePoint, optimizeStrokePoints,
-  recognizeStrokeShape, simplifyPoints, StrokeSmoother,
+  appendInterpolatedPoint, buildPredictedTail, calibratePressure, constrainShapePoint,
+  optimizeStrokePoints, recognizeStrokeShape, simplifyPoints, straightenStrokeIfEligible,
+  StrokeSmoother,
 } from './inkEngine';
 import CanvasTextLayer from './CanvasTextLayer';
 import CanvasTextEditor, { CanvasTextDraft } from './CanvasTextEditor';
 import CorrectionProgressControl from './CorrectionProgressControl';
-import { useCanvasHistory } from './hooks/useCanvasHistory';
+import { cloneStrokesList, useCanvasHistory } from './hooks/useCanvasHistory';
 import { useSelection } from './hooks/useSelection';
 
 /**
@@ -26,8 +27,6 @@ import { useSelection } from './hooks/useSelection';
  * le tracé reste net sur écran haute densité (tablette + stylet) et à
  * l'impression ; le contexte est ensuite mis à l'échelle pour que tout le code
  * de dessin continue de raisonner en pixels CSS.
- * Plafonné à 2 pour ne pas exploser la mémoire : une fiche affiche facilement
- * une dizaine de canvas simultanément.
  */
 const getRenderScale = (isPrinting = false) => {
   if (isPrinting) return 4.5; // ~432 DPI pour une impression PDF ultra-haute résolution livre d'art
@@ -37,6 +36,10 @@ const getRenderScale = (isPrinting = false) => {
 const LIGHT_CHALK_COLORS = new Set([
   '#ffffff', '#fff', '#f8fafc', '#f1f5f9', '#e2e8f0', '#cbd5e1',
 ]);
+
+interface InkTrailPresenter {
+  updateInkTrailStartPoint?: (event: PointerEvent, style: { color: string; diameter: number }) => void;
+}
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   instanceId: providedInstanceId,
@@ -55,10 +58,22 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const instanceId = providedInstanceId ?? generatedInstanceId;
   const isCanvasActive = useCanvasIsActive(instanceId);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  /**
+   * Buffer hors-écran ("Dry Ink Layer" façon Noteshelf) :
+   * Tous les traits validés sont pré-rendus sur ce canvas statique.
+   * Pendant l'écriture au stylet à 120/240 Hz, `redrawAll` copie ce buffer en O(1)
+   * via `ctx.drawImage` et ne calcule que le trait actif ("Wet Ink").
+   */
+  const staticCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const staticDirtyRef = useRef<boolean>(true);
+  const inkPresenterRef = useRef<InkTrailPresenter | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const isDrawing = useRef(false);
   const strokesRef = useRef<Stroke[]>(initialStrokes);
   const currentStrokeRef = useRef<Stroke | null>(null);
+  const predictedTailRef = useRef<Point[]>([]);
+  const eraserCursorRef = useRef<{ x: number; y: number; radius: number } | null>(null);
   // Force le re-rendu de la Toolbar quand le nombre de traits change
   const [strokeCount, setStrokeCount] = useState(initialStrokes.length);
   const [renderRevision, setRenderRevision] = useState(0);
@@ -73,24 +88,42 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const isPrintingRef = useRef(false);
   const redrawFrameRef = useRef(0);
 
+  const invalidateAndRedraw = useCallback(() => {
+    staticDirtyRef.current = true;
+    redrawAllRef.current();
+  }, []);
+
   const {
     eraseGestureRef,
     redoStack,
-    setRedoStack,
+    canUndo,
     commitStrokes,
     recordAdd,
     recordEraseGesture,
+    recordSnapshot,
     undo,
     redo,
-    clearHistory,
   } = useCanvasHistory({
     strokesRef,
     setStrokeCount,
     setRenderRevision,
     onStrokesChangeRef,
-    redrawAll: () => redrawAllRef.current(),
+    redrawAll: invalidateAndRedraw,
     setSelectedStrokeIndexes: (val) => setSelectedStrokeIndexes(val),
   });
+
+  // Synchronise les traits si la fiche est rechargée (restauration JSON / synchronisation Cloud)
+  const lastCommittedStrokesRef = useRef<Stroke[]>(initialStrokes);
+  useEffect(() => {
+    if (isDrawing.current) return;
+    if (initialStrokes !== lastCommittedStrokesRef.current && initialStrokes !== strokesRef.current) {
+      lastCommittedStrokesRef.current = initialStrokes;
+      strokesRef.current = initialStrokes;
+      setStrokeCount(initialStrokes.length);
+      staticDirtyRef.current = true;
+      redrawAllRef.current();
+    }
+  }, [initialStrokes]);
 
   const {
     selectedStrokeIndexes,
@@ -99,8 +132,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     selectionBoxRef,
     dragStartRef,
     isDraggingSelectionRef,
+    getSelectionCombinedBounds,
     beginSelectionDrag,
     moveSelectionBy,
+    scaleSelectionByHandle,
+    finishSelectionDrag,
     clearSelection,
     deleteSelection,
     duplicateSelection,
@@ -109,27 +145,40 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     bringSelectionToFront,
   } = useSelection({
     strokesRef,
-    redrawAll: () => redrawAllRef.current(),
+    redrawAll: invalidateAndRedraw,
     commitStrokes,
+    recordSnapshot,
   });
 
-  /**
-   * Les réglages d'outil sont partagés par toute la fiche (`toolStore`) et pilotés
-   * par la barre flottante unique. Seules les valeurs qui changent le RENDU de ce
-   * canvas sont souscrites ; les autres sont lues au moment de l'événement pointeur
-   * via `getToolState()`, pour ne pas re-rendre les dizaines de canvas montés à
-   * chaque déplacement d'un curseur d'épaisseur.
-   */
   const tool = useToolValue(snapshot => snapshot.tool);
   const selectionMode = useToolValue(snapshot => snapshot.selectionMode);
   const showMeasurements = useToolValue(snapshot => snapshot.showMeasurements);
   const palmRejection = useToolValue(snapshot => snapshot.palmRejection);
-  // Couleur de repli de la couche texte DOM (le canvas 2D ne rend pas le LaTeX).
   const color = useToolValue(snapshot => snapshot.color);
 
   const [textInput, setTextInput] = useState<CanvasTextDraft | null>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const lastPenInputAtRef = useRef(0);
+  const activeGestureToolRef = useRef<ToolType>('pen');
+
+  // Initialisation optionnelle du délégué matériel Web Ink API (tablettes compatibles)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const nav = typeof navigator !== 'undefined' ? (navigator as any) : null;
+    if (!canvas || !nav?.ink?.requestPresenter) return;
+    let cancelled = false;
+    nav.ink.requestPresenter({ presentationArea: canvas })
+      .then((presenter: InkTrailPresenter) => {
+        if (!cancelled) inkPresenterRef.current = presenter;
+      })
+      .catch(() => {
+        /* Web Ink API non supportée sur ce périphérique : le moteur prédictif prend le relais */
+      });
+    return () => {
+      cancelled = true;
+      inkPresenterRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!textInput?.visible) return;
@@ -142,16 +191,75 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const smootherRef = useRef<StrokeSmoother | null>(null);
   const recognitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognizedStrokeRef = useRef<Stroke | null>(null);
+  const holdAnchorRef = useRef<{ x: number; y: number } | null>(null);
+  const recognizedOriginRef = useRef<{ pointerX: number; pointerY: number; p0: Point; p1: Point } | null>(null);
   // width/height en pixels CSS, scale = facteur de densité du bitmap.
   const dimensionsRef = useRef({ width: 0, height: 0, scale: 1 });
 
-
-
-  // Image manipulation state
+  // Manipulation d'image et poignées de redimensionnement de sélection
   const dragModeRef = useRef<'move' | 'resize' | 'select' | null>(null);
-  const activeImageIndexRef = useRef<number | null>(null);
   const activeResizeHandleRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Toute modification de la sélection ou du thème invalide le cache statique
+  useEffect(() => {
+    staticDirtyRef.current = true;
+    redrawAllRef.current();
+  }, [selectedStrokeIndexes, colorName, styleName]);
+
+  const rebuildStaticLayer = useCallback(() => {
+    const { width, height, scale } = dimensionsRef.current;
+    if (width <= 0 || height <= 0) return;
+
+    const bitmapW = Math.round(width * scale);
+    const bitmapH = Math.round(height * scale);
+    let staticCanvas = staticCanvasRef.current;
+    if (!staticCanvas && typeof document !== 'undefined') {
+      staticCanvas = document.createElement('canvas');
+      staticCanvasRef.current = staticCanvas;
+    }
+    if (!staticCanvas) return;
+
+    if (staticCanvas.width !== bitmapW || staticCanvas.height !== bitmapH) {
+      staticCanvas.width = bitmapW;
+      staticCanvas.height = bitmapH;
+    }
+
+    const sCtx = staticCanvas.getContext('2d');
+    if (!sCtx) return;
+
+    sCtx.setTransform(scale, 0, 0, scale, 0, 0);
+    sCtx.imageSmoothingEnabled = true;
+    sCtx.imageSmoothingQuality = 'high';
+    sCtx.clearRect(0, 0, width, height);
+
+    const isDarkTheme = ['black', 'green', 'blue'].includes(colorName || (styleName === 'slate' ? 'black' : ''));
+    const adaptPrintColor = isPrintingRef.current && isDarkTheme;
+
+    /**
+     * Ordre de rendu Noteshelf :
+     * 1. Les surligneurs sont dessinés en premier plan de fond pour ne JAMAIS
+     *    ternir ni voiler l'encre noire/colorée des formules mathématiques.
+     * 2. Les traits d'encre, formes, images et coups de gomme pixel suivent dans l'ordre chronologique.
+     */
+    strokesRef.current.forEach((stroke, idx) => {
+      if (stroke.isText || !stroke.isHighlighter) return;
+      const isSelected = isPrintingRef.current ? false : selectedStrokeIndexes.has(idx);
+      drawStroke(sCtx, stroke, isSelected, true);
+    });
+
+    strokesRef.current.forEach((stroke, idx) => {
+      if (stroke.isText || stroke.isHighlighter) return;
+      const isSelected = isPrintingRef.current ? false : selectedStrokeIndexes.has(idx);
+      if (adaptPrintColor && stroke.color && LIGHT_CHALK_COLORS.has(stroke.color.toLowerCase())) {
+        drawStroke(sCtx, { ...stroke, color: '#0f172a' }, false, true);
+      } else {
+        drawStroke(sCtx, stroke, isSelected, true);
+      }
+    });
+
+    staticDirtyRef.current = false;
+  }, [colorName, selectedStrokeIndexes, styleName]);
 
   const redrawAll = useCallback(() => {
     const canvas = canvasRef.current;
@@ -159,67 +267,102 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Le bitmap est en pixels physiques : on ramène le repère en pixels CSS
-    // pour que tout le code de dessin (coordonnées, épaisseurs) reste inchangé.
-    const scale = dimensionsRef.current.scale || 1;
+    const { width, height, scale = 1 } = dimensionsRef.current;
+    if (width <= 0 || height <= 0) return;
+
+    if (staticDirtyRef.current || !staticCanvasRef.current) {
+      rebuildStaticLayer();
+    }
+
+    // Copie ultra-rapide O(1) du buffer statique en coordonnées bitmap physiques
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const previewStroke = recognizedStrokeRef.current || currentStrokeRef.current;
+
+    // Si le trait actif en cours est un surligneur, on le dessine SOUS le buffer d'encre statique !
+    if (previewStroke && previewStroke.isHighlighter) {
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      const wetPoints = predictedTailRef.current.length > 0 && !previewStroke.shapeType
+        ? [...previewStroke.points, ...predictedTailRef.current]
+        : undefined;
+      drawStroke(ctx, previewStroke, false, false, wetPoints);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+
+    if (staticCanvasRef.current && staticCanvasRef.current.width > 0) {
+      ctx.drawImage(staticCanvasRef.current, 0, 0);
+    }
+
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    ctx.clearRect(0, 0, dimensionsRef.current.width, dimensionsRef.current.height);
 
-    const isDarkTheme = ['black', 'green', 'blue'].includes(colorName || (styleName === 'slate' ? 'black' : ''));
-    const adaptPrintColor = isPrintingRef.current && isDarkTheme;
-
-    strokesRef.current.forEach((stroke, idx) => {
-      // Le texte est rendu dans une couche DOM : MathText peut ainsi compiler
-      // LaTeX/Beamer, contrairement à CanvasRenderingContext2D.fillText().
-      if (stroke.isText) return;
-      if (adaptPrintColor && stroke.color && LIGHT_CHALK_COLORS.has(stroke.color.toLowerCase())) {
-        drawStroke(ctx, { ...stroke, color: '#0f172a' }, false, true);
-      } else {
-        drawStroke(ctx, stroke, isPrintingRef.current ? false : selectedStrokeIndexes.has(idx), true);
-      }
-    });
-
-    const previewStroke = recognizedStrokeRef.current || currentStrokeRef.current;
-    if (previewStroke) {
-      drawStroke(ctx, previewStroke, false, false);
-      if (showMeasurements && previewStroke.shapeType && previewStroke.points.length >= 2) {
-        const start = previewStroke.points[0];
-        const end = previewStroke.points[previewStroke.points.length - 1];
-        const width = Math.abs(end.x - start.x);
-        const height = Math.abs(end.y - start.y);
-        const label = ['line', 'arrow', 'double-arrow'].includes(previewStroke.shapeType)
-          ? `${Math.round(Math.hypot(width, height))} px`
-          : `${Math.round(width)} × ${Math.round(height)} px`;
-        ctx.save();
-        ctx.font = '12px system-ui, sans-serif';
-        ctx.fillStyle = '#1d4ed8';
-        ctx.fillText(label, (start.x + end.x) / 2 + 8, (start.y + end.y) / 2 - 8);
-        ctx.restore();
-      }
+    if (previewStroke && !previewStroke.isHighlighter) {
+      const wetPoints = predictedTailRef.current.length > 0 && !previewStroke.shapeType
+        ? [...previewStroke.points, ...predictedTailRef.current]
+        : undefined;
+      drawStroke(ctx, previewStroke, false, false, wetPoints);
     }
-    
+
+    if (showMeasurements && previewStroke && previewStroke.shapeType && previewStroke.points.length >= 2) {
+      const start = previewStroke.points[0];
+      const end = previewStroke.points[previewStroke.points.length - 1];
+      const w = Math.abs(end.x - start.x);
+      const h = Math.abs(end.y - start.y);
+      let label = '';
+      if (['line', 'arrow', 'double-arrow'].includes(previewStroke.shapeType)) {
+        const deg = Math.round(Math.abs(Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI));
+        label = `${Math.round(Math.hypot(w, h))} px · ${deg}°`;
+      } else if (previewStroke.shapeType === 'angle') {
+        const deg = Math.round(Math.abs(Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI));
+        label = `${deg}°`;
+      } else if (previewStroke.shapeType === 'circle' && Math.abs(w - h) <= 2) {
+        label = `⌀ ${Math.round(w)} px`;
+      } else {
+        label = `${Math.round(w)} × ${Math.round(h)} px`;
+      }
+      ctx.save();
+      ctx.font = '600 12px system-ui, sans-serif';
+      ctx.fillStyle = '#1d4ed8';
+      ctx.fillText(label, (start.x + end.x) / 2 + 8, (start.y + end.y) / 2 - 8);
+      ctx.restore();
+    }
+
+    // Anneau visuel de la gomme pendant l'effacement (style Noteshelf)
+    if (eraserCursorRef.current && !isPrintingRef.current) {
+      const { x, y, radius } = eraserCursorRef.current;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(4, radius), 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(100, 116, 139, 0.75)';
+      ctx.fillStyle = 'rgba(241, 245, 249, 0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
     if ((tool === 'pointer' || (tool === 'lasso' && selectionMode === 'rectangle')) && selectionBoxRef.current) {
       const box = selectionBoxRef.current;
       ctx.save();
       ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.25;
       ctx.setLineDash([5, 5]);
-      ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.08)';
       ctx.fillRect(box.x, box.y, box.w, box.h);
       ctx.strokeRect(box.x, box.y, box.w, box.h);
       ctx.restore();
     }
-    
+
     if (tool === 'lasso' && lassoPathRef.current.length > 0) {
       ctx.save();
       ctx.beginPath();
       ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 5]);
-      ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
-      
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.08)';
+
       ctx.moveTo(lassoPathRef.current[0].x, lassoPathRef.current[0].y);
       for (let i = 1; i < lassoPathRef.current.length; i++) {
         ctx.lineTo(lassoPathRef.current[i].x, lassoPathRef.current[i].y);
@@ -229,67 +372,46 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       ctx.fill();
       ctx.restore();
     }
-    
-    if (selectedStrokeIndexes.size > 0 && lassoPathRef.current.length === 0) {
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      
-      selectedStrokeIndexes.forEach(idx => {
-        const stroke = strokesRef.current[idx];
-        if (!stroke) return;
-        stroke.points.forEach(p => {
-          if (p.x < minX) minX = p.x;
-          if (p.x > maxX) maxX = p.x;
-          if (p.y < minY) minY = p.y;
-          if (p.y > maxY) maxY = p.y;
-        });
-      });
-      
-      if (minX !== Infinity) {
-        ctx.strokeStyle = '#3b82f6';
+
+    // Cadre de sélection et 4 poignées de redimensionnement proportionnel (Noteshelf)
+    if (selectedStrokeIndexes.size > 0 && lassoPathRef.current.length === 0 && !isPrintingRef.current) {
+      const bounds = getSelectionCombinedBounds(selectedStrokeIndexes);
+      if (bounds) {
+        const pad = 6;
+        const bx = bounds.minX - pad;
+        const by = bounds.minY - pad;
+        const bw = bounds.maxX - bounds.minX + pad * 2;
+        const bh = bounds.maxY - bounds.minY + pad * 2;
+
+        ctx.save();
+        ctx.strokeStyle = '#2563eb';
         ctx.lineWidth = 1.5;
-        ctx.setLineDash([5, 5]);
-        ctx.strokeRect(minX - 6, minY - 6, maxX - minX + 12, maxY - minY + 12);
+        ctx.setLineDash([5, 4]);
+        ctx.strokeRect(bx, by, bw, bh);
         ctx.setLineDash([]);
-        
-        if (tool === 'pointer' && selectedStrokeIndexes.size === 1) {
-           const stroke = strokesRef.current[Array.from(selectedStrokeIndexes)[0]];
-           if (stroke.isImage) {
-               ctx.fillStyle = '#2563eb';
-               // Draw 4 resize handles
-               const p1 = stroke.points[0];
-               const p2 = stroke.points[1];
-               const sMinX = Math.min(p1.x, p2.x);
-               const sMaxX = Math.max(p1.x, p2.x);
-               const sMinY = Math.min(p1.y, p2.y);
-               const sMaxY = Math.max(p1.y, p2.y);
-               
-               const handles = [
-                 {x: sMinX, y: sMinY},
-                 {x: sMaxX, y: sMinY},
-                 {x: sMinX, y: sMaxY},
-                 {x: sMaxX, y: sMaxY}
-               ];
-               handles.forEach(h => {
-                  ctx.beginPath();
-                  ctx.arc(h.x, h.y, 6, 0, Math.PI * 2);
-                  ctx.fill();
-                  ctx.strokeStyle = 'white';
-                  ctx.lineWidth = 2;
-                  ctx.stroke();
-               });
-           }
-        }
+
+        const handles = [
+          { x: bx, y: by },
+          { x: bx + bw, y: by },
+          { x: bx, y: by + bh },
+          { x: bx + bw, y: by + bh },
+        ];
+        handles.forEach(h => {
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, 5.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#2563eb';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        });
+        ctx.restore();
       }
     }
-  }, [selectedStrokeIndexes, tool, selectionMode, showMeasurements]);
+  }, [getSelectionCombinedBounds, rebuildStaticLayer, selectedStrokeIndexes, selectionMode, showMeasurements, tool]);
 
-  // `redrawAll` change d'identité à chaque changement de sélection/outil ; passer
-  // par une ref évite de recréer le ResizeObserver et les abonnements à chaque fois.
   redrawAllRef.current = redrawAll;
 
-  // Les Pointer Events peuvent arriver plus vite que l'écran (stylets 120/240 Hz).
-  // Une seule peinture est donc planifiée par image, en utilisant les derniers
-  // points coalescés disponibles au moment où le navigateur dessine réellement.
   const scheduleRedraw = useCallback(() => {
     if (redrawFrameRef.current) return;
     redrawFrameRef.current = window.requestAnimationFrame(() => {
@@ -311,10 +433,12 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     const { color, lineWidth } = getToolState();
     if (textInput.text.trim()) {
       if (textInput.editingIndex !== undefined && strokesRef.current[textInput.editingIndex]?.isText) {
+        const before = cloneStrokesList(strokesRef.current);
         strokesRef.current[textInput.editingIndex] = {
           ...strokesRef.current[textInput.editingIndex],
           text: textInput.text,
         };
+        recordSnapshot(before, strokesRef.current);
       } else {
         const newTextStroke: Stroke = {
           points: [{ x: textInput.x, y: textInput.y, pressure: 0.5 }],
@@ -328,24 +452,19 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         strokesRef.current.push(newTextStroke);
         recordAdd(newTextStroke);
       }
+      staticDirtyRef.current = true;
       redrawAllRef.current();
       commitStrokes();
     }
     setTextInput(null);
-  }, [commitStrokes, recordAdd, textInput]);
+  }, [commitStrokes, recordAdd, recordSnapshot, textInput]);
 
   useEffect(() => {
-    // rAF en cours pour le rendu intermédiaire (throttle visuel)
     let rafId = 0;
-    // Timer pour diffèrer le commitStrokes (évite N écritures localStorage/seconde)
     let commitTimer = 0;
-    // Largeur avant le dernier redimensionnement nécessitant un rescale
     let pendingRescale = false;
 
     const resizeCanvas = () => {
-      // Le cadre CSS suit la poignée, mais le bitmap reste inchangé pendant le
-      // geste. Réassigner canvas.width/height réinitialiserait le contexte et
-      // obligerait à recalculer tous les traits à chaque taille intermédiaire.
       if (isResizingRef.current) return;
 
       const canvas = canvasRef.current;
@@ -358,7 +477,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       if (cssWidth === 0 || cssHeight === 0) return;
 
       const isPrintMedia = isPrintingRef.current || (typeof window !== 'undefined' && window.matchMedia?.('print').matches);
-      // Sur papier A4 portrait (210mm - 28mm marges = 182mm), la largeur standard vaut ~688px à 96 DPI.
       const printTargetWidth = 688;
       const targetCssWidth = isPrintMedia ? Math.max(cssWidth, printTargetWidth) : cssWidth;
 
@@ -377,11 +495,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       }
       dimensionsRef.current = { width: targetCssWidth, height: cssHeight, scale };
 
-      // Les traits sont stockés en pixels absolus. Sans cette remise à l'échelle,
-      // une rotation de tablette ou un redimensionnement de fenêtre décalait le
-      // tracé par rapport aux lignes de la zone de réponse. On ne réagit qu'à la
-      // largeur, et JAMAIS pendant l'aperçu d'impression pour ne pas déformer les
-      // figures géométriques (cercles -> ellipses) ni altérer la sauvegarde.
       const needsRescale = !isPrintMedia && previousWidth > 0 && cssWidth !== previousWidth && strokesRef.current.length > 0;
       if (needsRescale) {
         const ratio = cssWidth / previousWidth;
@@ -389,33 +502,34 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           stroke.points.forEach(point => {
             point.x *= ratio;
           });
+          invalidateStrokeRenderCache(stroke);
         });
         pendingRescale = true;
       }
 
+      staticDirtyRef.current = true;
       redrawAllRef.current();
     };
     resizeCanvasRef.current = resizeCanvas;
 
     const handlePreparePrint = () => {
       isPrintingRef.current = true;
+      staticDirtyRef.current = true;
       resizeCanvas();
       redrawAllRef.current();
     };
 
     const handleAfterPrint = () => {
       isPrintingRef.current = false;
+      staticDirtyRef.current = true;
       resizeCanvas();
       redrawAllRef.current();
     };
 
-    // Throttle visuel via rAF : au plus un redimensionnement par frame.
     const handleResize = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
         resizeCanvas();
-        // Différer le commitStrokes pour ne l'appeler qu'une seule fois
-        // une fois le redimensionnement stabilisé (120 ms sans nouveau resize).
         if (pendingRescale) {
           clearTimeout(commitTimer);
           commitTimer = window.setTimeout(() => {
@@ -426,7 +540,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       });
     };
 
-    // Premier appel synchrone pour initialiser les dimensions sans délai.
     resizeCanvas();
 
     const resizeObserver = new ResizeObserver(handleResize);
@@ -448,9 +561,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     };
   }, [commitStrokes, colorName, styleName]);
 
-  // Le ResizeObserver peut ne pas recevoir un nouvel événement au relâchement :
-  // le DOM possède déjà la hauteur finale appliquée directement pendant le drag.
-  // On force donc exactement une allocation finale après le commit React.
   isResizingRef.current = isResizing;
   useEffect(() => {
     const wasResizing = wasResizingRef.current;
@@ -473,32 +583,32 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         let w = img.width;
         let h = img.height;
         if (w > maxWidth) {
-           h = (maxWidth / w) * h;
-           w = maxWidth;
+          h = (maxWidth / w) * h;
+          w = maxWidth;
         }
         const newStroke: Stroke = {
           points: [
             { x: 50, y: 50, pressure: 0.5 },
-            { x: 50 + w, y: 50 + h, pressure: 0.5 }
+            { x: 50 + w, y: 50 + h, pressure: 0.5 },
           ],
           color: '',
           width: 0,
           isImage: true,
           imgSrc: src,
-          imgElement: img
+          imgElement: img,
         };
         strokesRef.current.push(newStroke);
-        setRedoStack([]);
+        recordAdd(newStroke);
         setToolState({ tool: 'pointer', openMenu: null });
-        redrawAll(); commitStrokes();
+        staticDirtyRef.current = true;
+        redrawAll();
+        commitStrokes();
       };
     };
     reader.readAsDataURL(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Coordonnées en pixels CSS : le contexte 2D est déjà mis à l'échelle par la
-  // densité d'écran dans `redrawAll`, il ne faut pas l'appliquer deux fois.
   const getCoordinates = (
     e: React.PointerEvent | PointerEvent,
     knownRect?: DOMRect,
@@ -518,6 +628,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         tiltX: e.tiltX,
         tiltY: e.tiltY,
       }, pressureCurve, penType === 'pencil'),
+      tiltX: e.tiltX,
+      tiltY: e.tiltY,
+      t: e.timeStamp,
     };
   };
 
@@ -525,6 +638,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     if (recognitionTimerRef.current) clearTimeout(recognitionTimerRef.current);
     recognitionTimerRef.current = null;
     recognizedStrokeRef.current = null;
+    recognizedOriginRef.current = null;
   };
 
   const scheduleShapeRecognition = (activeTool: ToolType) => {
@@ -534,10 +648,21 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     recognitionTimerRef.current = setTimeout(() => {
       recognitionTimerRef.current = null;
       const stroke = currentStrokeRef.current;
-      if (!stroke) return;
-      recognizedStrokeRef.current = recognizeStrokeShape(stroke);
-      if (recognizedStrokeRef.current) redrawAllRef.current();
-    }, 550);
+      if (!stroke || recognizedStrokeRef.current || stroke.points.length < 6) return;
+      const recognized = recognizeStrokeShape(stroke);
+      if (recognized && recognized.points.length >= 2) {
+        recognizedStrokeRef.current = recognized;
+        const anchor = holdAnchorRef.current || stroke.points[stroke.points.length - 1];
+        recognizedOriginRef.current = {
+          pointerX: anchor.x,
+          pointerY: anchor.y,
+          p0: { ...recognized.points[0] },
+          p1: { ...recognized.points[recognized.points.length - 1] },
+        };
+        predictedTailRef.current = [];
+        redrawAllRef.current();
+      }
+    }, 380);
   };
 
   const alignPointToExistingShapes = (point: Point): Point => {
@@ -563,8 +688,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     return { ...point, x: bestX, y: bestY };
   };
 
-  // Bits 2 (clic droit / bouton latéral secondaire), 32 (bouton gomme standard) et button 2/5
-  // permettent d'activer la gomme instantanément lors de la pression du bouton latéral du stylet.
   const isStylusEraser = (e: React.PointerEvent | PointerEvent) => {
     if (!e) return false;
     if (e.pointerType === 'eraser') return true;
@@ -586,13 +709,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     return false;
   };
 
-  // La capture du pointeur peut échouer (pointeur déjà relâché, événement synthétique).
-  // Une exception ici interromprait le handler et ferait perdre le trait en cours.
   const capturePointer = (e: React.PointerEvent<HTMLCanvasElement>) => {
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
-      /* capture non disponible : le dessin reste fonctionnel dans les limites du canvas */
+      /* capture non disponible */
     }
   };
 
@@ -606,22 +727,44 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     }
   };
 
+  /**
+   * Teste si le point (x, y) touche l'une des 4 poignées de coin du cadre de sélection actuel.
+   */
+  const getSelectionResizeHandleAt = (x: number, y: number): string | null => {
+    if (selectedStrokeIndexes.size === 0) return null;
+    const bounds = getSelectionCombinedBounds(selectedStrokeIndexes);
+    if (!bounds) return null;
+    const pad = 6;
+    const handles = [
+      { x: bounds.minX - pad, y: bounds.minY - pad, type: 'tl' },
+      { x: bounds.maxX + pad, y: bounds.minY - pad, type: 'tr' },
+      { x: bounds.minX - pad, y: bounds.maxY + pad, type: 'bl' },
+      { x: bounds.maxX + pad, y: bounds.maxY + pad, type: 'br' },
+    ];
+    for (const h of handles) {
+      if (Math.hypot(x - h.x, y - h.y) <= 14) {
+        return h.type;
+      }
+    }
+    return null;
+  };
+
   const openTextEditorByIndex = useCallback((index: number) => {
-      if (!isEditMode) return false;
-      const stroke = strokesRef.current[index];
-      if (!stroke?.isText || !stroke.text) return false;
-      setActiveCanvas(instanceId);
-      setToolState({ tool: 'text', openMenu: null });
-      setSelectedStrokeIndexes(new Set([index]));
-      setTextInput({
-        visible: true,
-        x: stroke.points[0]?.x ?? 20,
-        y: stroke.points[0]?.y ?? 20,
-        text: stroke.text,
-        editingIndex: index,
-      });
-      return true;
-  }, [instanceId, isEditMode]);
+    if (!isEditMode) return false;
+    const stroke = strokesRef.current[index];
+    if (!stroke?.isText || !stroke.text) return false;
+    setActiveCanvas(instanceId);
+    setToolState({ tool: 'text', openMenu: null });
+    setSelectedStrokeIndexes(new Set([index]));
+    setTextInput({
+      visible: true,
+      x: stroke.points[0]?.x ?? 20,
+      y: stroke.points[0]?.y ?? 20,
+      text: stroke.text,
+      editingIndex: index,
+    });
+    return true;
+  }, [instanceId, isEditMode, setSelectedStrokeIndexes]);
 
   const openTextEditorAt = useCallback((x: number, y: number) => {
     if (!isEditMode) return false;
@@ -634,7 +777,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   }, [isEditMode, openTextEditorByIndex]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    // Si le rejet de paume est activé, ignorer le toucher au doigt (seuls le stylet et la souris dessinent)
     if (e.pointerType === 'touch' && palmRejection) return;
     if (e.pointerType === 'pen') lastPenInputAtRef.current = Date.now();
     if (e.cancelable) e.preventDefault();
@@ -648,8 +790,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
     const stylusEraser = isStylusEraser(e);
     const activeTool: ToolType = stylusEraser ? 'eraser' : settings.tool;
+    activeGestureToolRef.current = activeTool;
     clearShapeRecognition();
     smootherRef.current = null;
+    predictedTailRef.current = [];
+    eraserCursorRef.current = null;
 
     if (activeTool === 'text') {
       e.preventDefault();
@@ -660,62 +805,57 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     }
 
     capturePointer(e);
-    
+
     if (activeTool === 'pointer') {
-       if (selectedStrokeIndexes.size === 1) {
-         const idx = Array.from(selectedStrokeIndexes)[0];
-         const stroke = strokesRef.current[idx];
-         const handleType = isPointOnImageResizeHandle(coords.x, coords.y, stroke);
-         if (stroke.isImage && handleType) {
-            isDrawing.current = true;
-            dragModeRef.current = 'resize';
-            activeImageIndexRef.current = idx;
-            activeResizeHandleRef.current = handleType as string;
-            dragStartRef.current = { x: coords.x, y: coords.y };
-            return;
-         }
-       }
-       
-       for (let i = strokesRef.current.length - 1; i >= 0; i--) {
-         const stroke = strokesRef.current[i];
-         let clicked = false;
-         if (stroke.isImage) {
-            clicked = isPointInImage(coords.x, coords.y, stroke);
-         } else {
-            clicked = strokeIntersectsPoint(stroke, coords.x, coords.y, 10);
-         }
-         
-         if (clicked) {
-           let newSelection = selectedStrokeIndexes;
-           if (!selectedStrokeIndexes.has(i)) {
-               newSelection = new Set([i]);
-               setSelectedStrokeIndexes(newSelection);
-           }
-           isDrawing.current = true;
-           dragModeRef.current = 'move';
-           activeImageIndexRef.current = i;
-           dragStartRef.current = { x: coords.x, y: coords.y };
-           beginSelectionDrag(newSelection);
-           redrawAll();
-           return;
-         }
-       }
-       
-       setSelectedStrokeIndexes(new Set());
-       isDrawing.current = true;
-       dragModeRef.current = 'select';
-       dragStartRef.current = { x: coords.x, y: coords.y };
-       selectionBoxRef.current = { x: coords.x, y: coords.y, w: 0, h: 0 };
-       redrawAll();
-       return;
+      const handleType = getSelectionResizeHandleAt(coords.x, coords.y);
+      if (handleType) {
+        isDrawing.current = true;
+        dragModeRef.current = 'resize';
+        activeResizeHandleRef.current = handleType;
+        dragStartRef.current = { x: coords.x, y: coords.y };
+        beginSelectionDrag(selectedStrokeIndexes);
+        return;
+      }
+
+      for (let i = strokesRef.current.length - 1; i >= 0; i--) {
+        const stroke = strokesRef.current[i];
+        const clicked = stroke.isImage
+          ? isPointInImage(coords.x, coords.y, stroke)
+          : strokeIntersectsPoint(stroke, coords.x, coords.y, 10);
+
+        if (clicked) {
+          let newSelection = selectedStrokeIndexes;
+          if (!selectedStrokeIndexes.has(i)) {
+            newSelection = new Set([i]);
+            setSelectedStrokeIndexes(newSelection);
+          }
+          isDrawing.current = true;
+          dragModeRef.current = 'move';
+          dragStartRef.current = { x: coords.x, y: coords.y };
+          beginSelectionDrag(newSelection);
+          staticDirtyRef.current = true;
+          redrawAll();
+          return;
+        }
+      }
+
+      setSelectedStrokeIndexes(new Set());
+      isDrawing.current = true;
+      dragModeRef.current = 'select';
+      dragStartRef.current = { x: coords.x, y: coords.y };
+      selectionBoxRef.current = { x: coords.x, y: coords.y, w: 0, h: 0 };
+      staticDirtyRef.current = true;
+      redrawAll();
+      return;
     }
 
     isDrawing.current = true;
-    
+
     if (activeTool === 'eraser' && (settings.eraserType === 'stroke' || settings.eraserHighlighterOnly)) {
       eraseGestureRef.current = [];
       let erasedAny = false;
       const activeEraserWidth = settings.eraserAutoSize ? settings.eraserWidth * (0.55 + coords.pressure * 0.9) : settings.eraserWidth;
+      eraserCursorRef.current = { x: coords.x, y: coords.y, radius: activeEraserWidth / 2 };
       const kept: Stroke[] = [];
       strokesRef.current.forEach((s, idx) => {
         if ((!settings.eraserHighlighterOnly || s.isHighlighter) && strokeIntersectsPoint(s, coords.x, coords.y, activeEraserWidth / 2)) {
@@ -728,30 +868,29 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       strokesRef.current = kept;
       if (erasedAny) {
         setSelectedStrokeIndexes(new Set());
-        redrawAll(); // la persistance a lieu au relâchement du pointeur
+        staticDirtyRef.current = true;
       }
+      redrawAll();
     } else if (activeTool === 'lasso') {
+      const handleType = getSelectionResizeHandleAt(coords.x, coords.y);
+      if (handleType) {
+        dragModeRef.current = 'resize';
+        activeResizeHandleRef.current = handleType;
+        dragStartRef.current = { x: coords.x, y: coords.y };
+        beginSelectionDrag(selectedStrokeIndexes);
+        return;
+      }
+
       if (selectedStrokeIndexes.size > 0) {
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        selectedStrokeIndexes.forEach(idx => {
-          const s = strokesRef.current[idx];
-          if (!s) return;
-          s.points.forEach(p => {
-            if (p.x < minX) minX = p.x;
-            if (p.x > maxX) maxX = p.x;
-            if (p.y < minY) minY = p.y;
-            if (p.y > maxY) maxY = p.y;
-          });
-        });
-        
-        if (coords.x >= minX - 6 && coords.x <= maxX + 6 && coords.y >= minY - 6 && coords.y <= maxY + 6) {
+        const bounds = getSelectionCombinedBounds(selectedStrokeIndexes);
+        if (bounds && coords.x >= bounds.minX - 8 && coords.x <= bounds.maxX + 8 && coords.y >= bounds.minY - 8 && coords.y <= bounds.maxY + 8) {
           isDraggingSelectionRef.current = true;
           dragStartRef.current = coords;
           beginSelectionDrag(selectedStrokeIndexes);
           return;
         }
       }
-      
+
       setSelectedStrokeIndexes(new Set());
       if (settings.selectionMode === 'rectangle') {
         dragModeRef.current = 'select';
@@ -760,15 +899,26 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       } else {
         lassoPathRef.current = [coords];
       }
+      staticDirtyRef.current = true;
       redrawAll();
     } else {
-      const startPoint = activeTool === 'shape' && settings.snapGrid
+      const startPoint = (activeTool === 'shape' || (activeTool === 'highlighter' && settings.highlighterStraightLines)) && settings.snapGrid
         ? { ...coords, x: Math.round(coords.x / 24) * 24, y: Math.round(coords.y / 24) * 24 }
         : coords;
+      const strokeWidth = activeTool === 'highlighter'
+        ? settings.highlighterWidth
+        : activeTool === 'eraser'
+          ? (settings.eraserAutoSize ? settings.eraserWidth * (0.55 + coords.pressure * 0.9) : settings.eraserWidth)
+          : settings.lineWidth;
+
+      if (activeTool === 'eraser') {
+        eraserCursorRef.current = { x: coords.x, y: coords.y, radius: strokeWidth / 2 };
+      }
+
       currentStrokeRef.current = {
         points: [startPoint],
         color: activeTool === 'highlighter' ? settings.highlighterColor : settings.color,
-        width: activeTool === 'highlighter' ? settings.highlighterWidth : activeTool === 'eraser' ? settings.eraserWidth : settings.lineWidth,
+        width: strokeWidth,
         pointerType: e.pointerType,
         usesRealPressure: e.pointerType === 'pen',
         opacity: activeTool === 'highlighter' ? settings.highlighterOpacity : undefined,
@@ -777,13 +927,18 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         shapeType: activeTool === 'shape' ? settings.shapeType : undefined,
         penType: activeTool === 'pen' ? settings.penType : undefined,
         lineStyle: activeTool === 'pen' ? settings.lineStyle : undefined,
-        highlighterType: activeTool === 'highlighter' ? settings.highlighterType : undefined
+        highlighterType: activeTool === 'highlighter' ? settings.highlighterType : undefined,
+        pressureCurve: settings.pressureCurve,
+        stabilization: settings.penStabilization,
       };
       if (activeTool === 'pen' || (activeTool === 'highlighter' && !settings.highlighterStraightLines)) {
-        smootherRef.current = new StrokeSmoother(settings.penStabilization);
+        smootherRef.current = new StrokeSmoother(
+          settings.penStabilization,
+          activeTool === 'pen' ? settings.penType : undefined,
+        );
         smootherRef.current.seed(startPoint, e.timeStamp);
       }
-      scheduleShapeRecognition(activeTool);
+      holdAnchorRef.current = { x: startPoint.x, y: startPoint.y };
       redrawAll();
     }
   };
@@ -808,162 +963,246 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     const settings = getToolState();
     const canvas = canvasRef.current;
     if (!canvas) return;
-    // Une seule mesure de layout par paquet coalescé. Auparavant cette lecture
-    // était répétée pour chaque échantillon d'un stylet 120/240 Hz.
     const canvasRect = canvas.getBoundingClientRect();
 
     const nativeE = e.nativeEvent as PointerEvent;
     const coalescedEvents: PointerEvent[] | undefined = nativeE.getCoalescedEvents?.();
-    // Certains navigateurs exposent l'API mais renvoient ponctuellement une
-    // liste vide. Le pointermove principal doit alors rester utilisable.
     const events = coalescedEvents?.length ? coalescedEvents : [nativeE];
-    
+
     let recognitionTool: ToolType | null = null;
-    if (currentStrokeRef.current) clearShapeRecognition();
+    const alreadyRecognizedShape = recognizedStrokeRef.current;
 
     events.forEach((event: PointerEvent) => {
-        const rawCoords = getCoordinates(event, canvasRect, settings);
-        if (rawCoords) {
-            const stylusEraser = isStylusEraser(event);
-            const activeTool: ToolType = stylusEraser ? 'eraser' : settings.tool;
-            let coords = rawCoords;
-            if (smootherRef.current && (activeTool === 'pen' || activeTool === 'highlighter')) {
-              coords = smootherRef.current.next(rawCoords, event.timeStamp);
-            }
+      const rawCoords = getCoordinates(event, canvasRect, settings);
+      if (!rawCoords) return;
 
-            if (activeTool === 'pointer' && activeImageIndexRef.current !== null && dragStartRef.current) {
-                const idx = activeImageIndexRef.current;
-                const stroke = strokesRef.current[idx];
-                const dx = coords.x - dragStartRef.current.x;
-                const dy = coords.y - dragStartRef.current.y;
-                
-                if (dragModeRef.current === 'move') {
-                   moveSelectionBy(dx, dy);
-                } else if (dragModeRef.current === 'resize') {
-                   // Proportional resize
-                   const p1 = stroke.points[0]; // top-left (usually)
-                   const p2 = stroke.points[1]; // bottom-right (usually)
-                   
-                   const handle = activeResizeHandleRef.current;
-                   const aspect = (p2.y - p1.y) / (p2.x - p1.x); // Should be maintained
-                   
-                   if (handle === 'br') {
-                      const newW = (coords.x - p1.x);
-                      stroke.points[1] = { x: p1.x + newW, y: p1.y + newW * aspect, pressure: 0.5 };
-                   } else if (handle === 'tl') {
-                      const newW = (p2.x - coords.x);
-                      stroke.points[0] = { x: p2.x - newW, y: p2.y - newW * aspect, pressure: 0.5 };
-                   } else if (handle === 'tr') {
-                      const newW = (coords.x - p1.x);
-                      stroke.points[0].y = p2.y - newW * aspect;
-                      stroke.points[1].x = p1.x + newW;
-                   } else if (handle === 'bl') {
-                      const newW = (p2.x - coords.x);
-                      stroke.points[0].x = p2.x - newW;
-                      stroke.points[1].y = p1.y + newW * aspect;
-                   }
-                }
-            } else if (activeTool === 'pointer') {
-                if (dragModeRef.current === 'select' && selectionBoxRef.current && dragStartRef.current) {
-                    selectionBoxRef.current.w = coords.x - dragStartRef.current.x;
-                    selectionBoxRef.current.h = coords.y - dragStartRef.current.y;
-                }
-                return;
-            } else if (activeTool === 'eraser') {
-              if (settings.eraserType === 'stroke' || settings.eraserHighlighterOnly) {
-                let erasedAny = false;
-                const activeEraserWidth = settings.eraserAutoSize ? settings.eraserWidth * (0.55 + coords.pressure * 0.9) : settings.eraserWidth;
-                const kept: Stroke[] = [];
-                strokesRef.current.forEach((s, idx) => {
-                  if ((!settings.eraserHighlighterOnly || s.isHighlighter) && strokeIntersectsPoint(s, coords.x, coords.y, activeEraserWidth / 2)) {
-                    erasedAny = true;
-                    eraseGestureRef.current.push({ index: idx, stroke: s });
-                  } else {
-                    kept.push(s);
-                  }
-                });
-                strokesRef.current = kept;
-                if (erasedAny) {
-                  setSelectedStrokeIndexes(new Set());
-                }
-              } else {
-                // Pixel eraser via stylus button or tool
-                const pixelEraserWidth = settings.eraserAutoSize
-                  ? settings.eraserWidth * (0.55 + coords.pressure * 0.9)
-                  : settings.eraserWidth;
-                if (currentStrokeRef.current) {
-                  currentStrokeRef.current.isEraser = true;
-                  currentStrokeRef.current.width = pixelEraserWidth;
-                  const points = currentStrokeRef.current.points;
-                  const last = points[points.length - 1];
-                  if (Math.hypot(coords.x - last.x, coords.y - last.y) >= Math.max(0.8, pixelEraserWidth * 0.04)) {
-                    points.push(coords);
-                  }
-                } else {
-                  currentStrokeRef.current = {
-                    points: [coords],
-                    color: '',
-                    width: pixelEraserWidth,
-                    isEraser: true
-                  };
-                }
-              }
-            } else if (activeTool === 'lasso') {
-              if (isDraggingSelectionRef.current && dragStartRef.current) {
-                moveSelectionBy(coords.x - dragStartRef.current.x, coords.y - dragStartRef.current.y);
-              } else if (settings.selectionMode === 'rectangle' && selectionBoxRef.current && dragStartRef.current) {
-                selectionBoxRef.current.w = coords.x - dragStartRef.current.x;
-                selectionBoxRef.current.h = coords.y - dragStartRef.current.y;
-              } else {
-                const last = lassoPathRef.current[lassoPathRef.current.length - 1];
-                if (!last || Math.hypot(coords.x - last.x, coords.y - last.y) >= 0.8) {
-                  lassoPathRef.current.push(coords);
-                }
-              }
-              } else if (currentStrokeRef.current) {
-              if (activeTool === 'shape') {
-                const start = currentStrokeRef.current.points[0];
-                const constrained = constrainShapePoint(start, coords, settings.shapeType, {
-                  snapGrid: settings.snapGrid,
-                  angleSnap: settings.angleSnap,
-                  angleStep: settings.angleStep,
-                  regularShapes: settings.regularShapes !== e.shiftKey,
-                });
-                currentStrokeRef.current.points = [start, alignPointToExistingShapes(constrained)];
-              } else if (activeTool === 'highlighter' && settings.highlighterStraightLines) {
-                const start = currentStrokeRef.current.points[0];
-                const dx = Math.abs(coords.x - start.x);
-                const dy = Math.abs(coords.y - start.y);
-                if (dx >= dy) {
-                  currentStrokeRef.current.points = [start, { x: coords.x, y: start.y, pressure: coords.pressure }];
-                } else {
-                  currentStrokeRef.current.points = [start, { x: start.x, y: coords.y, pressure: coords.pressure }];
-                }
-              } else {
-                // Le StrokeSmoother (OneEuroFilter) gère déjà la stabilisation ;
-                // un lissage supplémentaire ici rendrait les traits trop mous.
-                const pts = currentStrokeRef.current.points;
-                const last = pts[pts.length - 1];
-                const dist = Math.hypot(coords.x - last.x, coords.y - last.y);
-                const minDistance = activeTool === 'highlighter'
-                  ? Math.max(0.7, Math.min(2, currentStrokeRef.current.width * 0.07))
-                  : Math.max(0.4, Math.min(1.25, currentStrokeRef.current.width * 0.12));
-                const pressureChanged = currentStrokeRef.current.usesRealPressure
-                  && Math.abs(coords.pressure - last.pressure) >= 0.025;
-                if (dist >= minDistance || pressureChanged) {
-                  pts.push(coords);
-                }
-              }
-              recognitionTool = activeTool;
-            }
+      const stylusEraser = isStylusEraser(event);
+      const activeTool: ToolType = stylusEraser ? 'eraser' : activeGestureToolRef.current;
+      if (stylusEraser) activeGestureToolRef.current = 'eraser';
+
+      // Si une forme a déjà été reconnue au maintien (Hold-to-Shape Noteshelf) :
+      // - Tant que le stylet reste quasi immobile (< 8 px du point de maintien), la forme reconnue
+      //   reste 100 % verrouillée (évite qu'un cercle fermé près de son point de départ ne s'écrase en un point).
+      // - Si l'utilisateur glisse volontairement (> 8 px) après la reconnaissance :
+      //   • Pour une ligne/flèche/angle : ajuste l'extrémité.
+      //   • Pour une forme fermée (cercle, rectangle, triangle) : redimensionne proportionnellement autour du centre.
+      if (alreadyRecognizedShape && alreadyRecognizedShape.shapeType && alreadyRecognizedShape.points.length >= 2) {
+        const origin = recognizedOriginRef.current;
+        if (!origin) return;
+        const postSnapDrift = Math.hypot(rawCoords.x - origin.pointerX, rawCoords.y - origin.pointerY);
+        if (postSnapDrift < 8) {
+          return;
         }
+        const isOpenShape = ['line', 'arrow', 'double-arrow', 'angle'].includes(alreadyRecognizedShape.shapeType);
+        if (isOpenShape) {
+          const start = origin.p0;
+          const constrained = constrainShapePoint(start, rawCoords, alreadyRecognizedShape.shapeType, {
+            snapGrid: settings.snapGrid,
+            angleSnap: settings.angleSnap,
+            angleStep: settings.angleStep,
+            regularShapes: settings.regularShapes !== e.shiftKey,
+          });
+          alreadyRecognizedShape.points = [start, alignPointToExistingShapes(constrained)];
+        } else {
+          const cx = (origin.p0.x + origin.p1.x) / 2;
+          const cy = (origin.p0.y + origin.p1.y) / 2;
+          const baseDist = Math.max(18, Math.hypot(origin.pointerX - cx, origin.pointerY - cy));
+          const currDist = Math.max(12, Math.hypot(rawCoords.x - cx, rawCoords.y - cy));
+          const scaleFactor = Math.max(0.35, Math.min(3.5, currDist / baseDist));
+          const halfW = Math.max(10, (Math.abs(origin.p1.x - origin.p0.x) / 2) * scaleFactor);
+          const halfH = Math.max(10, (Math.abs(origin.p1.y - origin.p0.y) / 2) * scaleFactor);
+          alreadyRecognizedShape.points = [
+            { x: cx - halfW, y: cy - halfH, pressure: origin.p0.pressure },
+            { x: cx + halfW, y: cy + halfH, pressure: origin.p1.pressure },
+          ];
+        }
+        return;
+      }
+
+      let coords = rawCoords;
+      if (smootherRef.current && (activeTool === 'pen' || activeTool === 'highlighter')) {
+        coords = smootherRef.current.next(rawCoords, event.timeStamp);
+      }
+
+      if (activeTool === 'pointer') {
+        if (dragModeRef.current === 'move' && dragStartRef.current) {
+          const dx = coords.x - dragStartRef.current.x;
+          const dy = coords.y - dragStartRef.current.y;
+          moveSelectionBy(dx, dy);
+          staticDirtyRef.current = true;
+        } else if (dragModeRef.current === 'resize' && activeResizeHandleRef.current) {
+          scaleSelectionByHandle(activeResizeHandleRef.current, coords.x, coords.y);
+          staticDirtyRef.current = true;
+        } else if (dragModeRef.current === 'select' && selectionBoxRef.current && dragStartRef.current) {
+          selectionBoxRef.current.w = coords.x - dragStartRef.current.x;
+          selectionBoxRef.current.h = coords.y - dragStartRef.current.y;
+        }
+        return;
+      }
+
+      if (activeTool === 'eraser') {
+        const activeEraserWidth = settings.eraserAutoSize
+          ? settings.eraserWidth * (0.55 + coords.pressure * 0.9)
+          : settings.eraserWidth;
+        eraserCursorRef.current = { x: coords.x, y: coords.y, radius: activeEraserWidth / 2 };
+
+        if (settings.eraserType === 'stroke' || settings.eraserHighlighterOnly) {
+          let erasedAny = false;
+          const kept: Stroke[] = [];
+          strokesRef.current.forEach((s, idx) => {
+            if ((!settings.eraserHighlighterOnly || s.isHighlighter) && strokeIntersectsPoint(s, coords.x, coords.y, activeEraserWidth / 2)) {
+              erasedAny = true;
+              eraseGestureRef.current.push({ index: idx, stroke: s });
+            } else {
+              kept.push(s);
+            }
+          });
+          strokesRef.current = kept;
+          if (erasedAny) {
+            setSelectedStrokeIndexes(new Set());
+            staticDirtyRef.current = true;
+          }
+        } else {
+          if (currentStrokeRef.current) {
+            currentStrokeRef.current.isEraser = true;
+            currentStrokeRef.current.width = activeEraserWidth;
+            const points = currentStrokeRef.current.points;
+            const last = points[points.length - 1];
+            if (Math.hypot(coords.x - last.x, coords.y - last.y) >= Math.max(0.75, activeEraserWidth * 0.04)) {
+              points.push(coords);
+            }
+          } else {
+            currentStrokeRef.current = {
+              points: [coords],
+              color: '',
+              width: activeEraserWidth,
+              isEraser: true,
+            };
+          }
+        }
+      } else if (activeTool === 'lasso') {
+        if (dragModeRef.current === 'resize' && activeResizeHandleRef.current) {
+          scaleSelectionByHandle(activeResizeHandleRef.current, coords.x, coords.y);
+          staticDirtyRef.current = true;
+        } else if (isDraggingSelectionRef.current && dragStartRef.current) {
+          moveSelectionBy(coords.x - dragStartRef.current.x, coords.y - dragStartRef.current.y);
+          staticDirtyRef.current = true;
+        } else if (settings.selectionMode === 'rectangle' && selectionBoxRef.current && dragStartRef.current) {
+          selectionBoxRef.current.w = coords.x - dragStartRef.current.x;
+          selectionBoxRef.current.h = coords.y - dragStartRef.current.y;
+        } else {
+          const last = lassoPathRef.current[lassoPathRef.current.length - 1];
+          if (!last || Math.hypot(coords.x - last.x, coords.y - last.y) >= 0.8) {
+            lassoPathRef.current.push(coords);
+          }
+        }
+      } else if (currentStrokeRef.current) {
+        if (activeTool === 'shape') {
+          const start = currentStrokeRef.current.points[0];
+          const constrained = constrainShapePoint(start, coords, settings.shapeType, {
+            snapGrid: settings.snapGrid,
+            angleSnap: settings.angleSnap,
+            angleStep: settings.angleStep,
+            regularShapes: settings.regularShapes !== e.shiftKey,
+          });
+          currentStrokeRef.current.points = [start, alignPointToExistingShapes(constrained)];
+        } else if (activeTool === 'highlighter' && settings.highlighterStraightLines) {
+          const start = currentStrokeRef.current.points[0];
+          if (settings.angleSnap) {
+            const constrained = constrainShapePoint(start, coords, 'line', {
+              snapGrid: settings.snapGrid,
+              angleSnap: true,
+              angleStep: settings.angleStep,
+              regularShapes: false,
+            });
+            currentStrokeRef.current.points = [start, constrained];
+          } else {
+            const dx = Math.abs(coords.x - start.x);
+            const dy = Math.abs(coords.y - start.y);
+            if (dx >= dy) {
+              currentStrokeRef.current.points = [start, { x: coords.x, y: start.y, pressure: coords.pressure }];
+            } else {
+              currentStrokeRef.current.points = [start, { x: start.x, y: coords.y, pressure: coords.pressure }];
+            }
+          }
+        } else {
+          const pts = currentStrokeRef.current.points;
+          const last = pts[pts.length - 1];
+          const dist = Math.hypot(coords.x - last.x, coords.y - last.y);
+          const minDistance = activeTool === 'highlighter'
+            ? Math.max(0.65, Math.min(1.8, currentStrokeRef.current.width * 0.06))
+            : Math.max(0.28, Math.min(0.95, currentStrokeRef.current.width * 0.09));
+
+          // Détection de maintien réel (Dwell Anchor) indépendante de la fréquence 60/120/240 Hz :
+          // tant que le stylet sort d'un rayon de 4.5 px autour de l'ancre, il est en mouvement
+          // et le compte à rebours Hold-to-Shape (380 ms) est réarmé.
+          const anchor = holdAnchorRef.current;
+          const dwellDrift = anchor ? Math.hypot(rawCoords.x - anchor.x, rawCoords.y - anchor.y) : Infinity;
+          if (dwellDrift > 4.5) {
+            holdAnchorRef.current = { x: rawCoords.x, y: rawCoords.y };
+            if (recognitionTimerRef.current) {
+              clearTimeout(recognitionTimerRef.current);
+              recognitionTimerRef.current = null;
+            }
+            recognitionTool = activeTool;
+          }
+
+          if (dist >= minDistance) {
+            appendInterpolatedPoint(pts, coords, minDistance);
+          } else if (
+            currentStrokeRef.current.usesRealPressure &&
+            dist >= 0.12 &&
+            Math.abs(coords.pressure - last.pressure) >= 0.03
+          ) {
+            pts[pts.length - 1] = { ...last, pressure: coords.pressure };
+          }
+        }
+      }
     });
 
-    // Un seul timer de reconnaissance par paquet, pas un par point coalescé.
-    if (recognitionTool) scheduleShapeRecognition(recognitionTool);
+    // Prédiction matérielle zéro-latence (`getPredictedEvents`) + Web Ink API
+    if (
+      currentStrokeRef.current &&
+      !recognizedStrokeRef.current &&
+      !currentStrokeRef.current.shapeType &&
+      !currentStrokeRef.current.isEraser &&
+      !(settings.tool === 'highlighter' && settings.highlighterStraightLines)
+    ) {
+      const predictedEvents: PointerEvent[] | undefined = (nativeE as any).getPredictedEvents?.();
+      if (predictedEvents && predictedEvents.length > 0) {
+        const rawPredicted: Point[] = [];
+        for (let i = 0; i < Math.min(3, predictedEvents.length); i++) {
+          const p = getCoordinates(predictedEvents[i], canvasRect, settings);
+          if (p) rawPredicted.push(p);
+        }
+        predictedTailRef.current = buildPredictedTail(
+          currentStrokeRef.current.points,
+          rawPredicted,
+          smootherRef.current,
+          nativeE.timeStamp,
+        );
+      } else {
+        predictedTailRef.current = [];
+      }
 
-    // Rendu seul pendant le geste. La persistance (clone de la fiche +
-    // écriture localStorage) est reportée au relâchement du pointeur.
+      if (inkPresenterRef.current?.updateInkTrailStartPoint && currentStrokeRef.current.color) {
+        try {
+          inkPresenterRef.current.updateInkTrailStartPoint(nativeE, {
+            color: currentStrokeRef.current.color,
+            diameter: Math.max(1, currentStrokeRef.current.width),
+          });
+        } catch {
+          /* ignore */
+        }
+      }
+    } else {
+      predictedTailRef.current = [];
+    }
+
+    if (recognitionTool && !alreadyRecognizedShape) {
+      scheduleShapeRecognition(recognitionTool);
+    }
+
     scheduleRedraw();
   };
 
@@ -971,56 +1210,69 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     cancelScheduledRedraw();
     releasePointer(e);
     const settings = getToolState();
+    const activeTool = activeGestureToolRef.current;
     if (recognitionTimerRef.current) clearTimeout(recognitionTimerRef.current);
     recognitionTimerRef.current = null;
     smootherRef.current = null;
+    predictedTailRef.current = [];
+    eraserCursorRef.current = null;
+
     if (!isDrawing.current && !currentStrokeRef.current) return;
     isDrawing.current = false;
 
-    if (settings.tool === 'pointer') {
-       if (dragModeRef.current === 'select' && selectionBoxRef.current) {
-           const box = selectionBoxRef.current;
-           const minX = Math.min(box.x, box.x + box.w);
-           const maxX = Math.max(box.x, box.x + box.w);
-           const minY = Math.min(box.y, box.y + box.h);
-           const maxY = Math.max(box.y, box.y + box.h);
-           
-           if (maxX - minX > 5 && maxY - minY > 5) {
-               const newSelection = new Set<number>();
-               strokesRef.current.forEach((stroke, idx) => {
-                   let isSelected = false;
-                   if (stroke.isImage && stroke.points.length >= 2) {
-                       const p1 = stroke.points[0];
-                       const p2 = stroke.points[1];
-                       const sMinX = Math.min(p1.x, p2.x);
-                       const sMaxX = Math.max(p1.x, p2.x);
-                       const sMinY = Math.min(p1.y, p2.y);
-                       const sMaxY = Math.max(p1.y, p2.y);
-                       if (sMaxX >= minX && sMinX <= maxX && sMaxY >= minY && sMinY <= maxY) isSelected = true;
-                   } else {
-                       for (const p of stroke.points) {
-                           if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) {
-                               isSelected = true;
-                               break;
-                           }
-                       }
-                   }
-                   if (isSelected) newSelection.add(idx);
-               });
-               setSelectedStrokeIndexes(newSelection);
-           }
-       }
-       activeImageIndexRef.current = null;
-       dragModeRef.current = null;
-       dragStartRef.current = null;
-       activeResizeHandleRef.current = null;
-       selectionBoxRef.current = null;
-       redrawAll(); commitStrokes();
-       return;
+    if (activeTool === 'pointer') {
+      if (dragModeRef.current === 'move' || dragModeRef.current === 'resize') {
+        finishSelectionDrag();
+      } else if (dragModeRef.current === 'select' && selectionBoxRef.current) {
+        const box = selectionBoxRef.current;
+        const minX = Math.min(box.x, box.x + box.w);
+        const maxX = Math.max(box.x, box.x + box.w);
+        const minY = Math.min(box.y, box.y + box.h);
+        const maxY = Math.max(box.y, box.y + box.h);
+
+        if (maxX - minX > 5 && maxY - minY > 5) {
+          const newSelection = new Set<number>();
+          strokesRef.current.forEach((stroke, idx) => {
+            let isSelected = false;
+            if (stroke.isImage && stroke.points.length >= 2) {
+              const p1 = stroke.points[0];
+              const p2 = stroke.points[1];
+              const sMinX = Math.min(p1.x, p2.x);
+              const sMaxX = Math.max(p1.x, p2.x);
+              const sMinY = Math.min(p1.y, p2.y);
+              const sMaxY = Math.max(p1.y, p2.y);
+              if (sMaxX >= minX && sMinX <= maxX && sMaxY >= minY && sMinY <= maxY) isSelected = true;
+            } else {
+              for (const p of stroke.points) {
+                if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) {
+                  isSelected = true;
+                  break;
+                }
+              }
+            }
+            if (isSelected) newSelection.add(idx);
+          });
+          setSelectedStrokeIndexes(newSelection);
+        }
+      }
+      dragModeRef.current = null;
+      dragStartRef.current = null;
+      activeResizeHandleRef.current = null;
+      selectionBoxRef.current = null;
+      staticDirtyRef.current = true;
+      redrawAll();
+      commitStrokes();
+      return;
     }
 
-    if (settings.tool === 'lasso') {
-      if (isDraggingSelectionRef.current) {
+    if (activeTool === 'lasso') {
+      if (dragModeRef.current === 'resize') {
+        finishSelectionDrag();
+        dragModeRef.current = null;
+        activeResizeHandleRef.current = null;
+        dragStartRef.current = null;
+      } else if (isDraggingSelectionRef.current) {
+        finishSelectionDrag();
         isDraggingSelectionRef.current = false;
         dragStartRef.current = null;
       } else if (settings.selectionMode === 'rectangle' && selectionBoxRef.current) {
@@ -1047,90 +1299,75 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         dragStartRef.current = null;
         dragModeRef.current = null;
       } else if (lassoPathRef.current.length > 2) {
+        const lassoPolygon = simplifyPoints(lassoPathRef.current, 1.8);
+        const lassoBounds = getPointsBounds(lassoPolygon);
         const newSelection = new Set<number>();
-        const lassoPoly = simplifyPoints(lassoPathRef.current, 1.25);
-        const lassoBounds = getPointsBounds(lassoPoly);
-        
         strokesRef.current.forEach((stroke, idx) => {
           const strokeBounds = getStrokeBounds(stroke);
           if (!lassoBounds || !strokeBounds || !boundsIntersect(lassoBounds, strokeBounds)) return;
           let isSelected = false;
           if (settings.includePartialSelection) {
-            isSelected = stroke.points.some(p => pointInPolygon(p, lassoPoly));
-            if (!isSelected) {
-              for (let i = 0; i < lassoPoly.length; i += 4) {
-                if (strokeIntersectsPoint(stroke, lassoPoly[i].x, lassoPoly[i].y, 10)) {
-                  isSelected = true;
-                  break;
-                }
+            for (const p of stroke.points) {
+              if (pointInPolygon(p, lassoPolygon)) {
+                isSelected = true;
+                break;
               }
             }
           } else {
-            isSelected = stroke.points.every(p => pointInPolygon(p, lassoPoly));
+            isSelected = stroke.points.every(p => pointInPolygon(p, lassoPolygon));
           }
-          
-          if (isSelected) {
-            newSelection.add(idx);
-          }
+          if (isSelected) newSelection.add(idx);
         });
         setSelectedStrokeIndexes(newSelection);
         lassoPathRef.current = [];
       } else {
         lassoPathRef.current = [];
       }
-    } else if (currentStrokeRef.current) {
-      const stylusEraser = isStylusEraser(e);
-      const activeTool: ToolType = stylusEraser ? 'eraser' : settings.tool;
-      if (recognizedStrokeRef.current && (activeTool === 'pen' || activeTool === 'highlighter')) {
-        currentStrokeRef.current = recognizedStrokeRef.current;
+      staticDirtyRef.current = true;
+      redrawAll();
+      commitStrokes();
+      return;
+    }
+
+    if (currentStrokeRef.current) {
+      let committedStroke: Stroke = recognizedStrokeRef.current
+        ? recognizedStrokeRef.current
+        : {
+          ...currentStrokeRef.current,
+          points: optimizeStrokePoints(currentStrokeRef.current),
+        };
+
+      // Redressement automatique des traits longs si activé
+      if (!committedStroke.shapeType && settings.straightenLines) {
+        committedStroke = straightenStrokeIfEligible(committedStroke, true);
       }
-      if (settings.straightenLines && activeTool === 'pen' && currentStrokeRef.current.points.length > 4) {
-        const pts = currentStrokeRef.current.points;
-        const p1 = pts[0];
-        const p2 = pts[pts.length - 1];
-        const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-        let maxDeviation = 0;
-        for(let i = 1; i < pts.length - 1; i++) {
-           const p = pts[i];
-           const num = Math.abs((p2.y - p1.y)*p.x - (p2.x - p1.x)*p.y + p2.x*p1.y - p2.y*p1.x);
-           const den = Math.hypot(p2.y - p1.y, p2.x - p1.x);
-           const d = den === 0 ? 0 : num / den;
-           if (d > maxDeviation) maxDeviation = d;
-        }
-        if (dist > 25 && (maxDeviation < dist * 0.15 || maxDeviation < 18)) {
-           currentStrokeRef.current.shapeType = 'line';
-           currentStrokeRef.current.points = [p1, p2];
-         }
-      }
-      currentStrokeRef.current.points = optimizeStrokePoints(currentStrokeRef.current);
-      const committedStroke = currentStrokeRef.current;
+
       strokesRef.current.push(committedStroke);
       recordAdd(committedStroke);
       currentStrokeRef.current = null;
       recognizedStrokeRef.current = null;
+      staticDirtyRef.current = true;
     }
 
     recordEraseGesture();
 
-    redrawAll(); commitStrokes();
+    redrawAll();
+    commitStrokes();
+    lastCommittedStrokesRef.current = strokesRef.current;
   };
 
   const clear = () => {
+    if (strokesRef.current.length === 0) return;
+    const before = cloneStrokesList(strokesRef.current);
     strokesRef.current = [];
-    clearHistory();
+    recordSnapshot(before, []);
     clearSelection();
-    redrawAll(); commitStrokes();
+    staticDirtyRef.current = true;
+    redrawAll();
+    commitStrokes();
+    lastCommittedStrokesRef.current = strokesRef.current;
   };
 
-  /**
-   * Raccourcis clavier limités au canvas actif.
-   *
-   * Chaque question de la fiche instancie son propre canvas : sur une fiche de
-   * deux exercices il y en a déjà dix, chacun écoutant `keydown` sur window et
-   * annulant sans condition. Un simple Ctrl+Z supprimait donc un trait dans
-   * TOUS les canvas à la fois. On ne réagit désormais que si l'utilisateur a
-   * touché ce canvas en dernier, et jamais pendant une saisie de texte.
-   */
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isActiveCanvas(instanceId)) return;
@@ -1157,20 +1394,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedStrokeIndexes, tool, instanceId]);
+  }, [selectedStrokeIndexes, tool, instanceId, redo, undo, deleteSelection, setSelectedStrokeIndexes]);
 
   useEffect(() => () => {
     clearActiveCanvas(instanceId);
     if (recognitionTimerRef.current) clearTimeout(recognitionTimerRef.current);
   }, [instanceId]);
 
-  /**
-   * Passerelle vers la barre d'outils unique de la fiche.
-   *
-   * La ref est réassignée à chaque rendu pour que le registre appelle toujours
-   * les fermetures courantes, sans réinscription ; l'inscription elle-même n'a
-   * lieu qu'au montage.
-   */
   const handleRef = useRef<CanvasHandle | null>(null);
   handleRef.current = {
     undo,
@@ -1182,7 +1412,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     setBackgroundStyle: (style) => onStyleChange?.(style),
     setBackgroundColor: (value) => onColorChange?.(value),
     snapshot: {
-      canUndo: strokeCount > 0,
+      canUndo: canUndo || strokeCount > 0,
       canRedo: redoStack.length > 0,
       hasSelection: selectedStrokeIndexes.size > 0,
       styleName,
@@ -1193,19 +1423,27 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   useEffect(() => registerCanvas(instanceId, () => handleRef.current!), [instanceId]);
 
-  // Sans notification, la barre garderait « Annuler » grisé après le premier trait.
-  useEffect(() => { notifyCanvasChanged(instanceId); });
+  useEffect(() => {
+    notifyCanvasChanged(instanceId);
+  }, [
+    instanceId,
+    canUndo,
+    strokeCount,
+    redoStack.length,
+    selectedStrokeIndexes.size,
+    styleName,
+    colorName,
+    onStyleChange,
+    onColorChange,
+  ]);
 
   return (
     <div className="absolute inset-0 flex flex-col pointer-events-none group/canvas z-10">
-      {/*
-        Bouton de rappel de cours / aide : badge d'aide parfaitement fusionné sur la bordure supérieure du cadre.
-      */}
       {correctionToggle?.available && (
-        <div 
+        <div
           className="absolute right-6 z-30 flex items-end pointer-events-auto no-print"
-          style={{ 
-            top: isResizing || isCanvasActive ? '-26px' : '-25px', // height of the tab (24px) + border (1px or 2px)
+          style={{
+            top: isResizing || isCanvasActive ? '-26px' : '-25px',
           }}
         >
           {correctionProgress && correctionToggle.visible && (
@@ -1213,13 +1451,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
               <CorrectionProgressControl progress={correctionProgress} />
             </div>
           )}
-          
+
           {(() => {
             const borderWidth = isResizing || isCanvasActive ? 2 : 1;
             const borderColor = isResizing ? '#64748b' : isCanvasActive ? '#0284c7' : (colorName === 'black' || (styleName === 'slate' && !colorName)) ? '#1e293b' : colorName === 'green' ? '#14532d' : colorName === 'blue' ? '#1e3a8a' : colorName === 'cream' ? '#fcd34d' : '#a4b4c4';
             const bgColor = (colorName === 'black' || (styleName === 'slate' && !colorName)) ? '#0f172a' : colorName === 'green' ? '#14532d' : colorName === 'blue' ? '#1e3a8a' : colorName === 'cream' ? '#fef3c7' : '#f4f1ea';
             const textColor = correctionToggle.visible ? '#0d9488' : (colorName === 'black' || colorName === 'green' || colorName === 'blue' || (styleName === 'slate' && !colorName)) ? '#cbd5e1' : '#64748b';
-            
+
             return (
               <button
                 type="button"
@@ -1246,7 +1484,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         </div>
       )}
 
-      {/* Import d'image : déclenché depuis la barre flottante, mais la cible reste cette zone. */}
       <input
         type="file"
         ref={fileInputRef}
@@ -1272,10 +1509,10 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           onDoubleClick={handleTextDoubleClick}
           onContextMenu={(e) => e.preventDefault()}
           className={`absolute top-0 left-0 w-full h-full ${
-            tool === 'pointer' ? 'cursor-default' : 
-            tool === 'eraser' ? 'cursor-cell' : 
-            tool === 'lasso' ? 'cursor-crosshair' : 
-            tool === 'text' ? 'cursor-text' : 
+            tool === 'pointer' ? 'cursor-default' :
+            tool === 'eraser' ? 'cursor-cell' :
+            tool === 'lasso' ? 'cursor-crosshair' :
+            tool === 'text' ? 'cursor-text' :
             'cursor-crosshair'
           }`}
           style={{ touchAction: 'none' }}
@@ -1290,51 +1527,42 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           onEditText={openTextEditorByIndex}
         />
         {selectedStrokeIndexes.size > 0 && (() => {
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-          selectedStrokeIndexes.forEach(idx => {
-            const s = strokesRef.current[idx];
-            if (!s) return;
-            s.points.forEach(p => {
-              if (p.x < minX) minX = p.x;
-              if (p.x > maxX) maxX = p.x;
-              if (p.y < minY) minY = p.y;
-              if (p.y > maxY) maxY = p.y;
-            });
-          });
-          if (minX === Infinity) return null;
-          const topPos = Math.max(8, minY - 44);
-          const leftPos = Math.max(8, (minX + maxX) / 2 - 120);
+          const bounds = getSelectionCombinedBounds(selectedStrokeIndexes);
+          if (!bounds) return null;
+          const topPos = Math.max(8, bounds.minY - 46);
+          const maxLeft = Math.max(8, (dimensionsRef.current.width || 320) - 256);
+          const leftPos = Math.min(maxLeft, Math.max(8, (bounds.minX + bounds.maxX) / 2 - 120));
 
           return (
-            <div 
+            <div
               className="absolute z-30 bg-white/95 backdrop-blur-md border border-slate-300 rounded-full shadow-lg px-3 py-1 flex items-center gap-2 transition-all animate-in fade-in duration-100"
               style={{ left: `${leftPos}px`, top: `${topPos}px` }}
             >
-              <button 
-                onClick={duplicateSelection} 
+              <button
+                onClick={duplicateSelection}
                 className="p-1.5 text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-full transition"
                 title="Dupliquer la sélection"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               </button>
-              <button 
-                onClick={bringSelectionToFront} 
+              <button
+                onClick={bringSelectionToFront}
                 className="p-1.5 text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-full transition"
                 title="Mettre au premier plan"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
               </button>
               <div className="w-px h-4 bg-slate-200" />
-              <button 
-                onClick={() => changeSelectionWidth(-1)} 
-                className="p-1 text-slate-600 hover:text-slate-900 rounded-full hover:bg-slate-100" 
+              <button
+                onClick={() => changeSelectionWidth(-1)}
+                className="p-1 text-slate-600 hover:text-slate-900 rounded-full hover:bg-slate-100"
                 title="Réduire l'épaisseur"
               >
                 <Minus size={14} />
               </button>
-              <button 
-                onClick={() => changeSelectionWidth(1)} 
-                className="p-1 text-slate-600 hover:text-slate-900 rounded-full hover:bg-slate-100" 
+              <button
+                onClick={() => changeSelectionWidth(1)}
+                className="p-1 text-slate-600 hover:text-slate-900 rounded-full hover:bg-slate-100"
                 title="Augmenter l'épaisseur"
               >
                 <Plus size={14} />
@@ -1342,18 +1570,18 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
               <div className="w-px h-4 bg-slate-200" />
               <div className="flex items-center gap-1">
                 {['#0f172a', '#ef4444', '#22c55e', '#3b82f6', '#a855f7'].map(c => (
-                  <button 
-                    key={c} 
-                    onClick={() => changeSelectionColor(c)} 
-                    className="w-4 h-4 rounded-full border border-black/10 hover:scale-125 transition-transform" 
-                    style={{ backgroundColor: c }} 
+                  <button
+                    key={c}
+                    onClick={() => changeSelectionColor(c)}
+                    className="w-4 h-4 rounded-full border border-black/10 hover:scale-125 transition-transform"
+                    style={{ backgroundColor: c }}
                   />
                 ))}
               </div>
               <div className="w-px h-4 bg-slate-200" />
-              <button 
-                onClick={deleteSelection} 
-                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-full transition" 
+              <button
+                onClick={deleteSelection}
+                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-full transition"
                 title="Supprimer"
               >
                 <Trash2 size={16} />

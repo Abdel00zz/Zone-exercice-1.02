@@ -8,6 +8,7 @@ export interface Bounds {
 }
 
 type CachedBounds = Bounds & {
+  pointsRef: Point[];
   length: number;
   firstX: number;
   firstY: number;
@@ -38,8 +39,8 @@ export function getPointsBounds(points: Point[]): Bounds | null {
 
 /**
  * Boîte englobante mémoïsée d'un trait. Les traits finalisés sont immuables
- * hors déplacement de sélection ; la signature détecte aussi ce cas sans
- * rescanner des centaines de points à chaque passage de la gomme.
+ * hors déplacement/redimensionnement de sélection ; la référence `pointsRef`
+ * et la signature détectent toute transformation sans rescanner inutilement.
  */
 export function getStrokeBounds(stroke: Stroke): Bounds | null {
   const points = stroke.points;
@@ -50,6 +51,7 @@ export function getStrokeBounds(stroke: Stroke): Bounds | null {
   const cached = strokeBoundsCache.get(stroke);
   if (
     cached
+    && cached.pointsRef === points
     && cached.length === points.length
     && cached.firstX === first.x && cached.firstY === first.y
     && cached.middleX === middle.x && cached.middleY === middle.y
@@ -71,6 +73,7 @@ export function getStrokeBounds(stroke: Stroke): Bounds | null {
 
   const next: CachedBounds = {
     ...bounds,
+    pointsRef: points,
     length: points.length,
     firstX: first.x,
     firstY: first.y,
