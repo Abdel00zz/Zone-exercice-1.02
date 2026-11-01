@@ -28,7 +28,6 @@ function useLocalStorage<T,>(key: string, initialValue: T): [T, React.Dispatch<R
   const flush = useCallback(() => {
     if (typeof window === 'undefined' || pendingSerializedRef.current === null) return;
     const serialized = pendingSerializedRef.current;
-    pendingSerializedRef.current = null;
     if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = null;
 
@@ -38,11 +37,6 @@ function useLocalStorage<T,>(key: string, initialValue: T): [T, React.Dispatch<R
         window.localStorage.setItem(`${key}:backup`, previous);
       }
       window.localStorage.setItem(key, serialized);
-      window.localStorage.setItem(`${key}:meta`, JSON.stringify({ version: 2, savedAt: Date.now(), size: serialized.length }));
-      if (serialized.length > QUOTA_WARNING_CHARS && !warnedKeys.has(key)) {
-        warnedKeys.add(key);
-        window.dispatchEvent(new CustomEvent('storage-quota-warning', { detail: { key, size: serialized.length } }));
-      }
     } catch (error) {
       // En cas de quota faible, le brouillon principal reste prioritaire.
       try {
@@ -50,7 +44,19 @@ function useLocalStorage<T,>(key: string, initialValue: T): [T, React.Dispatch<R
         window.localStorage.setItem(key, serialized);
       } catch (retryError) {
         console.error('Sauvegarde locale impossible', retryError || error);
+        window.dispatchEvent(new CustomEvent('storage-save-error', { detail: { key } }));
+        return; // Keep the dirty snapshot for the next edit, focus or lifecycle flush.
       }
+    }
+    if (pendingSerializedRef.current === serialized) pendingSerializedRef.current = null;
+    // Metadata is optional: its quota must never invalidate an already-saved document.
+    try {
+      window.localStorage.setItem(`${key}:meta`, JSON.stringify({ version: 2, savedAt: Date.now(), size: serialized.length }));
+    } catch { /* The main snapshot was persisted successfully. */ }
+    window.dispatchEvent(new CustomEvent('storage-save-success', { detail: { key } }));
+    if (serialized.length > QUOTA_WARNING_CHARS && !warnedKeys.has(key)) {
+      warnedKeys.add(key);
+      window.dispatchEvent(new CustomEvent('storage-quota-warning', { detail: { key, size: serialized.length } }));
     }
   }, [key]);
 
@@ -73,6 +79,10 @@ function useLocalStorage<T,>(key: string, initialValue: T): [T, React.Dispatch<R
     if (typeof window === 'undefined') return;
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== key || !event.newValue) return;
+      if (pendingSerializedRef.current !== null && pendingSerializedRef.current !== event.newValue) {
+        window.dispatchEvent(new CustomEvent('storage-save-conflict', { detail: { key } }));
+        return; // Another tab must not discard this tab's unsaved ink.
+      }
       try {
         setStoredValue(JSON.parse(event.newValue) as T);
       } catch {
@@ -85,11 +95,13 @@ function useLocalStorage<T,>(key: string, initialValue: T): [T, React.Dispatch<R
     };
     window.addEventListener('storage', handleStorage);
     window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('focus', handlePageHide);
     document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       flush();
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('focus', handlePageHide);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [flush, key]);

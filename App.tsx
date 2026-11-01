@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { Worksheet, WorksheetContent, QuestionPart, Exercise, AppConfiguration } from './types';
+import type { Worksheet, WorksheetContent, AppConfiguration } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
 import { useCloudSync } from './hooks/useCloudSync';
 import Dashboard from './components/Dashboard';
@@ -9,12 +9,18 @@ import { MathEngineContext } from './components/MathText';
 import CanvasFloatingToolbar from './components/canvas/FloatingToolbar';
 import { MathJaxContext } from 'better-react-mathjax';
 import { DEFAULT_MATHJAX_FONT, resolveMathJaxFont } from './utils/mathjaxFonts';
-import { DEFAULT_OFFICIAL_CLASSES } from './utils/worksheetUtils';
+import { DEFAULT_OFFICIAL_CLASSES, getWorksheetChapterName } from './utils/worksheetUtils';
 import { resolvePaperTheme } from './utils/paperThemes';
-import { WORKSHEET_TITLE_SEARCH_ANCHOR, type WorksheetSearchNavigation } from './utils/worksheetSearch';
+import { getExerciseSearchAnchor, getQuestionSearchAnchor, WORKSHEET_TITLE_SEARCH_ANCHOR, type WorksheetSearchNavigation } from './utils/worksheetSearch';
 import { App as CapacitorApp } from '@capacitor/app';
 import { StatusBar, Style as StatusBarStyle } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { useWorksheetPrint } from './features/printing/useWorksheetPrint';
+import { useScreenWakeLock } from './platform/useScreenWakeLock';
+import { usePresentationNavigation } from './features/presentation/usePresentationNavigation';
+import { PresentationControls } from './features/presentation/PresentationControls';
+import { useWorksheetCommands } from './features/workspace/useWorksheetCommands';
+import { registerMathRuntime, failMathRuntime } from './features/math/runtime';
 
 const SettingsModal = React.lazy(() => import('./components/SettingsModal'));
 const ConfigurationModal = React.lazy(() => import('./components/ConfigurationModal'));
@@ -51,9 +57,13 @@ const App: React.FC = () => {
   const mathJaxFont = resolveMathJaxFont(configuration.mathFont);
   const mathJaxScale = Math.min(140, Math.max(80, configuration.mathScale)) / 100;
   const mathJaxConfig = useMemo(() => ({
-    loader: { load: ['input/tex', 'output/svg', '[tex]/ams', '[tex]/color', '[tex]/textmacros'] },
+    loader: {
+      paths: { mathjax: '/mathjax', 'mathjax-newcm': '/mathjax/fonts/mathjax-newcm' },
+      load: ['[tex]/color'],
+    },
+    startup: { typeset: false },
     tex: {
-      packages: { '[+]': ['ams', 'color', 'textmacros'] },
+      packages: { '[+]': ['color'] },
       inlineMath: [['$', '$'], ['\\(', '\\)']],
       displayMath: [['$$', '$$'], ['\\[', '\\]']],
     },
@@ -102,32 +112,18 @@ const App: React.FC = () => {
       setStorageWarning(`Le stockage local de vos fiches approche de la limite du navigateur (${mb} Mo). Pensez à exporter une sauvegarde JSON ou à activer la synchronisation cloud.`);
     };
     window.addEventListener('storage-quota-warning', handleQuotaWarning);
-    return () => window.removeEventListener('storage-quota-warning', handleQuotaWarning);
+    const handleSaveError = () => setStorageWarning("La dernière modification n'a pas pu être enregistrée sur cet appareil. Gardez cette page ouverte et exportez une sauvegarde JSON avant de la fermer.");
+    const handleSaveConflict = () => setStorageWarning("Une autre fenêtre a modifié les fiches pendant votre travail. Vos modifications locales sont conservées ; vérifiez les deux versions avant de fermer cette page.");
+    window.addEventListener('storage-save-error', handleSaveError);
+    window.addEventListener('storage-save-conflict', handleSaveConflict);
+    return () => {
+      window.removeEventListener('storage-quota-warning', handleQuotaWarning);
+      window.removeEventListener('storage-save-error', handleSaveError);
+      window.removeEventListener('storage-save-conflict', handleSaveConflict);
+    };
   }, []);
 
-  // Empêche l'écran de s'éteindre pendant une session d'écriture/dessin active sur la fiche.
-  React.useEffect(() => {
-    if (activeView !== 'worksheet' || !('wakeLock' in navigator)) return;
-    let sentinel: WakeLockSentinel | null = null;
-    let cancelled = false;
-    const requestWakeLock = async () => {
-      try {
-        sentinel = await navigator.wakeLock.request('screen');
-      } catch {
-        // Refusé (batterie faible, onglet en arrière-plan...) : non bloquant.
-      }
-    };
-    requestWakeLock();
-    const handleVisibility = () => {
-      if (!cancelled && document.visibilityState === 'visible' && !sentinel) requestWakeLock();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      cancelled = true;
-      document.removeEventListener('visibilitychange', handleVisibility);
-      sentinel?.release().catch(() => {});
-    };
-  }, [activeView]);
+  useScreenWakeLock(activeView === 'worksheet');
 
   // Handle native browser back/forward buttons
   React.useEffect(() => {
@@ -230,11 +226,20 @@ const App: React.FC = () => {
     setWorksheets(prev => [...prev, worksheet]);
   };
 
-  const handleRestoreBackup = (backupWorksheets: Worksheet[]) => {
+  const handleRestoreBackup = async (backupWorksheets: Worksheet[]) => {
+    let validated: Worksheet[];
+    try {
+      const { normalizeWorksheetBackup } = await import('./utils/worksheetImport');
+      validated = normalizeWorksheetBackup(backupWorksheets);
+    }
+    catch (error) {
+      setImportError(`Sauvegarde invalide : ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
     if (window.confirm("Voulez-vous remplacer toutes vos fiches actuelles par cette sauvegarde ? (Annuler pour simplement les ajouter)")) {
-      setWorksheets(backupWorksheets);
+      setWorksheets(validated);
     } else {
-      const newWorksheets = backupWorksheets.map(ws => ({
+      const newWorksheets = validated.map(ws => ({
         ...ws,
         id: `ws_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       }));
@@ -320,119 +325,10 @@ const App: React.FC = () => {
     )));
   };
   
-  /**
-   * Applique `newProps` au nœud désigné par `path` en ne clonant que les nœuds
-   * traversés. Remplace l'ancien `JSON.parse(JSON.stringify(...))` qui recopiait
-   * la fiche entière (et tous les tracés) à chaque frappe ou trait de stylet.
-   */
-  const applyAtPath = (node: any, path: (string | number)[], newProps: object): any => {
-    if (path.length === 0) return { ...node, ...newProps };
-    const [key, ...rest] = path;
-    if (node == null || node[key] === undefined) {
-      throw new Error(`Chemin invalide au segment "${String(key)}"`);
-    }
-    const child = applyAtPath(node[key], rest, newProps);
-    if (Array.isArray(node)) {
-      const copy = node.slice();
-      copy[key as number] = child;
-      return copy;
-    }
-    return { ...node, [key]: child };
-  };
-
-  /**
-   * Mise à jour d'un exercice de la fiche courante. La forme fonctionnelle est
-   * indispensable : plusieurs canvas peuvent émettre dans le même tick, et lire
-   * `selectedWorksheet` depuis la closure ferait perdre toutes les mises à jour
-   * sauf la dernière.
-   */
-  const updateExercise = (exerciseId: string, mutate: (exercise: Exercise) => Exercise) => {
-    setWorksheets(prev => prev.map(ws => {
-      if (ws.id !== selectedWorksheetId) return ws;
-      const exercises = ws.content?.exercises;
-      if (!Array.isArray(exercises)) return ws;
-      const index = exercises.findIndex(ex => ex.id === exerciseId);
-      if (index === -1) return ws;
-      try {
-        const nextExercises = exercises.slice();
-        nextExercises[index] = mutate(exercises[index]);
-        return { ...ws, content: { ...ws.content, exercises: nextExercises } };
-      } catch (error) {
-        console.error("Mise à jour impossible pour l'exercice", exerciseId, error);
-        return ws;
-      }
-    }));
-  };
-
-  const handleQuestionUpdate = (exerciseId: string, questionPath: (string | number)[], newProps: Partial<QuestionPart>) => {
-    updateExercise(exerciseId, exercise => applyAtPath(exercise, questionPath, newProps));
-  };
-
-  const handleExerciseUpdate = (exerciseId: string, newProps: Partial<Exercise>) => {
-    updateExercise(exerciseId, exercise => ({ ...exercise, ...newProps }));
-  };
-
-  const handleExerciseMergeUp = (exerciseId: string) => {
-    setWorksheets(prev => prev.map(ws => {
-      if (ws.id !== selectedWorksheetId) return ws;
-      const exercises = ws.content?.exercises;
-      if (!Array.isArray(exercises)) return ws;
-      const index = exercises.findIndex(ex => ex.id === exerciseId);
-      if (index <= 0) {
-        if (index === 0) {
-          // If it's the first exercise and it's empty, we just delete it
-          const nextExercises = [...exercises];
-          nextExercises.splice(index, 1);
-          return { ...ws, content: { ...ws.content, exercises: nextExercises } };
-        }
-        return ws;
-      }
-      
-      const nextExercises = [...exercises];
-      const currentEx = nextExercises[index];
-      const prevEx = nextExercises[index - 1];
-      
-      // Merge questions
-      const mergedPrevEx = {
-        ...prevEx,
-        questions: [...(prevEx.questions || []), ...(currentEx.questions || [])]
-      };
-      
-      nextExercises[index - 1] = mergedPrevEx;
-      nextExercises.splice(index, 1);
-      
-      return { ...ws, content: { ...ws.content, exercises: nextExercises } };
-    }));
-  };
-
-  const handleQuestionMergeUp = (exerciseId: string, questionPath: (string | number)[]) => {
-    updateExercise(exerciseId, exercise => {
-      if (!exercise.questions) return exercise;
-      // We only support merging up top-level questions for now
-      if (questionPath.length === 1 && typeof questionPath[0] === 'number') {
-        const index = questionPath[0];
-        if (index > 0) {
-          const nextQuestions = [...exercise.questions];
-          const currentQ = nextQuestions[index];
-          const prevQ = nextQuestions[index - 1];
-          
-          const mergedPrevQ = {
-            ...prevQ,
-            subquestions: [...(prevQ.subquestions || []), ...(currentQ.subquestions || [])]
-          };
-          
-          nextQuestions[index - 1] = mergedPrevQ;
-          nextQuestions.splice(index, 1);
-          return { ...exercise, questions: nextQuestions };
-        } else if (index === 0) {
-          const nextQuestions = [...exercise.questions];
-          nextQuestions.splice(index, 1);
-          return { ...exercise, questions: nextQuestions };
-        }
-      }
-      return exercise;
-    });
-  };
+  const {
+    handleQuestionUpdate, handleExerciseUpdate, handleQuestionMergeUp,
+    handleExerciseMergeUp, applyBackgroundToAll,
+  } = useWorksheetCommands(selectedWorksheetId, setWorksheets);
 
   const selectedWorksheet = useMemo(() => {
     return worksheets.find(ws => ws.id === selectedWorksheetId);
@@ -447,15 +343,20 @@ const App: React.FC = () => {
 
   const worksheetSettings = selectedWorksheet?.content.settings ?? {};
   const showCanvas = worksheetSettings.showCanvas !== false;
+  const showSolutions = worksheetSettings.showSolutions === true;
   const answerSpaceMinHeight = worksheetSettings.answerSpaceMinHeight;
   const answerSpaceStyle = worksheetSettings.answerSpaceStyle ?? 'slate';
   const answerSpaceColor = worksheetSettings.answerSpaceColor;
   const presentationMode = worksheetSettings.presentationMode ?? false;
   const oneQuestionPerPage = worksheetSettings.oneQuestionPerPage ?? false;
-  const classNameLabel = (worksheetSettings.className ?? '').trim();
+  const presentation = usePresentationNavigation(exercises, activeView === 'worksheet' && presentationMode, selectedWorksheetId || undefined);
+  React.useEffect(() => {
+    if (!presentationMode || !searchNavigation) return;
+    const index = presentation.pages.findIndex(page => searchNavigation.anchorId ===
+      (page.kind === 'exercise' ? getExerciseSearchAnchor(page.exerciseId) : getQuestionSearchAnchor(page.exerciseId, page.path)));
+    if (index >= 0) presentation.select(index);
+  }, [searchNavigation?.anchorId, selectedWorksheetId, presentationMode]);
   const defaultSchoolYear = configuration.schoolYear || computeDefaultSchoolYear();
-  const schoolYearLabel = (worksheetSettings.schoolYear ?? defaultSchoolYear).trim() || defaultSchoolYear;
-  const userNameLabel = (worksheetSettings.userName ?? configuration.userName).trim();
   const textFont = worksheetSettings.textFont ?? configuration.textFont;
   const mathFont = resolveMathJaxFont(worksheetSettings.mathFont ?? configuration.mathFont);
   const handwritingFont = worksheetSettings.handwritingFont ?? configuration.handwritingFont ?? "'Playwrite FR Trad', 'Caveat', cursive";
@@ -468,31 +369,7 @@ const App: React.FC = () => {
   const firstExercise = hasExercises ? exercises[0] : null;
   const remainingExercises = hasExercises ? exercises.slice(1) : [];
 
-  const handlePrintWorksheet = () => {
-    if (!selectedWorksheet) return;
-    const originalTitle = document.title;
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('fr-FR').replace(/\//g, '-');
-    const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
-    const safeName = selectedWorksheet.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-
-    document.title = `${safeName}_${dateStr}_${timeStr}`;
-    // Force le montage immédiat et le passage en haute résolution (300+ DPI)
-    // de tous les canvas avant l'ouverture de la boîte d'impression.
-    window.dispatchEvent(new CustomEvent('worksheet-prepare-print'));
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        // Détecte le pont d'impression natif Android (PrintManager A4 système)
-        const androidBridge = (window as any).AndroidNative;
-        if (androidBridge?.printDocument) {
-          androidBridge.printDocument(selectedWorksheet.name || safeName);
-        } else {
-          window.print();
-        }
-        setTimeout(() => { document.title = originalTitle; }, 250);
-      });
-    });
-  };
+  const { printWorksheet: handlePrintWorksheet, isPreparing: isPreparingPrint } = useWorksheetPrint(selectedWorksheet, setImportError);
 
   const ErrorMessage: React.FC<{ message: string, onClose: () => void }> = ({ message, onClose }) => (
     <div className="container mx-auto my-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg relative" role="alert">
@@ -519,10 +396,13 @@ const App: React.FC = () => {
       <MathJaxContext
         key={`${mathFont}-${mathScale}`}
         version={4}
-        src="https://cdn.jsdelivr.net/npm/mathjax@4/startup.js"
+        src="/mathjax/tex-svg.js"
+        onStartup={registerMathRuntime}
+        onError={failMathRuntime}
         config={{ ...mathJaxConfig, output: { ...mathJaxConfig.output, font: mathFont, scale: Math.min(140, Math.max(80, mathScale)) / 100 } }}
       >
         <div className={`min-h-screen font-sans ${activeView !== 'dashboard' && selectedWorksheet ? 'bg-[#e8e4dc] print:bg-white' : 'bg-[#f2f0eb]'}`}>
+      {isPreparingPrint && <div role="status" className="no-print sticky top-0 z-50 bg-sky-50 px-4 py-3 text-center text-sm text-sky-900">Préparation de l’impression…</div>}
       {importError && (
           <div className="sticky top-0 z-50">
             <ErrorMessage message={importError} onClose={() => setImportError(null)} />
@@ -555,9 +435,15 @@ const App: React.FC = () => {
         />
       ) : selectedWorksheet ? (
         <>
+          {presentationMode && <PresentationControls
+            index={presentation.index} count={presentation.pages.length}
+            onPrevious={presentation.previous} onNext={presentation.next} onBack={handleBackToDashboard}
+          />}
           <main
-            className={`worksheet-typography paper-theme-${paperTheme} max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-2 sm:px-6 py-3 sm:py-6 transition-all duration-300 print:max-w-none print:p-0 print:py-0`}
+            className={`worksheet-typography paper-theme-${paperTheme} max-w-4xl landscape:max-w-6xl xl:landscape:max-w-7xl mx-auto px-2 sm:px-6 py-3 sm:py-6 transition-colors duration-300 print:max-w-none print:p-0 print:py-0`}
             data-paper-theme={paperTheme}
+            data-presentation-mode={presentationMode || undefined}
+            data-paginated={presentationMode || oneQuestionPerPage || undefined}
             style={{
               fontFamily: textFont,
               fontSize: `${Math.min(130, Math.max(80, textScale))}%`,
@@ -570,42 +456,23 @@ const App: React.FC = () => {
             <div className="worksheet-paper rounded-xl w-full px-3.5 sm:px-12 md:px-16 pt-6 sm:pt-10 pb-24 sm:pb-12 border shadow-[0_4px_20px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] print:shadow-none print:bg-transparent print:p-0 print:border-none">
               <div className="space-y-8 print:space-y-4">
                 <div className="title-and-first-exercise-container space-y-6 print:space-y-3">
-                <div className="latex-document-header mb-8 mt-0 print:mb-3 print:mt-0 relative">
-                  <div className="flex items-start justify-between text-[0.75em] font-semibold uppercase tracking-widest text-[var(--paper-text-muted)] print:text-black mb-8 print:mb-2">
-                    <div className="flex flex-col gap-1.5 print:gap-0.5 text-left">
-                      {userNameLabel && <span className="text-[var(--paper-text-main)] print:text-black">{userNameLabel}</span>}
-                      <span>Classe {classNameLabel || '\u2014'}</span>
-                    </div>
-                    <div className="flex flex-col gap-1.5 print:gap-0.5 text-right">
-                      <span>{schoolYearLabel}</span>
-                    </div>
+                <div className="latex-document-header mb-6 mt-0 print:mb-3 print:mt-0">
+                  <div className="mb-3 text-right text-[0.75em] font-medium text-[var(--paper-text-muted)] print:text-black">
+                    <time dateTime={new Date().toLocaleDateString('en-CA')}>
+                      Le {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
+                    </time>
                   </div>
-
-                  <div className="mb-10 print:mb-3 flex flex-col items-center">
-                    <div className="text-center">
-                      <div className="inline-flex items-center justify-center mb-4 print:mb-1.5">
-                        <span className="text-[var(--paper-accent)] print:text-black text-[0.7em] font-bold uppercase tracking-[0.2em]">
-                          Le {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
-                        </span>
-                      </div>
-                      <div
-                        id={WORKSHEET_TITLE_SEARCH_ANCHOR}
-                        data-search-active={searchNavigation?.anchorId === WORKSHEET_TITLE_SEARCH_ANCHOR || undefined}
-                        className="search-navigation-target worksheet-title-frame"
-                      >
-                        <span className="worksheet-title-rule" aria-hidden="true" />
-                        <div role="heading" aria-level={1} className="worksheet-title font-chapter text-[1.58em] leading-tight sm:text-[1.85em] md:text-[2.2em] print:text-[1.55em]">
-                          <EditableMathText 
-                            text={selectedWorksheet.name} 
-                            isEditMode={isEditMode} 
-                            onChange={(newTitle) => {
-                              handleRenameWorksheet(selectedWorksheet.id, newTitle);
-                            }} 
-                          />
-                        </div>
-                        <span className="worksheet-title-rule" aria-hidden="true" />
-                      </div>
-                      <div className="worksheet-title-crown print:mt-1" aria-hidden="true"><span>◆</span></div>
+                  <div
+                    id={WORKSHEET_TITLE_SEARCH_ANCHOR}
+                    data-search-active={searchNavigation?.anchorId === WORKSHEET_TITLE_SEARCH_ANCHOR || undefined}
+                    className="search-navigation-target worksheet-title-frame"
+                  >
+                    <div role="heading" aria-level={1} className="worksheet-title font-chapter text-center text-[1.58em] leading-tight sm:text-[1.85em] md:text-[2.2em] print:text-[1.55em]">
+                      <EditableMathText
+                        text={getWorksheetChapterName(selectedWorksheet)}
+                        isEditMode={isEditMode}
+                        onChange={chapter => handleUpdateWorksheetContent(selectedWorksheet.id, { ...selectedWorksheet.content, chapter })}
+                      />
                     </div>
                   </div>
                 </div>
@@ -617,11 +484,12 @@ const App: React.FC = () => {
                       exercise={firstExercise}
                       exerciseNumber={1}
                       totalExercisesCount={exercises.length}
-                      showCanvas={showCanvas}
+                      showCanvas={showCanvas} showSolutions={showSolutions}
                       answerSpaceMinHeight={answerSpaceMinHeight}
                       answerSpaceStyle={answerSpaceStyle}
                       answerSpaceColor={answerSpaceColor}
                       presentationMode={presentationMode}
+                      activePresentationPageId={presentation.activePage?.id}
                       oneQuestionPerPage={oneQuestionPerPage}
                       onQuestionUpdate={handleQuestionUpdate}
                       onExerciseUpdate={handleExerciseUpdate}
@@ -640,11 +508,12 @@ const App: React.FC = () => {
                   exercise={exercise}
                   exerciseNumber={index + 2}
                   totalExercisesCount={exercises.length}
-                  showCanvas={showCanvas}
+                  showCanvas={showCanvas} showSolutions={showSolutions}
                   answerSpaceMinHeight={answerSpaceMinHeight}
                   answerSpaceStyle={answerSpaceStyle}
                   answerSpaceColor={answerSpaceColor}
                   presentationMode={presentationMode}
+                  activePresentationPageId={presentation.activePage?.id}
                   oneQuestionPerPage={oneQuestionPerPage}
                   onQuestionUpdate={handleQuestionUpdate}
                   onExerciseUpdate={handleExerciseUpdate}
@@ -684,6 +553,7 @@ const App: React.FC = () => {
             onToggleEditMode={() => setIsEditMode(value => !value)}
             onOpenSettings={() => setIsSettingsModalOpen(true)}
             onPrint={handlePrintWorksheet}
+            onApplyBackgroundToAll={applyBackgroundToAll}
           />
           {isSettingsModalOpen && (
             <React.Suspense fallback={null}>
@@ -692,6 +562,7 @@ const App: React.FC = () => {
                 onClose={() => setIsSettingsModalOpen(false)}
                 worksheet={selectedWorksheet}
                 worksheetClasses={worksheetClasses}
+                defaultSchoolYear={defaultSchoolYear}
                 onSave={(newContent) => {
                   handleUpdateWorksheetContent(selectedWorksheet.id, newContent);
                   setIsSettingsModalOpen(false);

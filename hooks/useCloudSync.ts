@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Worksheet, WorksheetContent, Exercise, QuestionPart } from '../types';
+import type { Worksheet } from '../types';
+import { mergeCloudWorksheets, SyncRequestScope } from '../domain/worksheetSync';
+
+export { mergeCloudWorksheets } from '../domain/worksheetSync';
 
 export type SyncRole = 'source' | 'receiver';
 export type CloudSyncStatus = 'disconnected' | 'idle' | 'syncing' | 'synced' | 'error';
@@ -36,39 +39,6 @@ function writeConfig(config: SyncConfig | null) {
   }
 }
 
-// Ne conserve que les traits déjà dessinés localement (travail élève) ; tout le reste vient du contenu distant (auteur).
-function mergeQuestion(localQ: QuestionPart | undefined, remoteQ: QuestionPart): QuestionPart {
-  return {
-    ...remoteQ,
-    strokes: localQ?.strokes ?? remoteQ.strokes,
-    subquestions: remoteQ.subquestions?.map((rq, i) => mergeQuestion(localQ?.subquestions?.[i], rq)),
-  };
-}
-
-function mergeExercise(localEx: Exercise | undefined, remoteEx: Exercise): Exercise {
-  return {
-    ...remoteEx,
-    statementStrokes: localEx?.statementStrokes ?? remoteEx.statementStrokes,
-    questions: remoteEx.questions.map((rq, i) => mergeQuestion(localEx?.questions?.[i], rq)),
-  };
-}
-
-function mergeContent(localContent: WorksheetContent | undefined, remoteContent: WorksheetContent): WorksheetContent {
-  return {
-    ...remoteContent,
-    exercises: remoteContent.exercises.map((rEx) => mergeExercise(localContent?.exercises.find((e) => e.id === rEx.id), rEx)),
-  };
-}
-
-/** Fusionne une liste de fiches reçue du cloud avec la liste locale, en préservant les traits déjà dessinés sur cet appareil. */
-export function mergeCloudWorksheets(local: Worksheet[], remote: Worksheet[]): Worksheet[] {
-  const localById = new Map(local.map((ws) => [ws.id, ws]));
-  return remote.map((rws) => {
-    const lws = localById.get(rws.id);
-    return lws ? { ...rws, content: mergeContent(lws.content, rws.content) } : rws;
-  });
-}
-
 export interface CloudSyncState {
   code: string;
   role: SyncRole | null;
@@ -89,18 +59,32 @@ export function useCloudSync(
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const versionRef = useRef(0);
+  const requestScopeRef = useRef(new SyncRequestScope());
+  const pushQueuedRef = useRef(false);
   const worksheetsRef = useRef(worksheets);
   worksheetsRef.current = worksheets;
 
   const setCode = useCallback((code: string) => {
+    requestScopeRef.current.invalidate();
+    pushQueuedRef.current = false;
+    versionRef.current = 0;
+    setStatus('idle');
+    setError(null);
+    setLastSyncAt(null);
     setConfig((prev) => {
-      const next: SyncConfig = { code: code.toUpperCase(), role: prev?.role ?? 'receiver' };
+      const next: SyncConfig = { code: code.trim().toUpperCase(), role: prev?.role ?? 'receiver' };
       writeConfig(next);
       return next;
     });
   }, []);
 
   const setRole = useCallback((role: SyncRole | null) => {
+    requestScopeRef.current.invalidate();
+    pushQueuedRef.current = false;
+    versionRef.current = 0;
+    setStatus(role ? 'idle' : 'disconnected');
+    setError(null);
+    setLastSyncAt(null);
     setConfig((prev) => {
       if (!role) {
         writeConfig(null);
@@ -112,46 +96,76 @@ export function useCloudSync(
     });
   }, []);
 
-  const push = useCallback(async () => {
+  const push = useCallback(async function pushSnapshot(): Promise<void> {
     if (!config || config.role !== 'source' || !config.code) return;
+    const request = requestScopeRef.current.begin();
+    if (!request) {
+      pushQueuedRef.current = true;
+      return;
+    }
     setStatus('syncing');
     try {
+      const { parseCloudWorksheets } = await import('../domain/worksheetSchema');
+      if (!request.isCurrent()) return;
+      const snapshot = parseCloudWorksheets(worksheetsRef.current);
       const res = await fetch('/api/sync/push', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ code: config.code, worksheets: worksheetsRef.current }),
+        body: JSON.stringify({ code: config.code, worksheets: snapshot }),
+        signal: request.signal,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur de synchronisation.');
+      if (!Number.isSafeInteger(data.version) || data.version < 0) throw new Error('Version distante invalide.');
+      if (!request.isCurrent()) return;
       versionRef.current = data.version;
       setLastSyncAt(Date.now());
       setStatus('synced');
       setError(null);
     } catch (e) {
+      if (!request.isCurrent()) return;
       setStatus('error');
       setError(e instanceof Error ? e.message : 'Erreur réseau.');
+    } finally {
+      request.finish();
+      if (request.isCurrent() && pushQueuedRef.current) {
+        pushQueuedRef.current = false;
+        void pushSnapshot();
+      }
     }
   }, [config]);
 
   const pull = useCallback(async () => {
     if (!config || config.role !== 'receiver' || !config.code) return;
+    const request = requestScopeRef.current.begin();
+    if (!request) return;
     setStatus('syncing');
     try {
-      const res = await fetch(`/api/sync/pull?code=${config.code}&since=${versionRef.current}`);
+      const res = await fetch(`/api/sync/pull?code=${encodeURIComponent(config.code)}&since=${versionRef.current}`, { signal: request.signal, cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur de synchronisation.');
+      if (!request.isCurrent()) return;
       if (!data.unchanged) {
+        if (!Number.isSafeInteger(data.version) || data.version < 0) throw new Error('Version distante invalide.');
+        const { parseCloudWorksheets } = await import('../domain/worksheetSchema');
+        if (!request.isCurrent()) return;
+        const remote = parseCloudWorksheets(data.worksheets);
         versionRef.current = data.version;
-        setWorksheets((prev) => mergeCloudWorksheets(prev, data.worksheets));
+        setWorksheets((prev) => request.isCurrent() ? mergeCloudWorksheets(prev, remote) : prev);
       }
       setLastSyncAt(Date.now());
       setStatus('synced');
       setError(null);
     } catch (e) {
+      if (!request.isCurrent()) return;
       setStatus('error');
       setError(e instanceof Error ? e.message : 'Erreur réseau.');
+    } finally {
+      request.finish();
     }
   }, [config, setWorksheets]);
+
+  useEffect(() => () => requestScopeRef.current.invalidate(), []);
 
   const syncNow = useCallback(() => {
     if (config?.role === 'source') push();

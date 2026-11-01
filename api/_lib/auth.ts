@@ -36,10 +36,11 @@ export async function createSessionToken(secret: string): Promise<string> {
 }
 
 export async function verifySessionToken(token: string, secret: string): Promise<boolean> {
-  const [expiresAtStr, signature] = token.split('.');
-  if (!expiresAtStr || !signature) return false;
+  const match = /^(\d{1,16})\.([a-f0-9]{64})$/.exec(token);
+  if (!match) return false;
+  const [, expiresAtStr, signature] = match;
   const expiresAt = Number(expiresAtStr);
-  if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) return false;
+  if (!Number.isSafeInteger(expiresAt) || expiresAt < Date.now()) return false;
   const expected = await hmacHex(secret, expiresAtStr);
   return timingSafeEqual(signature, expected);
 }
@@ -47,5 +48,10 @@ export async function verifySessionToken(token: string, secret: string): Promise
 export function parseCookie(cookieHeader: string | null, name: string): string | null {
   if (!cookieHeader) return null;
   const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return null; // A malformed client cookie must not crash middleware or API routes.
+  }
 }

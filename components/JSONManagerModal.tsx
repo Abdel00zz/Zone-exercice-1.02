@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, FileUp, Download, Code } from 'lucide-react';
 import type { WorksheetContent, Worksheet } from '../types';
-import { normalizeWorksheetJson } from '../utils/worksheetUtils';
-import { validateWorksheetWithZod } from '../utils/worksheetValidation';
+import { normalizeWorksheetJson, normalizeWorksheetBackup } from '../utils/worksheetImport';
 
 function getErrorLine(code: string, errorMsg: string): number | null {
   const posMatch = errorMsg.match(/position\s+(\d+)/i);
@@ -46,12 +45,6 @@ const JSONManagerModal: React.FC<JSONManagerModalProps> = ({
     const validate = useCallback((value: string) => {
       try {
         const parsed = JSON.parse(value);
-        const zodCheck = validateWorksheetWithZod(parsed);
-        if (!zodCheck.success) {
-            setIsValid(false);
-            setError({ message: (zodCheck as { success: false; error: string }).error, line: null });
-            return;
-        }
         normalizeWorksheetJson(parsed);
         setIsValid(true);
         setError({ message: '', line: null });
@@ -104,7 +97,7 @@ const JSONManagerModal: React.FC<JSONManagerModalProps> = ({
             try {
                 const raw = JSON.parse(event.target?.result as string);
                 if (Array.isArray(raw)) {
-                    onRestoreBackup(raw);
+                    onRestoreBackup(normalizeWorksheetBackup(raw));
                 } else {
                     const normalized = normalizeWorksheetJson(raw);
                     onSaveWorksheet(normalized);

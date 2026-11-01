@@ -3,116 +3,17 @@ import type { PedagogicalGuidance } from '../types';
 import { DrawingCanvas } from './canvas/DrawingCanvas';
 import type { Stroke } from './canvas/types';
 import SolutionViewer from './SolutionViewer';
+import { AnswerSpacePaper, resolveAnswerSpaceTheme } from './AnswerSpacePaper';
 import { useQuestionProgress } from './QuestionBeamerScope';
 import { setActiveCanvas, useCanvasIsActive } from './canvas/canvasRegistry';
+import { MAX_ANSWER_HEIGHT as MAX_HEIGHT, resolveAnswerSpaceHeight, resolveAnswerSpaceMinimum } from '../domain/answerSpaceHeight';
 
-// Configuration
-const MM_TO_PX = 3.7795275591;
-const GRID_SIZE_MM = 5;
-const GRID_SIZE_PX = GRID_SIZE_MM * MM_TO_PX;
-const SEYES_LINE_MM = 2; // Seyes has horizontal lines every 2mm
-const SEYES_LINE_PX = SEYES_LINE_MM * MM_TO_PX;
-const MIN_HEIGHT = 40;
-const MAX_HEIGHT = 1600;
-
-type ColorPalette = {
-  bg: string;
-  line: string;
-  border: string;
-  dot?: string;
-  seyesMajor?: string;
-  seyesMinor?: string;
-  seyesVertical?: string;
-};
-
-// Define explicit color palettes
-const COLOR_PALETTES: Record<'black' | 'green' | 'blue' | 'white' | 'cream', ColorPalette> = {
-  black: {
-    bg: '#0f172a',
-    line: '#334155',
-    border: '#1e293b',
-    dot: '#475569',
-    seyesMajor: '#475569',
-    seyesMinor: '#334155',
-    seyesVertical: '#ef4444'
-  },
-  green: {
-    bg: '#14532d',
-    line: '#166534',
-    border: '#14532d',
-    dot: '#22c55e',
-    seyesMajor: '#22c55e',
-    seyesMinor: '#166534',
-    seyesVertical: '#ef4444'
-  },
-  blue: {
-    bg: '#1e3a8a',
-    line: '#1e40af',
-    border: '#1e3a8a',
-    dot: '#60a5fa',
-    seyesMajor: '#60a5fa',
-    seyesMinor: '#1e40af',
-    seyesVertical: '#ef4444'
-  },
-  white: {
-    bg: 'transparent',
-    line: '#a4b4c4',
-    border: '#a4b4c4',
-    dot: '#a4b4c4',
-    seyesMajor: '#a4b4c4',
-    seyesMinor: '#cfc6b6',
-    seyesVertical: '#d9c2c2'
-  },
-  cream: {
-    bg: '#fef3c7',
-    line: '#fde68a',
-    border: '#fcd34d',
-    dot: '#fbbf24',
-    seyesMajor: '#fbbf24',
-    seyesMinor: '#fde68a',
-    seyesVertical: '#fca5a5'
-  }
-};
-
-// Palette d'impression universelle sur papier blanc A4 : réglures nettes,
-// contraste maîtrisé et respect strict des teintes scolaires (Seyes / grille).
-const PRINT_PAPER_PALETTE: ColorPalette = {
-  bg: '#ffffff',
-  line: '#94a3b8',
-  border: '#64748b',
-  dot: '#64748b',
-  seyesMajor: '#64748b',
-  seyesMinor: '#cbd5e1',
-  seyesVertical: '#f87171',
-};
-
-type ThemeMap = Record<'seyes' | 'slate' | 'grid' | 'dotted' | 'blank', { screen: ColorPalette, print: ColorPalette }>;
-
-const THEMES: ThemeMap = {
-  slate: {
-    screen: COLOR_PALETTES.black,
-    print: PRINT_PAPER_PALETTE,
-  },
-  seyes: {
-    screen: COLOR_PALETTES.white,
-    print: PRINT_PAPER_PALETTE,
-  },
-  grid: {
-    screen: COLOR_PALETTES.white,
-    print: PRINT_PAPER_PALETTE,
-  },
-  dotted: {
-    screen: COLOR_PALETTES.white,
-    print: PRINT_PAPER_PALETTE,
-  },
-  blank: {
-    screen: COLOR_PALETTES.white,
-    print: PRINT_PAPER_PALETTE,
-  }
-};
+const GRID_SIZE_PX = 5 * 3.7795275591;
+const EMPTY_STROKES: Stroke[] = [];
 
 interface AnswerSpaceProps {
   height?: number;
+  minHeight?: number;
   styleName?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
   colorName?: 'black' | 'green' | 'blue' | 'white' | 'cream' | '';
   onHeightChange: (newHeight: number) => void;
@@ -126,16 +27,18 @@ interface AnswerSpaceProps {
   isEditMode?: boolean;
   onSolutionUpdate?: (newSol: string) => void;
   revealSolution?: boolean;
+  showSolutions?: boolean;
 }
 
 const AnswerSpace: React.FC<AnswerSpaceProps> = ({
-  height = 120,
+  height: requestedHeight,
+  minHeight,
   styleName = 'slate',
   colorName,
   onHeightChange,
   onStyleChange,
   onColorChange,
-  strokes = [],
+  strokes = EMPTY_STROKES,
   onStrokesChange,
   solution,
   answer,
@@ -143,7 +46,10 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   isEditMode,
   onSolutionUpdate,
   revealSolution = false,
+  showSolutions = false,
 }) => {
+  const minimumHeight = resolveAnswerSpaceMinimum(minHeight);
+  const height = resolveAnswerSpaceHeight(requestedHeight, minimumHeight);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasInstanceId = useId();
   const isCanvasActive = useCanvasIsActive(canvasInstanceId);
@@ -164,9 +70,10 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   const solutionContent = solution || answer || guidanceContent;
   const estimatedSolutionLines = Math.max(1, Math.ceil(solutionContent.length / 72));
   const solutionMinHeight = Math.min(560, Math.max(190, 104 + estimatedSolutionLines * 30));
-  // L'aide appartient à cette zone uniquement : chaque canvas démarre fermé
-  // et son bouton local ne modifie aucune autre question.
-  const [isSolutionVisible, setIsSolutionVisible] = useState(false);
+  // La fiche définit l'état initial, puis le bouton reste propre à cette zone.
+  const [isSolutionVisible, setIsSolutionVisible] = useState(showSolutions);
+
+  useEffect(() => setIsSolutionVisible(showSolutions), [showSolutions]);
 
   useEffect(() => {
     if (revealSolution && hasSolutionContent) setIsSolutionVisible(true);
@@ -178,30 +85,18 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
     }
   }, [height, hasSolutionContent, isSolutionVisible, onHeightChange, solutionMinHeight]);
 
-  // Determine active theme colors
-  const baseTheme = THEMES[styleName] || THEMES.slate;
-  const customPalette = colorName ? COLOR_PALETTES[colorName] : undefined;
-  
-  const theme = customPalette ? {
-    screen: customPalette,
-    print: PRINT_PAPER_PALETTE,
-  } : baseTheme;
-
+  const theme = resolveAnswerSpaceTheme(styleName, colorName);
   const isDarkCanvas = ['black', 'green', 'blue'].includes(colorName || (styleName === 'slate' ? 'black' : ''));
 
-  // ID unique pour les patterns SVG
-  const uid = useId().replace(/:/g, '');
-  const gridPatternId = `grid-${uid}`;
-
-  const clampHeight = (value: number) => Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, value));
+  const clampHeight = useCallback((value: number) => resolveAnswerSpaceHeight(value, minimumHeight), [minimumHeight]);
 
   // Le glissement reste continu au pixel près. L'ancien pas de 5 mm donnait
   // l'impression d'un pointeur lent car la poignée avançait par bonds de 19 px.
   const calculateHeight = useCallback((clientY: number): number => {
     const delta = clientY - startY.current;
     const rawHeight = startHeight.current + delta;
-    return Math.round(clampHeight(rawHeight));
-  }, []);
+    return clampHeight(Math.round(rawHeight));
+  }, [clampHeight]);
 
   /**
    * Déplace uniquement un cadre fantôme et la poignée pendant le glissement.
@@ -328,14 +223,14 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
     else if (e.key === 'ArrowUp') next = height - step;
     else if (e.key === 'PageDown') next = height + GRID_SIZE_PX * 8;
     else if (e.key === 'PageUp') next = height - GRID_SIZE_PX * 8;
-    else if (e.key === 'Home') next = MIN_HEIGHT;
+    else if (e.key === 'Home') next = minimumHeight;
     else if (e.key === 'End') next = MAX_HEIGHT;
 
     if (next === null) return;
     e.preventDefault();
-    const normalized = Math.round(clampHeight(next));
+    const normalized = clampHeight(Math.round(next));
     if (normalized !== height) onHeightChange(normalized);
-  }, [height, onHeightChange]);
+  }, [height, onHeightChange, minimumHeight, clampHeight]);
 
   useEffect(() => {
     pendingHeight.current = height;
@@ -383,11 +278,9 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
   // jamais scrollées apparaîtraient vides sur le papier.
   useEffect(() => {
     const handleBeforePrint = () => setIsNearViewport(true);
-    window.addEventListener('beforeprint', handleBeforePrint);
-    window.addEventListener('worksheet-prepare-print', handleBeforePrint);
+    window.addEventListener('worksheet-mount-print', handleBeforePrint);
     return () => {
-      window.removeEventListener('beforeprint', handleBeforePrint);
-      window.removeEventListener('worksheet-prepare-print', handleBeforePrint);
+      window.removeEventListener('worksheet-mount-print', handleBeforePrint);
     };
   }, []);
 
@@ -410,105 +303,11 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
         style={{
           height: `${height}px`,
           backgroundColor: theme.screen.bg,
-          border: isCanvasActive ? '2px solid #0284c7' : `1px solid ${theme.screen.border}`,
+          border: `1px solid ${isCanvasActive ? '#0284c7' : theme.screen.border}`,
           boxSizing: 'border-box',
         }}
       >
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-none print:hidden overflow-hidden"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden="true"
-        >
-          <defs>
-            <pattern
-              id={gridPatternId}
-              width={styleName === 'seyes' ? SEYES_LINE_PX * 4 : GRID_SIZE_PX}
-              height={styleName === 'seyes' ? SEYES_LINE_PX * 4 : GRID_SIZE_PX}
-              patternUnits="userSpaceOnUse"
-              overflow="visible"
-            >
-              <rect width="100%" height="100%" fill={theme.screen.bg} />
-              
-              {styleName === 'slate' && (
-                <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" shapeRendering="crispEdges" />
-              )}
-              
-              {styleName === 'grid' && (
-                <>
-                  <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" shapeRendering="crispEdges" />
-                  <line x1={GRID_SIZE_PX} y1="0" x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.screen.line} strokeWidth="1" shapeRendering="crispEdges" />
-                </>
-              )}
-
-              {styleName === 'dotted' && (
-                <circle cx={GRID_SIZE_PX / 2} cy={GRID_SIZE_PX / 2} r="1" fill={theme.screen.dot} />
-              )}
-
-              {styleName === 'seyes' && (
-                <>
-                  {/* Ligne horizontale mineure (toutes les 2mm) */}
-                  <line x1="0" y1={SEYES_LINE_PX} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX} stroke={theme.screen.seyesMinor} strokeWidth="1" shapeRendering="crispEdges" />
-                  <line x1="0" y1={SEYES_LINE_PX * 2} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 2} stroke={theme.screen.seyesMinor} strokeWidth="1" shapeRendering="crispEdges" />
-                  <line x1="0" y1={SEYES_LINE_PX * 3} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 3} stroke={theme.screen.seyesMinor} strokeWidth="1" shapeRendering="crispEdges" />
-                  {/* Ligne horizontale majeure (toutes les 8mm) */}
-                  <line x1="0" y1={SEYES_LINE_PX * 4} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.screen.seyesMajor} strokeWidth="1.2" shapeRendering="crispEdges" />
-                  {/* Ligne verticale majeure (toutes les 8mm) */}
-                  <line x1={SEYES_LINE_PX * 4} y1="0" x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.screen.seyesMajor} strokeWidth="1.2" shapeRendering="crispEdges" />
-                </>
-              )}
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill={`url(#${gridPatternId})`} />
-        </svg>
-
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-none hidden print:block"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden="true"
-          preserveAspectRatio="none"
-          style={{ overflow: 'hidden', shapeRendering: 'geometricPrecision', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' as any }}
-        >
-          <rect width="100%" height="100%" fill={theme.print.bg} />
-          
-          <defs>
-            <pattern
-              id={`${gridPatternId}-print`}
-              width={styleName === 'seyes' ? SEYES_LINE_PX * 4 : GRID_SIZE_PX}
-              height={styleName === 'seyes' ? SEYES_LINE_PX * 4 : GRID_SIZE_PX}
-              patternUnits="userSpaceOnUse"
-              overflow="visible"
-            >
-              {styleName === 'slate' && (
-                <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.65" shapeRendering="crispEdges" />
-              )}
-              
-              {styleName === 'grid' && (
-                <>
-                  <line x1="0" y1={GRID_SIZE_PX} x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.6" shapeRendering="crispEdges" />
-                  <line x1={GRID_SIZE_PX} y1="0" x2={GRID_SIZE_PX} y2={GRID_SIZE_PX} stroke={theme.print.line} strokeWidth="0.6" shapeRendering="crispEdges" />
-                </>
-              )}
-
-              {styleName === 'dotted' && (
-                <circle cx={GRID_SIZE_PX / 2} cy={GRID_SIZE_PX / 2} r="1" fill={theme.print.dot} />
-              )}
-
-              {styleName === 'seyes' && (
-                <>
-                  {/* Lignes horizontales mineures (2mm) */}
-                  <line x1="0" y1={SEYES_LINE_PX} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX} stroke={theme.print.seyesMinor} strokeWidth="0.5" shapeRendering="crispEdges" />
-                  <line x1="0" y1={SEYES_LINE_PX * 2} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 2} stroke={theme.print.seyesMinor} strokeWidth="0.5" shapeRendering="crispEdges" />
-                  <line x1="0" y1={SEYES_LINE_PX * 3} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 3} stroke={theme.print.seyesMinor} strokeWidth="0.5" shapeRendering="crispEdges" />
-                  {/* Ligne horizontale majeure (8mm) */}
-                  <line x1="0" y1={SEYES_LINE_PX * 4} x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.print.seyesMajor} strokeWidth="0.85" shapeRendering="crispEdges" />
-                  {/* Ligne verticale majeure (8mm) */}
-                  <line x1={SEYES_LINE_PX * 4} y1="0" x2={SEYES_LINE_PX * 4} y2={SEYES_LINE_PX * 4} stroke={theme.print.seyesMajor} strokeWidth="0.85" shapeRendering="crispEdges" />
-                </>
-              )}
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill={`url(#${gridPatternId}-print)`} />
-        </svg>
+        <AnswerSpacePaper styleName={styleName} colorName={colorName} height={height} />
 
         <div
           ref={resizePreviewRef}
@@ -541,7 +340,7 @@ const AnswerSpace: React.FC<AnswerSpaceProps> = ({
           role="slider"
           aria-label="Ajuster la hauteur de la zone de réponse"
           aria-orientation="vertical"
-          aria-valuemin={MIN_HEIGHT}
+          aria-valuemin={minimumHeight}
           aria-valuemax={MAX_HEIGHT}
           aria-valuenow={height}
           aria-valuetext={`${height} pixels`}

@@ -77,6 +77,9 @@ const SyncPanel: React.FC<SyncPanelProps> = ({ isOpen, onClose, sync }) => {
                 Récepteur (tablette)
               </button>
             </div>
+            <p className="mt-2 text-xs text-slate-500">
+              Le mode Source partage toutes les fiches de cet appareil dans cette session, y compris les copies de récupération.
+            </p>
           </div>
 
           <div>

@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
 import { Stroke } from '../types';
+import { copyInk } from '../../../domain/inkDocument';
 
 export type HistoryAction =
   | { type: 'add'; stroke: Stroke }
@@ -29,7 +30,7 @@ export function useCanvasHistory({
   const commitStrokes = useCallback(() => {
     setStrokeCount(strokesRef.current.length);
     setRenderRevision(revision => revision + 1);
-    onStrokesChangeRef.current?.([...strokesRef.current]);
+    onStrokesChangeRef.current?.(copyInk(strokesRef.current));
   }, [setStrokeCount, setRenderRevision, strokesRef, onStrokesChangeRef]);
 
   const recordAdd = useCallback((stroke: Stroke) => {

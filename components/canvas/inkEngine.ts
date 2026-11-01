@@ -76,9 +76,11 @@ export class StrokeSmoother {
   private readonly x: OneEuroFilter;
   private readonly y: OneEuroFilter;
   private readonly pressure: OneEuroFilter;
+  private readonly enabled: boolean;
 
   constructor(stabilization: number) {
     const value = Math.max(0, Math.min(1, stabilization));
+    this.enabled = value > 0;
     const minCutoff = 9 - 6.5 * value;
     const beta = 0.22 - 0.14 * value;
     this.x = new OneEuroFilter(minCutoff, beta);
@@ -93,6 +95,7 @@ export class StrokeSmoother {
   }
 
   next(point: Point, timestamp: number): Point {
+    if (!this.enabled) return point;
     return {
       x: this.x.filter(point.x, timestamp),
       y: this.y.filter(point.y, timestamp),

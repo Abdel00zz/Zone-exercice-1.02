@@ -87,14 +87,9 @@
   transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease;
 }
 
-/* Titre éditorial : royal sans surcharge, et entièrement piloté par le thème. */
+/* En-tête sobre : chapitre seul et date, sans ornements. */
 .worksheet-title-frame {
-  display: grid;
-  grid-template-columns: minmax(24px, 72px) minmax(0, auto) minmax(24px, 72px);
-  align-items: center;
-  justify-content: center;
-  column-gap: clamp(10px, 2.2vw, 22px);
-  width: min(100%, 760px);
+  width: 100%;
   margin-inline: auto;
 }
 
@@ -142,59 +137,12 @@
   }
 }
 
-.worksheet-title-rule {
-  position: relative;
-  height: 1px;
-  background: linear-gradient(to right, transparent, var(--paper-title-ornament));
-  opacity: 0.82;
-}
-
-.worksheet-title-rule:last-child {
-  background: linear-gradient(to left, transparent, var(--paper-title-ornament));
-}
-
-.worksheet-title-rule::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: -3px;
-  width: 6px;
-  height: 6px;
-  border: 1px solid var(--paper-title-ornament);
-  background: var(--paper-bg);
-  transform: translateY(-50%) rotate(45deg);
-}
-
-.worksheet-title-rule:last-child::after {
-  right: auto;
-  left: -3px;
-}
-
 .worksheet-title {
   color: var(--paper-title);
   font-weight: 650;
   letter-spacing: -0.025em;
   text-wrap: balance;
-  text-shadow: 0 2px 14px var(--paper-title-shadow);
-}
-
-.worksheet-title-crown {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  margin-top: 10px;
-  color: var(--paper-title-ornament);
-  opacity: 0.8;
-}
-
-.worksheet-title-crown::before,
-.worksheet-title-crown::after {
-  content: '';
-  width: 22px;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.45;
+  text-shadow: none;
 }
 
 .worksheet-thumbnail-title {
@@ -213,9 +161,5 @@
     text-shadow: none;
   }
 
-  .worksheet-title-rule,
-  .worksheet-title-crown {
-    color: #4b5563;
-    filter: grayscale(1);
-  }
+
 }

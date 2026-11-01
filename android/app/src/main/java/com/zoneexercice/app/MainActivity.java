@@ -2,6 +2,9 @@ package com.zoneexercice.app;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.os.CancellationSignal;
+import android.os.ParcelFileDescriptor;
+import android.print.PageRange;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
@@ -34,18 +37,47 @@ public class MainActivity extends BridgeActivity {
             webView.post(() -> {
                 PrintManager printManager = (PrintManager) context.getSystemService(Context.PRINT_SERVICE);
                 if (printManager != null) {
-                    PrintDocumentAdapter printAdapter = webView.createPrintDocumentAdapter(
+                    PrintDocumentAdapter delegate = webView.createPrintDocumentAdapter(
                         documentName != null && !documentName.trim().isEmpty() ? documentName : "Fiche_Exercices"
                     );
+                    PrintDocumentAdapter printAdapter = new PrintDocumentAdapter() {
+                        @Override public void onStart() { delegate.onStart(); }
+
+                        @Override public void onLayout(PrintAttributes oldAttributes, PrintAttributes newAttributes,
+                                CancellationSignal signal, LayoutResultCallback callback, Bundle extras) {
+                            delegate.onLayout(oldAttributes, newAttributes, signal, callback, extras);
+                        }
+
+                        @Override public void onWrite(PageRange[] pages, ParcelFileDescriptor destination,
+                                CancellationSignal signal, WriteResultCallback callback) {
+                            delegate.onWrite(pages, destination, signal, callback);
+                        }
+
+                        @Override public void onFinish() {
+                            try { delegate.onFinish(); }
+                            finally { finishPrint(); }
+                        }
+                    };
                     PrintAttributes.Builder builder = new PrintAttributes.Builder();
                     builder.setMediaSize(PrintAttributes.MediaSize.ISO_A4);
-                    printManager.print(
+                    try {
+                      printManager.print(
                         documentName != null && !documentName.trim().isEmpty() ? documentName : "Fiche_Exercices",
                         printAdapter,
                         builder.build()
-                    );
+                      );
+                    } catch (RuntimeException error) {
+                        finishPrint();
+                    }
+                } else {
+                    finishPrint();
                 }
             });
+        }
+
+        private void finishPrint() {
+            webView.post(() -> webView.evaluateJavascript(
+                "window.dispatchEvent(new Event('worksheet-native-print-finished'))", null));
         }
 
         @JavascriptInterface

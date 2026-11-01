@@ -3,6 +3,7 @@ import katex from 'katex';
 import { MathJax } from 'better-react-mathjax';
 import { matchesOverlaySpec, useBeamerPresentation } from './BeamerPresentation';
 import { DEFAULT_MATHJAX_FONT, isKatexPrimaryFont } from '../utils/mathjaxFonts';
+import { allowMathCommand } from '../features/math/trust';
 
 export interface MathEngineConfig {
   mathFont: string;
@@ -91,7 +92,7 @@ const MathFormula: React.FC<{ rawMath: string; display?: boolean }> = React.memo
         displayMode: display || displayMode,
         throwOnError: true,
         strict: false,
-        trust: true,
+        trust: allowMathCommand,
         output: 'htmlAndMathml',
         macros: { ...KATEX_MACROS },
       });
@@ -553,13 +554,13 @@ function parseProgressivePieces(text: string): ProgressivePiece[] {
   return pieces;
 }
 
-const ProgressiveInline: React.FC<{ text: string; step: number; revealFillBlanks?: boolean }> = ({ text, step, revealFillBlanks = false }) => {
+const ProgressiveInline: React.FC<{ text: string; step: number; revealFillBlanks?: boolean; revealAll?: boolean }> = ({ text, step, revealFillBlanks = false, revealAll = false }) => {
   const pieces = parseProgressivePieces(text);
 
   return (
     <>
       {pieces.map((piece, index) => {
-        const afterPause = step >= piece.minStep;
+        const afterPause = revealAll || step >= piece.minStep;
         const overlayMatch = piece.spec ? matchesOverlaySpec(piece.spec, step) : true;
         const command = piece.command;
         const active = afterPause && overlayMatch;
@@ -572,14 +573,14 @@ const ProgressiveInline: React.FC<{ text: string; step: number; revealFillBlanks
           if (!afterPause) return null;
           return (
             <span key={index} className={overlayMatch ? 'text-rose-600 font-semibold' : undefined}>
-              <ProgressiveInline text={piece.text} step={step} revealFillBlanks={revealFillBlanks} />
+              <ProgressiveInline text={piece.text} step={step} revealFillBlanks={revealFillBlanks} revealAll={revealAll} />
             </span>
           );
         }
 
-        if (command === 'only' && !active) return null;
+        if (command === 'only' && !active && !revealAll) return null;
 
-        const hidden = command === 'invisible' ? !afterPause || overlayMatch : !active;
+        const hidden = !revealAll && (command === 'invisible' ? !afterPause || overlayMatch : !active);
         const preserveSpace = command === 'uncover' || command === 'visible' || command === 'invisible';
         if (hidden && !preserveSpace) return null;
 
@@ -588,7 +589,7 @@ const ProgressiveInline: React.FC<{ text: string; step: number; revealFillBlanks
             key={index}
             style={hidden ? { visibility: 'hidden' } : undefined}
           >
-            <ProgressiveInline text={piece.text} step={step} revealFillBlanks={revealFillBlanks} />
+            <ProgressiveInline text={piece.text} step={step} revealFillBlanks={revealFillBlanks} revealAll={revealAll} />
           </span>
         );
       })}
@@ -633,28 +634,28 @@ function parseItems(body: string): Array<{ text: string; spec?: string }> {
   }));
 }
 
-const ProgressiveContent: React.FC<{ text: string; step: number; revealFillBlanks?: boolean }> = ({ text, step, revealFillBlanks = false }) => {
+const ProgressiveContent: React.FC<{ text: string; step: number; revealFillBlanks?: boolean; revealAll?: boolean }> = ({ text, step, revealFillBlanks = false, revealAll = false }) => {
   const itemize = splitFirstItemize(text);
-  if (!itemize) return <ProgressiveInline text={text} step={step} revealFillBlanks={revealFillBlanks} />;
+  if (!itemize) return <ProgressiveInline text={text} step={step} revealFillBlanks={revealFillBlanks} revealAll={revealAll} />;
 
   const items = parseItems(itemize.body);
   const ListTag = itemize.kind === 'enumerate' ? 'ol' : 'ul';
   return (
     <>
-      <ProgressiveContent text={itemize.before} step={step} revealFillBlanks={revealFillBlanks} />
+      <ProgressiveContent text={itemize.before} step={step} revealFillBlanks={revealFillBlanks} revealAll={revealAll} />
       <ListTag className={`${itemize.kind === 'enumerate' ? 'list-decimal' : 'list-disc'} list-outside ml-6 my-2 space-y-1`}>
         {items.map((item, index) => {
           const spec = item.spec ?? itemize.spec;
           const plusValue = index + 1;
-          const visible = !spec || matchesOverlaySpec(spec, step, plusValue);
+          const visible = revealAll || !spec || matchesOverlaySpec(spec, step, plusValue);
           return (
             <li key={index} style={!visible ? { visibility: 'hidden' } : undefined}>
-              <ProgressiveContent text={item.text} step={step} revealFillBlanks={revealFillBlanks} />
+              <ProgressiveContent text={item.text} step={step} revealFillBlanks={revealFillBlanks} revealAll={revealAll} />
             </li>
           );
         })}
       </ListTag>
-      <ProgressiveContent text={itemize.after} step={step} revealFillBlanks={revealFillBlanks} />
+      <ProgressiveContent text={itemize.after} step={step} revealFillBlanks={revealFillBlanks} revealAll={revealAll} />
     </>
   );
 };
@@ -736,12 +737,12 @@ const handleMathDoubleClick = (e: React.MouseEvent<HTMLSpanElement>) => {
 };
 
 const MathTextImpl: React.FC<MathTextProps> = ({ text, className = '', revealFillBlanks = false, disableHighlight = false }) => {
-  const { step } = useBeamerPresentation();
+  const { step, revealAll } = useBeamerPresentation();
   if (!text) return null;
 
   return (
     <span className={`math-text-root ${className}`} onDoubleClick={disableHighlight ? undefined : handleMathDoubleClick}>
-      <ProgressiveContent text={text} step={step} revealFillBlanks={revealFillBlanks} />
+      <ProgressiveContent text={text} step={step} revealFillBlanks={revealFillBlanks} revealAll={revealAll} />
     </span>
   );
 };

@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { COOKIE_NAME, parseCookie, verifySessionToken } from '../_lib/auth';
+import { parseCloudWorksheets } from '../../domain/worksheetSchema';
 
 export const config = { runtime: 'edge' };
 
@@ -38,7 +39,12 @@ export default async function handler(req: Request): Promise<Response> {
 
   let body: { code?: unknown; worksheets?: unknown };
   try {
-    body = await req.json();
+    const raw = await req.text();
+    if (new TextEncoder().encode(raw).byteLength > MAX_PAYLOAD_CHARS) {
+      return json({ error: 'Contenu trop volumineux.' }, 413);
+    }
+    body = JSON.parse(raw);
+    if (!body || typeof body !== 'object') return json({ error: 'Requête invalide.' }, 400);
   } catch {
     return json({ error: 'Requête invalide.' }, 400);
   }
@@ -47,14 +53,17 @@ export default async function handler(req: Request): Promise<Response> {
   if (!CODE_PATTERN.test(code)) {
     return json({ error: 'Code de session invalide (6 caractères alphanumériques).' }, 400);
   }
-  if (!Array.isArray(body.worksheets)) {
-    return json({ error: 'Le champ "worksheets" doit être un tableau.' }, 400);
+  let worksheets;
+  try {
+    worksheets = parseCloudWorksheets(body.worksheets);
+  } catch (error) {
+    return json({ error: error instanceof Error ? error.message : 'Fiches invalides.' }, 400);
   }
 
   const version = Date.now();
-  const payload = JSON.stringify({ worksheets: body.worksheets, version });
-  if (payload.length > MAX_PAYLOAD_CHARS) {
-    return json({ error: `Contenu trop volumineux (${payload.length} caractères, max ${MAX_PAYLOAD_CHARS}).` }, 413);
+  const payload = JSON.stringify({ worksheets, version });
+  if (new TextEncoder().encode(payload).byteLength > MAX_PAYLOAD_CHARS) {
+    return json({ error: 'Contenu trop volumineux.' }, 413);
   }
 
   const redis = new Redis({ url: redisUrl, token: redisToken });

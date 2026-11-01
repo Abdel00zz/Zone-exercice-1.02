@@ -38,8 +38,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
         <div className="max-w-lg w-full bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
           <h1 className="text-xl font-bold text-slate-900 mb-2">Une erreur est survenue</h1>
           <p className="text-slate-600 text-sm mb-4">
-            L'affichage a été interrompu, mais <strong>vos fiches sont intactes</strong> : elles sont
-            enregistrées localement dans le navigateur. Rechargez la page pour reprendre.
+            L'affichage a été interrompu. Les fiches déjà enregistrées restent dans le stockage de cet appareil.
+            Les dernières modifications peuvent ne pas avoir été sauvegardées. Rechargez la page pour reprendre.
           </p>
           <pre className="text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 overflow-x-auto text-rose-700 mb-5">
             {error.message}

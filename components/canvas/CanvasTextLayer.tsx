@@ -1,6 +1,7 @@
 import React from 'react';
 import MathText from '../MathText';
 import type { Stroke } from './types';
+import { isLightInk, screenInkColor } from './inkColors';
 
 interface CanvasTextLayerProps {
   strokes: Stroke[];
@@ -9,6 +10,7 @@ interface CanvasTextLayerProps {
   editingIndex?: number;
   isEditMode: boolean;
   fallbackColor: string;
+  darkPaper: boolean;
   onEditText: (index: number) => void;
 }
 
@@ -23,16 +25,17 @@ const CanvasTextLayer: React.FC<CanvasTextLayerProps> = ({
   editingIndex,
   isEditMode,
   fallbackColor,
+  darkPaper,
   onEditText,
 }) => (
-  <div className="absolute inset-0 z-20 overflow-hidden pointer-events-none" aria-live="polite">
+  <div className="canvas-text-layer absolute inset-0 z-20 overflow-hidden pointer-events-none" aria-live="polite">
     {strokes.map((stroke, index) => {
       if (!stroke.isText || !stroke.text || editingIndex === index) return null;
       const anchor = stroke.points[0];
       if (!anchor) return null;
       const selected = selectedIndexes.has(index);
       const rawColor = (stroke.color || fallbackColor || '').toLowerCase();
-      const isLightChalk = ['#ffffff', '#fff', '#f8fafc', '#f1f5f9', '#e2e8f0', '#cbd5e1'].includes(rawColor);
+      const isLightChalk = isLightInk(rawColor);
       return (
         <div
           key={`canvas-text-${index}`}
@@ -44,7 +47,7 @@ const CanvasTextLayer: React.FC<CanvasTextLayerProps> = ({
             left: anchor.x,
             top: anchor.y,
             maxWidth: `calc(100% - ${Math.max(8, anchor.x)}px)`,
-            color: stroke.color || fallbackColor,
+            color: screenInkColor(stroke.color || fallbackColor, darkPaper),
             fontFamily: 'Caveat, cursive',
             fontSize: `${stroke.fontSize || 24}px`,
           }}

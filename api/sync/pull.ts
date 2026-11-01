@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { COOKIE_NAME, parseCookie, verifySessionToken } from '../_lib/auth';
+import { parseCloudWorksheets } from '../../domain/worksheetSchema';
 
 export const config = { runtime: 'edge' };
 
@@ -17,7 +18,7 @@ async function requireAuth(req: Request): Promise<boolean> {
 }
 
 function json(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -40,6 +41,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!CODE_PATTERN.test(code)) {
     return json({ error: 'Code de session invalide (6 caractères alphanumériques).' }, 400);
   }
+  if (!Number.isSafeInteger(since) || since < 0) return json({ error: 'Version de synchronisation invalide.' }, 400);
 
   const redis = new Redis({ url: redisUrl, token: redisToken });
   const raw = await redis.get<string | { worksheets: unknown; version: number }>(redisKey(code));
@@ -48,10 +50,12 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   // Upstash désérialise déjà le JSON s'il détecte un objet ; on gère les deux cas par sécurité.
-  const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-  if (!data || typeof data.version !== 'number' || data.version <= since) {
-    return json({ unchanged: true }, 200);
+  try {
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!data || !Number.isSafeInteger(data.version) || data.version < 0) throw new Error('Version invalide.');
+    if (data.version <= since) return json({ unchanged: true }, 200);
+    return json({ worksheets: parseCloudWorksheets(data.worksheets), version: data.version }, 200);
+  } catch {
+    return json({ error: 'Snapshot distant invalide. Les fiches locales sont conservées.' }, 502);
   }
-
-  return json({ worksheets: data.worksheets, version: data.version }, 200);
 }

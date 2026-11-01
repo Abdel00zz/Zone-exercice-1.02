@@ -1,22 +1,49 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useSyncExternalStore } from 'react';
+import { isWorksheetPrinting } from '../utils/worksheetPrint';
 
 interface BeamerPresentationValue {
   step: number;
+  revealAll: boolean;
 }
 
-const BeamerPresentationContext = createContext<BeamerPresentationValue>({ step: 1 });
+const BeamerPresentationContext = createContext<BeamerPresentationValue>({ step: 1, revealAll: false });
+
+// Une seule écoute du cycle d'impression, partagée par tous les textes,
+// même ceux qui sont hors d'une question (énoncé et rappels de contexte).
+const printSubscribers = new Set<() => void>();
+const notifyPrint = () => {
+  printSubscribers.forEach(notify => notify());
+};
+const subscribePrint = (notify: () => void) => {
+  if (printSubscribers.size === 0 && typeof window !== 'undefined') {
+    window.addEventListener('worksheet-mount-print', notifyPrint);
+    window.addEventListener('worksheet-finish-print', notifyPrint);
+  }
+  printSubscribers.add(notify);
+  return () => {
+    printSubscribers.delete(notify);
+    if (printSubscribers.size === 0 && typeof window !== 'undefined') {
+      window.removeEventListener('worksheet-mount-print', notifyPrint);
+      window.removeEventListener('worksheet-finish-print', notifyPrint);
+    }
+  };
+};
 
 export const BeamerPresentationProvider: React.FC<{
   step: number;
+  revealAll?: boolean;
   children: React.ReactNode;
-}> = ({ step, children }) => (
-  <BeamerPresentationContext.Provider value={{ step: Math.max(1, step) }}>
+}> = ({ step, revealAll = false, children }) => (
+  <BeamerPresentationContext.Provider value={{ step: Math.max(1, step), revealAll }}>
     {children}
   </BeamerPresentationContext.Provider>
 );
 
-export const useBeamerPresentation = (): BeamerPresentationValue =>
-  useContext(BeamerPresentationContext);
+export const useBeamerPresentation = (): BeamerPresentationValue => {
+  const context = useContext(BeamerPresentationContext);
+  const revealAll = useSyncExternalStore(subscribePrint, isWorksheetPrinting, () => false);
+  return { ...context, revealAll: context.revealAll || revealAll };
+};
 
 /** Retourne vrai lorsque l'étape courante appartient à une spécification Beamer. */
 export function matchesOverlaySpec(spec: string, step: number, plusValue?: number): boolean {
@@ -62,13 +89,16 @@ function maxStepInText(text: string): number {
   );
   for (const match of commandSpecs) max = Math.max(max, maxFromSpec(match[1]));
 
-  const itemizeMatches = text.matchAll(
-    /\\begin\{itemize\}\s*\[\s*<([^>]+)>\s*\]([\s\S]*?)\\end\{itemize\}/g,
+  const listMatches = text.matchAll(
+    /\\begin\{(itemize|enumerate)\}(?:\s*\[\s*<([^>]+)>\s*\])?([\s\S]*?)\\end\{\1\}/g,
   );
-  for (const match of itemizeMatches) {
-    const spec = match[1];
-    const itemCount = match[2].match(/\\item\b/g)?.length ?? 0;
-    max = Math.max(max, spec.includes('+') ? itemCount : maxFromSpec(spec));
+  for (const match of listMatches) {
+    const defaultSpec = match[2];
+    const items = [...match[3].matchAll(/\\item\b(?:\s*<([^>]+)>)?/g)];
+    items.forEach((item, index) => {
+      const spec = item[1] ?? defaultSpec;
+      if (spec) max = Math.max(max, maxFromSpec(spec.replace(/\+/g, String(index + 1))));
+    });
   }
 
   const itemSpecs = text.matchAll(/\\item\s*<([^>]+)>/g);

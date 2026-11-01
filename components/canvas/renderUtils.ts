@@ -24,9 +24,18 @@ const PEN_PROFILES: Partial<Record<NonNullable<Stroke['penType']>, FreehandProfi
   calligraphy: { thinning: 0.8, smoothing: 0.64, streamline: 0.5 },
 };
 
-type CachedFreehandPath = { key: string; path: Path2D };
+type CachedFreehandPath = { key: string; data: string; path?: Path2D };
 const freehandPathCache = new WeakMap<Stroke, CachedFreehandPath>();
 const pencilPatternCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasPattern>>();
+
+export function loadStrokeImage(stroke: Stroke): Promise<void> {
+  if (!stroke.isImage || !stroke.imgSrc) return Promise.resolve();
+  if (!(stroke.imgElement instanceof HTMLImageElement)) {
+    stroke.imgElement = new Image();
+    stroke.imgElement.src = stroke.imgSrc;
+  }
+  return stroke.imgElement.decode();
+}
 
 function getFreehandProfile(stroke: Stroke): FreehandProfile {
   const base = stroke.penType ? PEN_PROFILES[stroke.penType] : undefined;
@@ -79,7 +88,7 @@ function getPencilPattern(ctx: CanvasRenderingContext2D, color: string): CanvasP
   return pattern;
 }
 
-function getFreehandPath(stroke: Stroke, completed: boolean): Path2D {
+export function getFreehandPathData(stroke: Stroke, completed = true): string {
   const points = stroke.points;
   const first = points[0];
   const middle = points[Math.floor(points.length / 2)];
@@ -96,7 +105,7 @@ function getFreehandPath(stroke: Stroke, completed: boolean): Path2D {
     completed ? 1 : 0,
   ].join('|');
   const cached = freehandPathCache.get(stroke);
-  if (cached?.key === key) return cached.path;
+  if (cached?.key === key) return cached.data;
 
   // Les tuples évitent la conversion d'objets effectuée en interne par
   // perfect-freehand et réduisent sensiblement les allocations par rendu.
@@ -109,9 +118,15 @@ function getFreehandPath(stroke: Stroke, completed: boolean): Path2D {
     simulatePressure: !usesRealPressure,
     last: completed,
   });
-  const path = new Path2D(getSvgPathFromStroke(outline));
-  freehandPathCache.set(stroke, { key, path });
-  return path;
+  const data = getSvgPathFromStroke(outline);
+  freehandPathCache.set(stroke, { key, data });
+  return data;
+}
+
+function getFreehandPath(stroke: Stroke, completed: boolean): Path2D {
+  const data = getFreehandPathData(stroke, completed);
+  const cached = freehandPathCache.get(stroke)!;
+  return cached.path ?? (cached.path = new Path2D(data));
 }
 
 export function getSvgPathFromStroke(stroke: number[][]) {
@@ -129,7 +144,7 @@ export function getSvgPathFromStroke(stroke: number[][]) {
 }
 
 export const drawStroke = (
-  ctx: CanvasRenderingContext2D,
+  ctx: CanvasRenderingContext2D & { fillFreehandPath?: (data: string, pencilColor?: string) => void },
   stroke: Stroke,
   isSelected: boolean = false,
   completed: boolean = true,
@@ -162,7 +177,7 @@ export const drawStroke = (
   }
   
   if (stroke.isImage && stroke.imgSrc) {
-     if (!stroke.imgElement) {
+     if (!(stroke.imgElement instanceof HTMLImageElement)) {
        const img = new window.Image();
        img.src = stroke.imgSrc;
        img.onload = () => {
@@ -190,6 +205,7 @@ export const drawStroke = (
   if (stroke.isEraser) {
     ctx.globalCompositeOperation = 'destination-out';
     ctx.strokeStyle = 'rgba(0,0,0,1)';
+    ctx.fillStyle = 'rgba(0,0,0,1)';
     ctx.lineWidth = stroke.width;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -420,6 +436,11 @@ export const drawStroke = (
   const usePerfectFreehand = !isDashedOrDotted && !stroke.isHighlighter && !stroke.isEraser;
                          
   if (usePerfectFreehand) {
+     if (ctx.fillFreehandPath) {
+       ctx.fillFreehandPath(getFreehandPathData(stroke, completed), stroke.penType === 'pencil' ? stroke.color : undefined);
+       ctx.restore();
+       return;
+     }
      const path = getFreehandPath(stroke, completed);
      if (stroke.penType === 'pencil') {
        const graphite = getPencilPattern(ctx, stroke.color);

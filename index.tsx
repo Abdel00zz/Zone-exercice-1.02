@@ -1,9 +1,10 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import './paperThemes.css';
+import './index.css';
 import 'katex/dist/katex.min.css';
 import ErrorBoundary from './components/ErrorBoundary';
+import { installWorksheetPrintLifecycle } from './utils/worksheetPrint';
 
 // 🔧 IMPORTANT : Import du fichier CSS pour l'impression
 import './styles/print.css';
@@ -23,6 +24,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   });
 }
 
+installWorksheetPrintLifecycle();
 const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>

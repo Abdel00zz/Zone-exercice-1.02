@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback, useId } from 'react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { Stroke, DrawingCanvasProps, Point, ToolType } from './types';
-import { drawStroke } from './renderUtils';
+import { drawStroke, loadStrokeImage } from './renderUtils';
 import {
   boundsIntersect, getPointsBounds, getStrokeBounds, pointInPolygon,
   strokeIntersectsPoint, isPointInImage, isPointOnImageResizeHandle,
@@ -21,23 +21,14 @@ import CorrectionProgressControl from './CorrectionProgressControl';
 import { useCanvasHistory } from './hooks/useCanvasHistory';
 import { useSelection } from './hooks/useSelection';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { isWorksheetPrinting } from '../../utils/worksheetPrint';
+import { printInkColor, screenInkColor } from './inkColors';
+import { copyInk, findUniqueInkIndex, rebaseInkGesture } from '../../domain/inkDocument';
+import { renderPrintInk } from './printSvg';
 
-/**
- * Résolution du canvas. Le bitmap est dimensionné en pixels physiques pour que
- * le tracé reste net sur écran haute densité (tablette + stylet) et à
- * l'impression ; le contexte est ensuite mis à l'échelle pour que tout le code
- * de dessin continue de raisonner en pixels CSS.
- * Plafonné à 2 pour ne pas exploser la mémoire : une fiche affiche facilement
- * une dizaine de canvas simultanément.
- */
-const getRenderScale = (isPrinting = false) => {
-  if (isPrinting) return 3.5; // ~336 DPI pour une impression PDF ultra-nette
-  return Math.min(2.5, Math.max(2, window.devicePixelRatio || 2));
-};
-
-const LIGHT_CHALK_COLORS = new Set([
-  '#ffffff', '#fff', '#f8fafc', '#f1f5f9', '#e2e8f0', '#cbd5e1',
-]);
+/** Bitmap haute densité pour l'écran uniquement. L'impression utilise du SVG. */
+const getRenderScale = () => Math.min(2.5, Math.max(2, window.devicePixelRatio || 2));
+const EMPTY_STROKES: Stroke[] = [];
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   instanceId: providedInstanceId,
@@ -46,7 +37,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   colorName,
   onStyleChange,
   onColorChange,
-  initialStrokes = [],
+  initialStrokes = EMPTY_STROKES,
   onStrokesChange,
   isEditMode = false,
   correctionProgress,
@@ -56,26 +47,49 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const instanceId = providedInstanceId ?? generatedInstanceId;
   const isCanvasActive = useCanvasIsActive(instanceId);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const printSvgRef = useRef<SVGSVGElement>(null);
+  const printInkRef = useRef<SVGGElement>(null);
+  const printTextRef = useRef<SVGForeignObjectElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDrawing = useRef(false);
-  const strokesRef = useRef<Stroke[]>(initialStrokes);
+  const activePointerIdRef = useRef<number | null>(null);
+  const gestureToolRef = useRef<ToolType>('pen');
+  const strokesRef = useRef<Stroke[]>([]);
+  const initializedInkRef = useRef(false);
+  if (!initializedInkRef.current) {
+    strokesRef.current = copyInk(initialStrokes);
+    initializedInkRef.current = true;
+  }
+  const publishedInkRef = useRef<Stroke[] | null>(null);
+  const previousInputInkRef = useRef(initialStrokes);
+  const incomingInkRef = useRef<Stroke[] | null>(null);
+  const gestureBaseInkRef = useRef<Stroke[]>([]);
   const currentStrokeRef = useRef<Stroke | null>(null);
+  // Snapshot of committed ink for this gesture only. Pointer moves repaint
+  // the current stroke without replaying the entire page's existing ink.
+  const committedInkRef = useRef<HTMLCanvasElement | null>(null);
   // Force le re-rendu de la Toolbar quand le nombre de traits change
-  const [strokeCount, setStrokeCount] = useState(initialStrokes.length);
+  const [, setStrokeCount] = useState(initialStrokes.length);
   const [renderRevision, setRenderRevision] = useState(0);
 
   const onStrokesChangeRef = useRef(onStrokesChange);
-  onStrokesChangeRef.current = onStrokesChange;
+  onStrokesChangeRef.current = (strokes) => {
+    publishedInkRef.current = strokes;
+    onStrokesChange?.(strokes);
+  };
 
   const redrawAllRef = useRef<() => void>(() => {});
   const resizeCanvasRef = useRef<() => void>(() => {});
   const isResizingRef = useRef(isResizing);
   const wasResizingRef = useRef(isResizing);
-  const isPrintingRef = useRef(false);
+  const isPrintingRef = useRef(isWorksheetPrinting());
+  // Print dimensions must never become the reference for saved coordinates.
+  const screenWidthRef = useRef(0);
   const redrawFrameRef = useRef(0);
 
   const {
     eraseGestureRef,
+    canUndo,
     redoStack,
     setRedoStack,
     commitStrokes,
@@ -114,6 +128,34 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     commitStrokes,
   });
 
+  useEffect(() => {
+    if (initialStrokes === previousInputInkRef.current) return;
+    previousInputInkRef.current = initialStrokes;
+    if (initialStrokes === publishedInkRef.current) return;
+    if (isDrawing.current) {
+      incomingInkRef.current = copyInk(initialStrokes);
+      return;
+    }
+    const previous = strokesRef.current;
+    const incoming = copyInk(initialStrokes);
+    // Preserve the draft without letting a stale index overwrite another text.
+    // An ambiguous edit becomes a separate note on commit.
+    setTextInput(draft => {
+      if (!draft || draft.editingIndex === undefined) return draft;
+      const original = previous[draft.editingIndex];
+      return { ...draft, editingIndex: original ? findUniqueInkIndex(incoming, original) : undefined };
+    });
+    strokesRef.current = incoming;
+    committedInkRef.current = null;
+    clearHistory();
+    clearSelection();
+    setStrokeCount(initialStrokes.length);
+    setRenderRevision(revision => revision + 1);
+    redrawAllRef.current();
+    void Promise.allSettled(strokesRef.current.filter(stroke => stroke.isImage).map(loadStrokeImage))
+      .then(() => redrawAllRef.current());
+  }, [initialStrokes, clearHistory, clearSelection]);
+
   /**
    * Les réglages d'outil sont partagés par toute la fiche (`toolStore`) et pilotés
    * par la barre flottante unique. Seules les valeurs qui changent le RENDU de ce
@@ -125,6 +167,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const selectionMode = useToolValue(snapshot => snapshot.selectionMode);
   const showMeasurements = useToolValue(snapshot => snapshot.showMeasurements);
   const palmRejection = useToolValue(snapshot => snapshot.palmRejection);
+  const penOnly = useToolValue(snapshot => snapshot.penOnly);
   // Couleur de repli de la couche texte DOM (le canvas 2D ne rend pas le LaTeX).
   const color = useToolValue(snapshot => snapshot.color);
 
@@ -163,26 +206,55 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     // Le bitmap est en pixels physiques : on ramène le repère en pixels CSS
     // pour que tout le code de dessin (coordonnées, épaisseurs) reste inchangé.
     const scale = dimensionsRef.current.scale || 1;
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    ctx.clearRect(0, 0, dimensionsRef.current.width, dimensionsRef.current.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const contentScale = isPrintingRef.current && screenWidthRef.current > 0
+      ? Math.min(1, dimensionsRef.current.width / screenWidthRef.current)
+      : 1;
+    ctx.setTransform(scale * contentScale, 0, 0, scale * contentScale, 0, 0);
+    containerRef.current?.style.setProperty('--canvas-source-width', `${screenWidthRef.current || dimensionsRef.current.width}px`);
+    containerRef.current?.style.setProperty('--canvas-print-scale', String(contentScale));
 
-    const isDarkTheme = ['black', 'green', 'blue'].includes(colorName || (styleName === 'slate' ? 'black' : ''));
-    const adaptPrintColor = isPrintingRef.current && isDarkTheme;
+    const darkPaper = ['black', 'green', 'blue'].includes(colorName || (styleName === 'slate' ? 'black' : ''));
+    const paintStroke = (target: CanvasRenderingContext2D, stroke: Stroke, selected = false, completed = true) => {
+      const color = stroke.isHighlighter || stroke.isEraser || stroke.isImage ? stroke.color
+        : isPrintingRef.current ? printInkColor(stroke.color) : screenInkColor(stroke.color, darkPaper);
+      drawStroke(target, color === stroke.color ? stroke : { ...stroke, color }, selected, completed);
+    };
+    const reuseInk = isDrawing.current && !!currentStrokeRef.current && !isPrintingRef.current && selectedStrokeIndexes.size === 0;
+    let inkContext = ctx;
+    let replayInk = true;
+    if (reuseInk) {
+      if (committedInkRef.current?.width === canvas.width && committedInkRef.current.height === canvas.height) {
+        replayInk = false;
+      } else {
+        const ink = document.createElement('canvas');
+        ink.width = canvas.width;
+        ink.height = canvas.height;
+        committedInkRef.current = ink;
+      }
+      inkContext = committedInkRef.current!.getContext('2d') || ctx;
+      inkContext.setTransform(scale, 0, 0, scale, 0, 0);
+    } else {
+      committedInkRef.current = null;
+    }
 
-    strokesRef.current.forEach((stroke, idx) => {
+    if (replayInk) strokesRef.current.forEach((stroke, idx) => {
       // Le texte est rendu dans une couche DOM : MathText peut ainsi compiler
       // LaTeX/Beamer, contrairement à CanvasRenderingContext2D.fillText().
       if (stroke.isText) return;
-      if (adaptPrintColor && stroke.color && LIGHT_CHALK_COLORS.has(stroke.color.toLowerCase())) {
-        drawStroke(ctx, { ...stroke, color: '#0f172a' }, false, true);
-      } else {
-        drawStroke(ctx, stroke, isPrintingRef.current ? false : selectedStrokeIndexes.has(idx), true);
-      }
+      paintStroke(inkContext, stroke, !isPrintingRef.current && selectedStrokeIndexes.has(idx));
     });
+    if (reuseInk && inkContext !== ctx) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(committedInkRef.current!, 0, 0);
+      ctx.restore();
+    }
 
     const previewStroke = recognizedStrokeRef.current || currentStrokeRef.current;
-    if (previewStroke) {
-      drawStroke(ctx, previewStroke, false, false);
+    if (previewStroke && !isPrintingRef.current) {
+      paintStroke(ctx, previewStroke, false, false);
       if (showMeasurements && previewStroke.shapeType && previewStroke.points.length >= 2) {
         const start = previewStroke.points[0];
         const end = previewStroke.points[previewStroke.points.length - 1];
@@ -199,7 +271,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       }
     }
     
-    if ((tool === 'pointer' || (tool === 'lasso' && selectionMode === 'rectangle')) && selectionBoxRef.current) {
+    if (!isPrintingRef.current && (tool === 'pointer' || (tool === 'lasso' && selectionMode === 'rectangle')) && selectionBoxRef.current) {
       const box = selectionBoxRef.current;
       ctx.save();
       ctx.strokeStyle = '#3b82f6';
@@ -211,7 +283,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       ctx.restore();
     }
     
-    if (tool === 'lasso' && lassoPathRef.current.length > 0) {
+    if (!isPrintingRef.current && tool === 'lasso' && lassoPathRef.current.length > 0) {
       ctx.save();
       ctx.beginPath();
       ctx.strokeStyle = '#3b82f6';
@@ -229,7 +301,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       ctx.restore();
     }
     
-    if (selectedStrokeIndexes.size > 0 && lassoPathRef.current.length === 0) {
+    if (!isPrintingRef.current && selectedStrokeIndexes.size > 0 && lassoPathRef.current.length === 0) {
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       
       selectedStrokeIndexes.forEach(idx => {
@@ -280,11 +352,27 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         }
       }
     }
-  }, [selectedStrokeIndexes, tool, selectionMode, showMeasurements]);
+  }, [selectedStrokeIndexes, tool, selectionMode, showMeasurements, colorName, styleName]);
 
   // `redrawAll` change d'identité à chaque changement de sélection/outil ; passer
   // par une ref évite de recréer le ResizeObserver et les abonnements à chaque fois.
   redrawAllRef.current = redrawAll;
+  useEffect(() => {
+    committedInkRef.current = null;
+    redrawAllRef.current();
+  }, [colorName, styleName]);
+  useEffect(() => {
+    const images = strokesRef.current.filter(stroke => stroke.isImage);
+    if (!images.length) return;
+    let cancelled = false;
+    void Promise.allSettled(images.map(loadStrokeImage)).then(() => {
+      if (!cancelled) {
+        committedInkRef.current = null;
+        redrawAllRef.current();
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Les Pointer Events peuvent arriver plus vite que l'écran (stylets 120/240 Hz).
   // Une seule peinture est donc planifiée par image, en utilisant les derniers
@@ -336,6 +424,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   useEffect(() => {
     // rAF en cours pour le rendu intermédiaire (throttle visuel)
     let rafId = 0;
+    let restoreFrame = 0;
     // Timer pour diffèrer le commitStrokes (évite N écritures localStorage/seconde)
     let commitTimer = 0;
     // Largeur avant le dernier redimensionnement nécessitant un rescale
@@ -346,6 +435,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       // geste. Réassigner canvas.width/height réinitialiserait le contexte et
       // obligerait à recalculer tous les traits à chaque taille intermédiaire.
       if (isResizingRef.current) return;
+      // Printing uses an independent bitmap. Neither the screen allocation
+      // nor its coordinate reference follows the A4 layout.
+      if (isPrintingRef.current || window.matchMedia('print').matches) return;
 
       const canvas = canvasRef.current;
       const container = containerRef.current;
@@ -356,17 +448,17 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       const cssHeight = Math.round(rect.height);
       if (cssWidth === 0 || cssHeight === 0) return;
 
-      const scale = getRenderScale(isPrintingRef.current);
+      const scale = getRenderScale();
       const bitmapWidth = Math.round(cssWidth * scale);
       const bitmapHeight = Math.round(cssHeight * scale);
       if (canvas.width === bitmapWidth && canvas.height === bitmapHeight) return;
 
-      const previousWidth = dimensionsRef.current.width;
+      const previousWidth = screenWidthRef.current;
 
       canvas.width = bitmapWidth;
       canvas.height = bitmapHeight;
-      canvas.style.width = `${cssWidth}px`;
-      canvas.style.height = `${cssHeight}px`;
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
       dimensionsRef.current = { width: cssWidth, height: cssHeight, scale };
 
       // Les traits sont stockés en pixels absolus. Sans cette remise à l'échelle,
@@ -375,6 +467,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       // largeur, et JAMAIS pendant l'aperçu d'impression pour ne pas déformer les
       // figures géométriques (cercles -> ellipses) ni altérer la sauvegarde.
       const isPrintMedia = isPrintingRef.current || (typeof window !== 'undefined' && window.matchMedia?.('print').matches);
+      if (!isPrintMedia) screenWidthRef.current = cssWidth;
+      else if (screenWidthRef.current === 0) screenWidthRef.current = cssWidth;
       const needsRescale = !isPrintMedia && previousWidth > 0 && cssWidth !== previousWidth && strokesRef.current.length > 0;
       if (needsRescale) {
         const ratio = cssWidth / previousWidth;
@@ -390,16 +484,40 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     };
     resizeCanvasRef.current = resizeCanvas;
 
-    const handlePreparePrint = () => {
+    const renderPrint = () => {
+      committedInkRef.current = null;
       isPrintingRef.current = true;
-      resizeCanvas();
-      redrawAllRef.current();
+      const width = screenWidthRef.current || containerRef.current?.clientWidth || 1;
+      const height = containerRef.current?.clientHeight || dimensionsRef.current.height || 1;
+      printSvgRef.current?.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      if (printInkRef.current) renderPrintInk(printInkRef.current, strokesRef.current, width, height, `ink-${instanceId.replace(/[^a-zA-Z0-9_-]/g, '')}`);
+      printTextRef.current?.setAttribute('width', String(width));
+      printTextRef.current?.setAttribute('height', String(height));
+    };
+
+    const handlePreparePrint = (event: Event) => {
+      renderPrint();
+      const images = strokesRef.current.filter(stroke => stroke.isImage && (!stroke.imgElement?.complete || !stroke.imgElement.naturalWidth));
+      if (images.length) {
+        const ready = Promise.allSettled(images.map(loadStrokeImage)).then(renderPrint);
+        (event as CustomEvent<{ pending: Promise<unknown>[] }>).detail?.pending.push(ready);
+      }
     };
 
     const handleAfterPrint = () => {
-      isPrintingRef.current = false;
-      resizeCanvas();
-      redrawAllRef.current();
+      // Some engines deliver afterprint before restoring the screen layout.
+      // Keep print mode until the print media query actually becomes false.
+      if (window.matchMedia('print').matches) return;
+      cancelAnimationFrame(restoreFrame);
+      restoreFrame = requestAnimationFrame(() => {
+        // Une nouvelle préparation peut avoir commencé entre la fermeture
+        // du dialogue précédent et cette frame de nettoyage.
+        if (isWorksheetPrinting() || window.matchMedia('print').matches) return;
+        isPrintingRef.current = false;
+        printInkRef.current?.replaceChildren();
+        resizeCanvas();
+        redrawAllRef.current();
+      });
     };
 
     // Throttle visuel via rAF : au plus un redimensionnement par frame.
@@ -427,16 +545,21 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       resizeObserver.observe(containerRef.current);
     }
 
-    window.addEventListener('worksheet-prepare-print', handlePreparePrint);
-    window.addEventListener('beforeprint', handlePreparePrint);
-    window.addEventListener('afterprint', handleAfterPrint);
+    window.addEventListener('worksheet-render-print', handlePreparePrint);
+    window.addEventListener('worksheet-finish-print', handleAfterPrint);
+    const printMedia = window.matchMedia('print');
+    const handlePrintMediaChange = () => {
+      if (!printMedia.matches && !isWorksheetPrinting()) handleAfterPrint();
+    };
+    printMedia.addEventListener('change', handlePrintMediaChange);
 
     return () => {
       resizeObserver.disconnect();
-      window.removeEventListener('worksheet-prepare-print', handlePreparePrint);
-      window.removeEventListener('beforeprint', handlePreparePrint);
-      window.removeEventListener('afterprint', handleAfterPrint);
+      window.removeEventListener('worksheet-render-print', handlePreparePrint);
+      window.removeEventListener('worksheet-finish-print', handleAfterPrint);
+      printMedia.removeEventListener('change', handlePrintMediaChange);
       cancelAnimationFrame(rafId);
+      cancelAnimationFrame(restoreFrame);
       clearTimeout(commitTimer);
     };
   }, [commitStrokes, colorName, styleName]);
@@ -627,11 +750,14 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   }, [isEditMode, openTextEditorByIndex]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointerIdRef.current !== null) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    committedInkRef.current = null;
     // Rejet de paume physique & géométrique (tablette Android / S-Pen) :
     // Ignore les contacts tactiles larges (paume posée) ou survenus dans la foulée d'une écriture au stylet
     if (e.pointerType === 'touch') {
       const touchRadius = Math.max(e.width || 0, e.height || 0);
-      if (touchRadius > 28 || palmRejection || Date.now() - lastPenInputAtRef.current < 2500) {
+      if (penOnly || (palmRejection && (touchRadius > 28 || Date.now() - lastPenInputAtRef.current < 2500))) {
         return;
       }
     }
@@ -650,6 +776,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
     }
     const activeTool: ToolType = stylusEraser ? 'eraser' : settings.tool;
+    gestureToolRef.current = activeTool;
     clearShapeRecognition();
     smootherRef.current = null;
 
@@ -661,6 +788,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       return;
     }
 
+    activePointerIdRef.current = e.pointerId;
+    gestureBaseInkRef.current = copyInk(strokesRef.current);
     capturePointer(e);
     
     if (activeTool === 'pointer') {
@@ -803,8 +932,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   }, [openTextEditorAt]);
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerId !== activePointerIdRef.current) return;
     if (!isDrawing.current) return;
-    if (e.pointerType === 'touch' && (palmRejection || Date.now() - lastPenInputAtRef.current < 2200)) return;
     if (e.pointerType === 'pen') lastPenInputAtRef.current = Date.now();
     if (e.cancelable) e.preventDefault();
     const settings = getToolState();
@@ -826,8 +955,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     events.forEach((event: PointerEvent) => {
         const rawCoords = getCoordinates(event, canvasRect, settings);
         if (rawCoords) {
-            const stylusEraser = isStylusEraser(event);
-            const activeTool: ToolType = stylusEraser ? 'eraser' : settings.tool;
+            const activeTool = gestureToolRef.current;
             let coords = rawCoords;
             if (smootherRef.current && (activeTool === 'pen' || activeTool === 'highlighter')) {
               coords = smootherRef.current.next(rawCoords, event.timeStamp);
@@ -970,16 +1098,54 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerId !== activePointerIdRef.current) return;
+    const settings = getToolState();
+    const applyIncomingInk = () => {
+      if (!incomingInkRef.current) return;
+      strokesRef.current = rebaseInkGesture(gestureBaseInkRef.current, strokesRef.current, incomingInkRef.current);
+      incomingInkRef.current = null;
+      clearHistory();
+      clearSelection();
+      void Promise.allSettled(strokesRef.current.filter(item => item.isImage).map(loadStrokeImage))
+        .then(() => redrawAllRef.current());
+    };
+    // Include the release position without feeding the pen's zero release
+    // pressure into the filter. Cancel/capture-loss coordinates are unreliable.
+    const stroke = currentStrokeRef.current;
+    if (e.type === 'pointerup' && stroke && !recognizedStrokeRef.current) {
+      const endpoint = getCoordinates(e);
+      const last = stroke.points[stroke.points.length - 1];
+      if (endpoint && last && Math.hypot(endpoint.x - last.x, endpoint.y - last.y) > 0.1) {
+        const finalPoint = { ...endpoint, pressure: last.pressure };
+        if (stroke.shapeType && stroke.shapeType !== 'freeform') {
+          stroke.points = [stroke.points[0], alignPointToExistingShapes(constrainShapePoint(
+            stroke.points[0], finalPoint, stroke.shapeType, {
+              snapGrid: settings.snapGrid,
+              angleSnap: settings.angleSnap,
+              angleStep: settings.angleStep,
+              regularShapes: settings.regularShapes !== e.shiftKey,
+            },
+          ))];
+        } else if (gestureToolRef.current === 'highlighter' && settings.highlighterStraightLines) {
+          const start = stroke.points[0];
+          stroke.points = [start, Math.abs(endpoint.x - start.x) >= Math.abs(endpoint.y - start.y)
+            ? { ...finalPoint, y: start.y } : { ...finalPoint, x: start.x }];
+        } else {
+          stroke.points.push(finalPoint);
+        }
+      }
+    }
+    activePointerIdRef.current = null;
+    committedInkRef.current = null;
     cancelScheduledRedraw();
     releasePointer(e);
-    const settings = getToolState();
     if (recognitionTimerRef.current) clearTimeout(recognitionTimerRef.current);
     recognitionTimerRef.current = null;
     smootherRef.current = null;
     if (!isDrawing.current && !currentStrokeRef.current) return;
     isDrawing.current = false;
 
-    if (settings.tool === 'pointer') {
+    if (gestureToolRef.current === 'pointer') {
        if (dragModeRef.current === 'select' && selectionBoxRef.current) {
            const box = selectionBoxRef.current;
            const minX = Math.min(box.x, box.x + box.w);
@@ -1017,11 +1183,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
        dragStartRef.current = null;
        activeResizeHandleRef.current = null;
        selectionBoxRef.current = null;
+       applyIncomingInk();
+       gestureBaseInkRef.current = [];
        redrawAll(); commitStrokes();
        return;
     }
 
-    if (settings.tool === 'lasso') {
+    if (gestureToolRef.current === 'lasso') {
       if (isDraggingSelectionRef.current) {
         isDraggingSelectionRef.current = false;
         dragStartRef.current = null;
@@ -1081,8 +1249,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         lassoPathRef.current = [];
       }
     } else if (currentStrokeRef.current) {
-      const stylusEraser = isStylusEraser(e);
-      const activeTool: ToolType = stylusEraser ? 'eraser' : settings.tool;
+      const activeTool = gestureToolRef.current;
       if (recognizedStrokeRef.current && (activeTool === 'pen' || activeTool === 'highlighter')) {
         currentStrokeRef.current = recognizedStrokeRef.current;
       }
@@ -1113,6 +1280,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     }
 
     recordEraseGesture();
+
+    applyIncomingInk();
+    gestureBaseInkRef.current = [];
 
     redrawAll(); commitStrokes();
   };
@@ -1185,7 +1355,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     setBackgroundStyle: (style) => onStyleChange?.(style),
     setBackgroundColor: (value) => onColorChange?.(value),
     snapshot: {
-      canUndo: strokeCount > 0,
+      canUndo,
       canRedo: redoStack.length > 0,
       hasSelection: selectedStrokeIndexes.size > 0,
       styleName,
@@ -1263,7 +1433,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         ref={containerRef}
         className="flex-1 w-full relative overflow-hidden pointer-events-auto"
         onPointerDownCapture={() => setActiveCanvas(instanceId)}
-        style={{ touchAction: 'none' }}
+        style={{ touchAction: penOnly ? 'pan-y pinch-zoom' : 'none' }}
       >
         <canvas
           ref={canvasRef}
@@ -1271,17 +1441,19 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
+          onLostPointerCapture={handlePointerUp}
           onDoubleClick={handleTextDoubleClick}
           onContextMenu={(e) => e.preventDefault()}
-          className={`absolute top-0 left-0 w-full h-full ${
+          className={`canvas-screen-bitmap absolute top-0 left-0 w-full h-full ${
             tool === 'pointer' ? 'cursor-default' : 
             tool === 'eraser' ? 'cursor-cell' : 
             tool === 'lasso' ? 'cursor-crosshair' : 
             tool === 'text' ? 'cursor-text' : 
             'cursor-crosshair'
           }`}
-          style={{ touchAction: 'none' }}
+          style={{ touchAction: penOnly ? 'pan-y pinch-zoom' : 'none' }}
         />
+        <div className="canvas-screen-text absolute inset-0 pointer-events-none">
         <CanvasTextLayer
           strokes={strokesRef.current}
           revision={renderRevision}
@@ -1289,8 +1461,29 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           editingIndex={textInput?.editingIndex}
           isEditMode={isEditMode}
           fallbackColor={color}
+          darkPaper={['black', 'green', 'blue'].includes(colorName || (styleName === 'slate' ? 'black' : ''))}
           onEditText={openTextEditorByIndex}
         />
+        </div>
+        <svg
+          ref={printSvgRef}
+          className="canvas-print-layer hidden absolute inset-0 w-full h-full pointer-events-none"
+          preserveAspectRatio="xMinYMin meet"
+          aria-hidden="true"
+        >
+          <g ref={printInkRef} data-print-ink="vector" />
+          <foreignObject ref={printTextRef}>
+            <CanvasTextLayer
+              strokes={strokesRef.current}
+              revision={renderRevision}
+              selectedIndexes={new Set()}
+              isEditMode={false}
+              fallbackColor={printInkColor(color)}
+              darkPaper={false}
+              onEditText={() => {}}
+            />
+          </foreignObject>
+        </svg>
         {selectedStrokeIndexes.size > 0 && (() => {
           let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
           selectedStrokeIndexes.forEach(idx => {
@@ -1309,7 +1502,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
           return (
             <div 
-              className="absolute z-30 bg-white/95 backdrop-blur-md border border-slate-300 rounded-full shadow-lg px-3 py-1 flex items-center gap-2 transition-all animate-in fade-in duration-100"
+              className="absolute z-30 bg-white/95 backdrop-blur-md border border-slate-300 rounded-full shadow-lg px-3 py-1 flex items-center gap-2 transition-all animate-in fade-in duration-100 no-print"
               style={{ left: `${leftPos}px`, top: `${topPos}px` }}
             >
               <button 

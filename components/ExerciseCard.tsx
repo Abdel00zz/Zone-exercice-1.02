@@ -5,7 +5,8 @@ import AnswerSpace from './AnswerSpace';
 import ImageModal from './ImageModal';
 import { Image as ImageIcon } from 'lucide-react';
 import QuestionBeamerScope from './QuestionBeamerScope';
-import { computeQuestionLayout, joinAroundFigure } from '../utils/questionLayout';
+import { BeamerPresentationProvider } from './BeamerPresentation';
+import { buildQuestionPagePlan, computeQuestionLayout, hasExerciseAnswerSpace, hasVisibleText, joinAroundFigure, splitAtFigureAnchor, type QuestionPage } from '../utils/questionLayout';
 import { formatPartieTitle } from '../utils/worksheetUtils';
 import {
   getExerciseSearchAnchor,
@@ -19,11 +20,13 @@ interface ExerciseCardProps {
   totalExercisesCount?: number;
   hideExerciseBadge?: boolean;
   showCanvas?: boolean;
+  showSolutions?: boolean;
   answerSpaceMinHeight?: number;
   answerSpaceStyle?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
   answerSpaceColor?: 'black' | 'green' | 'blue' | 'white' | 'cream';
   presentationMode?: boolean;
   oneQuestionPerPage?: boolean;
+  activePresentationPageId?: string;
   isEditMode?: boolean;
   onQuestionUpdate: (exerciseId: string, questionPath: (string | number)[], newProps: Partial<QuestionPart>) => void;
   onExerciseUpdate: (exerciseId: string, newProps: Partial<Exercise>) => void;
@@ -132,10 +135,26 @@ const QuestionFigure: React.FC<{ image: ImageConfig; isSlide?: boolean; inline?:
   </div>
 );
 
+/** Les rappels sont des lectures de la source, sans zone de réponse dupliquée. */
+const QuestionContextContent: React.FC<{ question: QuestionPart }> = ({ question }) => {
+  const figure = question.image?.src ? splitAtFigureAnchor(question.text) : null;
+  return <BeamerPresentationProvider step={1} revealAll>
+    {hasVisibleText(figure ? figure.before : question.text) && (
+      <EditableMathText text={figure ? figure.before : question.text} isEditMode={false} onChange={() => {}} />
+    )}
+    {question.image?.src && <QuestionFigure image={question.image} />}
+    {figure && hasVisibleText(figure.after) && <EditableMathText text={figure.after} isEditMode={false} onChange={() => {}} />}
+  </BeamerPresentationProvider>;
+};
+
+const ExerciseBeamerScope: React.FC<{ enabled: boolean; content: unknown; children: React.ReactNode }> = ({ enabled, content, children }) =>
+  enabled ? <QuestionBeamerScope content={content}>{children}</QuestionBeamerScope> : <>{children}</>;
+
 interface QuestionListProps {
   questions: QuestionPart[];
   level: number;
   showCanvas?: boolean;
+  showSolutions?: boolean;
   answerSpaceMinHeight?: number;
   answerSpaceStyle?: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank';
   answerSpaceColor?: 'black' | 'green' | 'blue' | 'white' | 'cream';
@@ -154,9 +173,11 @@ interface QuestionListProps {
   leadLabel?: string;
   leadLevel?: number;
   searchNavigation?: WorksheetSearchNavigation | null;
+  /** Une page conserve le chemin et le numéro du nœud dans la fiche source. */
+  page?: QuestionPage;
 }
 
-const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onQuestionMergeUp, exerciseId, path, leadLabel, leadLevel = 0, searchNavigation }) => {
+const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showCanvas = true, showSolutions = false, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onQuestionMergeUp, exerciseId, path, leadLabel, leadLevel = 0, searchNavigation, page }) => {
   const [activeImageModal, setActiveImageModal] = useState<number | null>(null);
 
   if (!questions || questions.length === 0) {
@@ -176,18 +197,18 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
       }}
     >
       {questions.map((q, index) => {
-        const currentPath = [...path, index];
+        const currentPath = page?.path || [...path, index];
         const searchAnchor = getQuestionSearchAnchor(exerciseId, currentPath);
         const isSearchTarget = searchNavigation?.anchorId === searchAnchor;
-        const layout = computeQuestionLayout(q, { level, index, presentationMode, showCanvas });
+        const layout = computeQuestionLayout(q, { level, index: page?.index ?? index, presentationMode, showCanvas });
         const { subquestions, hasSubquestions, collapsed, isSlide: isPresentationSlide, figure } = layout;
-        const shouldBreakBefore = (oneQuestionPerPage && level === 0 && index > 0) || (isPresentationSlide && index > 0);
+        const shouldBreakBefore = !page && ((oneQuestionPerPage && level === 0 && index > 0) || (isPresentationSlide && index > 0));
 
         const subquestionList = (
           <QuestionList
             questions={subquestions}
             level={level + 1}
-            showCanvas={showCanvas}
+            showCanvas={showCanvas} showSolutions={showSolutions}
             answerSpaceMinHeight={answerSpaceMinHeight}
             answerSpaceStyle={answerSpaceStyle}
             answerSpaceColor={answerSpaceColor}
@@ -212,7 +233,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
         */
         if (collapsed) {
           return (
-            <QuestionBeamerScope key={index} content={{ text: q.text, answer: q.answer, solution: q.solution, guidance: q.guidance }}>
+            <QuestionBeamerScope key={currentPath.join('.')} content={{ text: q.text, answer: q.answer, solution: q.solution, guidance: q.guidance }}>
               <div id={searchAnchor} data-search-active={isSearchTarget || undefined} className={`search-navigation-target question-block question-block-collapsed relative ${shouldBreakBefore ? 'print:break-before-page print:mt-10' : ''}`}>
                 {subquestionList}
               </div>
@@ -221,7 +242,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
         }
 
         return (
-          <QuestionBeamerScope key={index} content={{ text: q.text, answer: q.answer, solution: q.solution, guidance: q.guidance }}>
+          <QuestionBeamerScope key={currentPath.join('.')} content={{ text: q.text, answer: q.answer, solution: q.solution, guidance: q.guidance }}>
           <div
             id={searchAnchor}
             data-search-active={isSearchTarget || undefined}
@@ -232,10 +253,10 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
             */}
             <div
               className={`
-                ${isPresentationSlide ? '' : `question-row question-row-level-${level}`}
+                ${isPresentationSlide ? 'question-slide-heading' : `question-row question-row-level-${level}`}
                 py-1
                 print:p-0
-                ${isPresentationSlide ? 'print:flex print:flex-col print:justify-center print:items-center print:min-h-[70vh] print:text-center' : ''}
+                ${isPresentationSlide ? 'print:flex print:flex-col print:justify-center print:items-center print:!min-h-0 print:!p-0 print:text-center' : ''}
               `}
               style={isPresentationSlide ? {
                 display: 'flex',
@@ -330,20 +351,16 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
               <QuestionFigure image={q.image} isSlide={isPresentationSlide} />
             )}
 
-            {/* Page break after presentation slide */}
-            {isPresentationSlide && (
-              <div className="print:break-after-page print:mb-10 w-full border-b border-dashed border-slate-300 my-8 no-print text-center text-slate-400 text-sm py-2">
-                --- Saut de page (Mode Diaporama) ---
-              </div>
-            )}
-
-            {hasSubquestions ? (
+            {hasSubquestions && !page && (
               <div className={`subquestions-container ${isPresentationSlide ? 'print:!mt-10' : ''} mt-3`}>
                 {subquestionList}
               </div>
-            ) : showCanvas ? (
+            )}
+            {layout.showsAnswerSpace ? (
                <AnswerSpace
-                 height={q.answerHeight || answerSpaceMinHeight}
+                 showSolutions={showSolutions}
+                 height={q.answerHeight}
+                 minHeight={answerSpaceMinHeight}
                  styleName={q.answerStyle || answerSpaceStyle}
                  colorName={q.answerColor || answerSpaceColor}
                  onHeightChange={(newHeight) => onQuestionUpdate(exerciseId, currentPath, { answerHeight: newHeight })}
@@ -378,15 +395,26 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, level = 0, showC
 };
 
 
-const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, totalExercisesCount, hideExerciseBadge, showCanvas = true, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, isEditMode, onQuestionUpdate, onExerciseUpdate, onQuestionMergeUp, searchNavigation }) => {
+const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, totalExercisesCount, hideExerciseBadge, showCanvas = true, showSolutions = false, answerSpaceMinHeight, answerSpaceStyle, answerSpaceColor, presentationMode, oneQuestionPerPage, activePresentationPageId, isEditMode, onQuestionUpdate, onExerciseUpdate, onQuestionMergeUp, searchNavigation }) => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const paginated = Boolean(presentationMode || oneQuestionPerPage);
+  const pages = paginated ? buildQuestionPagePlan(exercise.questions || [], exercise.id) : [];
+  const introductionPageId = `exercise-page-${encodeURIComponent(exercise.id)}`;
+  const exerciseActive = !presentationMode || !activePresentationPageId
+    || pages.some(page => page.id === activePresentationPageId)
+    || (pages.length === 0 && introductionPageId === activePresentationPageId);
 
   // Mécanisme intelligent : si la fiche ne contient qu'un seul exercice ou si le titre indique "Partie X", masquer le badge "Exercice 1"
   const isPartieTitle = Boolean(exercise.title && exercise.title.toLowerCase().includes('partie'));
   const shouldHideBadge = hideExerciseBadge || totalExercisesCount === 1 || exercise.hideBadge === true || isPartieTitle;
+  const statementText = <EditableMathText
+    text={exercise.statement} isEditMode={!!isEditMode}
+    onChange={newStatement => onExerciseUpdate(exercise.id, { statement: newStatement })}
+  />;
 
   return (
-    <div id={getExerciseSearchAnchor(exercise.id)} data-search-active={searchNavigation?.anchorId === getExerciseSearchAnchor(exercise.id) || undefined} className={`search-navigation-target exercise-card bg-transparent text-[var(--paper-text-main)] py-4 mb-8 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border-none relative group/exercise ${(oneQuestionPerPage && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
+    <div id={getExerciseSearchAnchor(exercise.id)} data-question-page={paginated && pages.length === 0 ? introductionPageId : undefined} data-presentation-exercise-active={presentationMode ? exerciseActive : undefined} data-search-active={searchNavigation?.anchorId === getExerciseSearchAnchor(exercise.id) || undefined} className={`search-navigation-target exercise-card bg-transparent text-[var(--paper-text-main)] py-4 mb-8 print:shadow-none print:rounded-none print:bg-transparent print:text-black print:p-0 print:mb-6 border-none relative group/exercise ${(paginated && exerciseNumber > 1) ? 'print:break-before-page' : ''}`}>
+      <ExerciseBeamerScope enabled={pages.length === 0 && !exercise.questions?.length} content={{ text: exercise.statement, answer: exercise.answer, solution: exercise.solution, guidance: exercise.guidance }}>
       {/* En-tête : Badge "Exercice X" affiché uniquement lorsqu'il y a plusieurs exercices et pas de "Partie X" */}
       {!shouldHideBadge && (
         <h2 className="exercise-title flex items-center mb-6 print:mb-4">
@@ -426,11 +454,9 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
 
       {exercise.statement && (
         <div className="exercise-statement text-[1.15em] sm:text-[1.2em] text-[var(--paper-text-main)] mb-6 leading-[1.7] font-serif print:text-black print:text-[1.1em] text-left">
-          <EditableMathText
-            text={exercise.statement}
-            isEditMode={!!isEditMode}
-            onChange={(newStatement) => onExerciseUpdate(exercise.id, { statement: newStatement })}
-          />
+          {exercise.questions?.length
+            ? <BeamerPresentationProvider step={1} revealAll>{statementText}</BeamerPresentationProvider>
+            : statementText}
         </div>
       )}
 
@@ -461,9 +487,11 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
         </div>
       )}
 
-      {showCanvas && (exercise.statementAnswerHeight !== undefined || (exercise.questions && exercise.questions.length === 0)) && (
+      {showCanvas && hasExerciseAnswerSpace(exercise) && (
          <AnswerSpace
-            height={exercise.statementAnswerHeight || answerSpaceMinHeight}
+                 showSolutions={showSolutions}
+            height={exercise.statementAnswerHeight}
+            minHeight={answerSpaceMinHeight}
             styleName={exercise.statementAnswerStyle || answerSpaceStyle}
             colorName={exercise.statementAnswerColor || answerSpaceColor}
             onHeightChange={(newHeight) => onExerciseUpdate(exercise.id, { statementAnswerHeight: newHeight })}
@@ -482,10 +510,40 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
 
       {exercise.questions && exercise.questions.length > 0 && (
         <div className="mt-8 exercise-questions-wrapper print:mt-6">
-          <QuestionList
+          {paginated ? pages.map((page, pageIndex) => (
+            <section key={page.id} data-question-page={page.id}
+              data-presentation-active={presentationMode ? (!activePresentationPageId || page.id === activePresentationPageId) : undefined}
+              className={`question-page ${presentationMode ? 'presentation-page' : ''} ${pageIndex > 0 ? 'question-page-break' : ''}`}
+            >
+              {pageIndex > 0 && (exercise.statement || exercise.image?.src) && (
+                <div className="question-page-exercise-context hidden print:block mb-4">
+                  {exercise.title && <div className="font-bold mb-2">{formatPartieTitle(exercise.title)}</div>}
+                  <QuestionContextContent question={{ text: exercise.statement || '', image: exercise.image }} />
+                </div>
+              )}
+              {page.ancestors.length > 0 && (
+                <aside className="question-page-context mb-4 text-[0.9em] text-[var(--paper-text-muted)]" aria-label="Contexte de la question">
+                  {page.ancestors.map(ancestor => (
+                    <div key={ancestor.path.join('.')} className="mb-2">
+                      <span className="font-bold mr-2">{ancestor.label}</span>
+                      <QuestionContextContent question={ancestor.question} />
+                    </div>
+                  ))}
+                </aside>
+              )}
+              <QuestionList
+                questions={[page.question]} level={page.level} page={page}
+                showCanvas={showCanvas} showSolutions={showSolutions} answerSpaceMinHeight={answerSpaceMinHeight}
+                answerSpaceStyle={answerSpaceStyle} answerSpaceColor={answerSpaceColor}
+                presentationMode={presentationMode} onQuestionUpdate={onQuestionUpdate}
+                onQuestionMergeUp={onQuestionMergeUp} exerciseId={exercise.id}
+                path={page.path.slice(0, -1)} isEditMode={isEditMode} searchNavigation={searchNavigation}
+              />
+            </section>
+          )) : <QuestionList
             questions={exercise.questions}
             level={0}
-            showCanvas={showCanvas}
+            showCanvas={showCanvas} showSolutions={showSolutions}
             answerSpaceMinHeight={answerSpaceMinHeight}
             answerSpaceStyle={answerSpaceStyle}
             answerSpaceColor={answerSpaceColor}
@@ -497,7 +555,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
             path={['questions']}
             isEditMode={isEditMode}
             searchNavigation={searchNavigation}
-          />
+          />}
         </div>
       )}
 
@@ -510,6 +568,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, exerciseNumber, t
           setIsImageModalOpen(false);
         }}
       />
+      </ExerciseBeamerScope>
     </div>
   );
 };

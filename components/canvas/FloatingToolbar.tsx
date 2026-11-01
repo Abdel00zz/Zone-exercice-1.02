@@ -19,11 +19,11 @@ import {
   Settings2, Square, Trash2, Triangle, Type, X, ArrowRight, Pencil, Printer, MoreVertical,
 } from 'lucide-react';
 import type {
-  HighlighterType, PenType, PressureCurve, ShapeType, ToolType,
+  DrawingCanvasProps, HighlighterType, PenType, PressureCurve, ShapeType, ToolType,
 } from './types';
 import { closeToolMenu, setToolState, useToolState, type ToolMenu } from './toolStore';
 import {
-  useActiveCanvasSnapshot, withActiveCanvas, withEveryCanvas,
+  useActiveCanvasSnapshot, withActiveCanvas,
 } from './canvasRegistry';
 
 const COLORS = ['#0f172a', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
@@ -236,6 +236,7 @@ interface CanvasFloatingToolbarProps {
   onToggleEditMode: () => void;
   onOpenSettings: () => void;
   onPrint: () => void;
+  onApplyBackgroundToAll: (background: Pick<DrawingCanvasProps, 'styleName' | 'colorName'>) => void;
 }
 
 export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
@@ -243,6 +244,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
   onToggleEditMode,
   onOpenSettings,
   onPrint,
+  onApplyBackgroundToAll,
 }) => {
   const tools = useToolState();
   const canvas = useActiveCanvasSnapshot();
@@ -298,12 +300,12 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
 
   const applyBackgroundStyle = (style: 'seyes' | 'slate' | 'grid' | 'dotted' | 'blank') => {
     const apply = (handle: { setBackgroundStyle: (s: typeof style) => void }) => handle.setBackgroundStyle(style);
-    if (tools.applyBackgroundToAll) withEveryCanvas(apply); else withActiveCanvas(apply);
+    if (tools.applyBackgroundToAll) onApplyBackgroundToAll({ styleName: style }); else withActiveCanvas(apply);
   };
 
   const applyBackgroundColor = (color: 'black' | 'green' | 'blue' | 'white' | 'cream' | '') => {
     const apply = (handle: { setBackgroundColor: (c: typeof color) => void }) => handle.setBackgroundColor(color);
-    if (tools.applyBackgroundToAll) withEveryCanvas(apply); else withActiveCanvas(apply);
+    if (tools.applyBackgroundToAll) onApplyBackgroundToAll({ colorName: color }); else withActiveCanvas(apply);
   };
 
   if (railCollapsed) {
@@ -784,6 +786,7 @@ export const CanvasFloatingToolbar: React.FC<CanvasFloatingToolbarProps> = ({
             <Plus size={18} className="text-slate-400" />
           </button>
 
+          <Toggle label="Écrire uniquement au stylet (doigt pour défiler)" checked={tools.penOnly} onChange={() => setToolState({ penOnly: !tools.penOnly })} />
           <Toggle label="Rejet de paume (anti-affleurement)" checked={tools.palmRejection} onChange={() => setToolState({ palmRejection: !tools.palmRejection })} />
 
           <Section

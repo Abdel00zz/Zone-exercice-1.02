@@ -1,4 +1,4 @@
-import type { Stroke } from './components/canvas/types';
+import type { Stroke } from './domain/ink';
 
 export interface ImageConfig {
   id: string;
@@ -18,6 +18,8 @@ export interface PedagogicalGuidance {
 }
 
 export interface QuestionPart {
+  /** Identité auteur stable, conservée lors des imports et synchronisations. */
+  id?: string | number;
   text: string;
   answer?: string;
   solution?: string;

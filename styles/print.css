@@ -1,6 +1,6 @@
 /**
  * styles/print.css
- * Moteur de mise en page A4 Haute Précision (KaTeX + MathJax 4 + Canvas 336 DPI)
+ * Mise en page A4 (KaTeX, MathJax 4, papier et annotations SVG vectoriels).
  */
 
 /* Miniatures vectorielles : KaTeX & MathJax conservent leur rendu vectoriel natif
@@ -36,7 +36,45 @@
   text-rendering: geometricPrecision;
 }
 
+@media screen {
+  [data-presentation-mode="true"] [data-presentation-exercise-active="false"],
+  [data-presentation-mode="true"] [data-presentation-active="false"] {
+    display: none !important;
+  }
+
+  [data-paginated="true"] .question-page {
+    border-top: 1px solid var(--paper-title-ornament, #cbd5e1);
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  [data-presentation-mode="true"] .presentation-page {
+    min-height: 55vh;
+  }
+}
+
 @media print {
+
+  .question-page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  .question-slide-heading {
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+
+  .question-page,
+  .question-page > .question-beamer-scope {
+    display: block !important;
+    break-inside: auto !important;
+  }
+
+  [data-paginated="true"] .question-list,
+  [data-paginated="true"] .exercise-questions-wrapper {
+    display: block !important;
+  }
 
   /* ── Résolution & fidélité typographique TeX/LaTeX ── */
   :root {
@@ -47,6 +85,8 @@
   }
 
   * {
+    transition: none !important;
+    animation: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     box-shadow: none !important;
@@ -444,6 +484,13 @@
 
   .answer-space .canvas-compiled-text {
     background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+
+  .answer-space .canvas-screen-bitmap,
+  .answer-space .canvas-screen-text {
+    display: none !important;
   }
 
   .answer-space .canvas-compiled-text[data-light-chalk="true"] {

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useBeamerPresentation } from './BeamerPresentation';
 import MathText from './MathText';
 import type { PedagogicalGuidance } from '../types';
 import { Edit2 } from 'lucide-react';
@@ -110,6 +111,7 @@ export const SolutionViewer: React.FC<SolutionViewerProps> = ({
   onUpdate,
   progressStep = 1,
 }) => {
+  const { revealAll } = useBeamerPresentation();
   const content = solution || answer || '';
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(content);
@@ -145,7 +147,7 @@ export const SolutionViewer: React.FC<SolutionViewerProps> = ({
     : 'text-blue-900';
 
   if (guidanceStages.length > 0 && !isEditing) {
-    const visibleStages = guidanceStages.slice(0, Math.max(1, progressStep));
+    const visibleStages = revealAll ? guidanceStages : guidanceStages.slice(0, Math.max(1, progressStep));
     return (
       <div className="relative h-full w-full overflow-y-auto pr-1 pointer-events-auto canvas-guidance-scroll">
         <div className={`canvas-help-text flex flex-wrap items-baseline gap-x-3 gap-y-1 pb-3 pt-1 text-[1em] sm:text-[1.1em] ${textColorClass}`}>

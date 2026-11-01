@@ -3,6 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { offlineShell } from './build/offlineShell';
+import { mathjaxAssets } from './build/mathjaxAssets';
 
 // FIX: Polyfill __dirname for ESM compatibility in Vite config
 const __filename = fileURLToPath(import.meta.url);
@@ -16,7 +18,7 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
   },
-  plugins: [react()],
+  plugins: [react(), mathjaxAssets(), offlineShell()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),

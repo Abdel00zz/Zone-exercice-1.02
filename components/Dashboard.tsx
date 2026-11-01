@@ -9,7 +9,6 @@ import {
     getWorksheetChapterName, 
     buildWorksheetTree, 
     generateDynamicSubtitle,
-    normalizeWorksheetJson,
     type TreeFilter 
 } from '../utils/worksheetUtils';
 import {
@@ -101,11 +100,12 @@ const Dashboard: React.FC<DashboardProps> = ({
         return () => window.removeEventListener('keydown', handleSearchShortcut);
     }, []);
 
-    const processImport = (jsonData: any, fallbackName: string = 'Nouvelle Fiche') => {
+    const processImport = async (jsonData: unknown, fallbackName: string = 'Nouvelle Fiche') => {
+        const { normalizeWorksheetJson } = await import('../utils/worksheetImport');
         const normalized = normalizeWorksheetJson(jsonData);
         
         const newWorksheet: Worksheet = {
-            id: `ws_${Date.now()}`,
+            id: `ws_${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(36).slice(2)}`}`,
             name: normalized.chapter || fallbackName.replace('.json', '') || 'Nouvelle Fiche',
             createdAt: new Date().toISOString(),
             content: normalized,
@@ -134,10 +134,10 @@ const Dashboard: React.FC<DashboardProps> = ({
         setIsManagerModalOpen(true);
     };
 
-    const handleJsonSave = (content: WorksheetContent) => {
+    const handleJsonSave = async (content: WorksheetContent) => {
         try {
             if (jsonMode === 'create') {
-                processImport(content);
+                await processImport(content);
             } else if (jsonMode === 'edit' && editingWorksheet) {
                 onUpdateWorksheet(editingWorksheet.id, content);
                 if (content.chapter && content.chapter !== editingWorksheet.name) {

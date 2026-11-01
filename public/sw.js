@@ -1,16 +1,13 @@
 const CACHE_PREFIX = 'mathplus-fiches';
-const CACHE_NAME = `${CACHE_PREFIX}-v3`;
+// Vite substitutes these values for every production build.
+const CACHE_NAME = `${CACHE_PREFIX}-__BUILD_ID__`;
+const BUILD_ASSETS = /* __PRECACHE_ASSETS__ */ [];
 const APP_SHELL = [
   '/',
-  '/manifest.webmanifest',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/icon-maskable-512.png',
-  '/icons/apple-touch-icon.png',
+  ...BUILD_ASSETS,
 ];
 const TRUSTED_STATIC_ORIGINS = new Set([
   self.location.origin,
-  'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net',
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
@@ -20,7 +17,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -30,9 +26,8 @@ self.addEventListener('activate', (event) => {
       keys
         .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
         .map((key) => caches.delete(key))
-    ))
+    )).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('message', (event) => {
@@ -49,34 +44,44 @@ self.addEventListener('fetch', (event) => {
   if (!TRUSTED_STATIC_ORIGINS.has(url.origin)) return;
 
   if (request.mode === 'navigate') {
-    // Document HTML : réseau d'abord (respecte le gate mot de passe / dernier déploiement), cache en secours hors-ligne.
+    // A 401 remains authoritative online. Offline always serves the HTML
+    // installed together with this cache's complete set of local chunks.
+    // Replacing only HTML could leave an offline page pointing at absent chunks.
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put('/', clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
+        .catch(async () => (await caches.open(CACHE_NAME)).match('/')
+          .then((cached) => cached || Response.error()))
     );
     return;
   }
 
-  // Assets statiques (JS/CSS/polices/images) : cache d'abord pour la vitesse, mise à jour silencieuse en arrière-plan.
+  // Do not turn arbitrary same-origin GETs into persisted responses.
+  const isLocalAsset = url.origin === self.location.origin && (
+    BUILD_ASSETS.includes(url.pathname)
+    || ['script', 'style', 'font', 'image', 'manifest'].includes(request.destination)
+  );
+  if (url.origin === self.location.origin && !isLocalAsset) return;
+
+  // Fingerprinted build assets are immutable and need no background fetch.
+  // Optional remote fonts/MathJax are cached only after being requested online.
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const network = fetch(request)
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // Preview/CDN servers may add Vary: Origin to JS/CSS. The immutable,
+      // same-origin build files contain identical bytes for module CORS and
+      // install-time requests, so those files must not miss the precache.
+      const cached = await cache.match(request, {
+        ignoreVary: isLocalAsset && BUILD_ASSETS.includes(url.pathname),
+      });
+      if (cached) return cached;
+      return fetch(request)
         .then((response) => {
           if (response && (response.ok || response.type === 'opaque')) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            event.waitUntil(cache.put(request, clone));
           }
           return response;
         })
-        .catch(() => cached);
-      return cached || network;
+        .catch(() => Response.error());
     })
   );
 });

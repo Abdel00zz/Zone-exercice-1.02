@@ -32,13 +32,20 @@ const QuestionBeamerScope: React.FC<QuestionBeamerScopeProps> = ({ content, chil
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
-    if (target.closest('input, textarea, select, button, [contenteditable="true"]')) return;
+    // À une limite locale, l'événement peut rejoindre la navigation globale,
+    // mais une question ancêtre ne doit jamais progresser à sa place.
+    if (target.closest('.question-beamer-scope') !== event.currentTarget) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || target.closest('input, textarea, select, button, a, [contenteditable="true"], [role="slider"]')) return;
     if (event.key === 'ArrowRight' || event.key === ' ') {
+      if (currentStep >= maxStep) return;
       event.preventDefault();
-      setStep(value => Math.min(maxStep, value + 1));
+      event.stopPropagation();
+      setStep(currentStep + 1);
     } else if (event.key === 'ArrowLeft') {
+      if (currentStep <= 1) return;
       event.preventDefault();
-      setStep(value => Math.max(1, value - 1));
+      event.stopPropagation();
+      setStep(currentStep - 1);
     }
   };
 
@@ -47,7 +54,7 @@ const QuestionBeamerScope: React.FC<QuestionBeamerScopeProps> = ({ content, chil
       step: currentStep,
       maxStep,
       reset: () => setStep(1),
-      previous: () => setStep(value => Math.max(1, value - 1)),
+      previous: () => setStep(value => Math.max(1, Math.min(value, maxStep) - 1)),
       next: () => setStep(value => Math.min(maxStep, value + 1)),
     }}>
       <BeamerPresentationProvider step={currentStep}>

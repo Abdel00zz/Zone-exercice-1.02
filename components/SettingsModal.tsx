@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { PaperTheme, Worksheet, WorksheetContent } from '../types';
 import { DEFAULT_OFFICIAL_CLASSES } from '../utils/worksheetUtils';
 import { PAPER_THEME_OPTIONS } from '../utils/paperThemes';
+import { resolveAnswerSpaceMinimum } from '../domain/answerSpaceHeight';
+import { applyAnswerBackground } from '../domain/worksheetCommands';
+import { AnswerSpacePaper, resolveAnswerSpaceTheme } from './AnswerSpacePaper';
 import { GripVertical, Trash2, X, UploadCloud, ImageOff, Info, Image, LayoutTemplate, ListOrdered, Palette, Settings } from 'lucide-react';
 
 const ACCEPTED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml'];
@@ -20,6 +23,7 @@ interface SettingsModalProps {
 	onClose: () => void;
 	worksheet: Worksheet;
 	worksheetClasses?: string[];
+	defaultSchoolYear?: string;
 	onSave: (updatedContent: WorksheetContent) => void;
 }
 
@@ -28,12 +32,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 	onClose, 
 	worksheet, 
 	worksheetClasses = DEFAULT_OFFICIAL_CLASSES,
+	defaultSchoolYear = computeDefaultSchoolYear(),
 	onSave 
 }) => {
 	const classOptions = worksheetClasses.length > 0 ? worksheetClasses : DEFAULT_OFFICIAL_CLASSES;
 	const [editableContent, setEditableContent] = useState<WorksheetContent>(() => structuredClone(worksheet.content));
 	const [logoError, setLogoError] = useState<string | null>(null);
 	const [isLogoDragOver, setIsLogoDragOver] = useState(false);
+	const [applyBackgroundToAll, setApplyBackgroundToAll] = useState(false);
 	const draggedItem = useRef<number | null>(null);
 	const draggedOverItem = useRef<number | null>(null);
 	const logoInputRef = useRef<HTMLInputElement>(null);
@@ -43,11 +49,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 				return;
 			}
 			const cloned: WorksheetContent = structuredClone(worksheet.content);
-			const defaultYear = computeDefaultSchoolYear();
 			const settings = { ...(cloned.settings ?? {}) };
-			if (!settings.schoolYear) {
-				settings.schoolYear = defaultYear;
-			}
 			if (settings.presentationMode === undefined) {
 				settings.presentationMode = false;
 			}
@@ -55,6 +57,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 			setEditableContent(cloned);
 			setLogoError(null);
 			setIsLogoDragOver(false);
+			setApplyBackgroundToAll(false);
 		}, [worksheet, isOpen]);
 
 	if (!isOpen) {
@@ -72,13 +75,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 	};
 
 		const handleSchoolYearChange = (value: string) => {
-			const normalized = value.trim();
-			const resolvedValue = normalized === '' ? computeDefaultSchoolYear() : value;
 			setEditableContent(prev => ({
 				...prev,
 				settings: {
 					...prev.settings,
-					schoolYear: resolvedValue,
+					schoolYear: value || undefined,
 				},
 			}));
 	};
@@ -198,6 +199,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 		if (!cleanedSettings.answerSpaceStyle) delete cleanedSettings.answerSpaceStyle;
 		if (!cleanedSettings.answerSpaceColor) delete cleanedSettings.answerSpaceColor;
 		if (!cleanedSettings.paperTheme) delete cleanedSettings.paperTheme;
+		if (cleanedSettings.schoolYear) cleanedSettings.schoolYear = cleanedSettings.schoolYear.trim() || undefined;
 
 		const finalSettings = Object.keys(cleanedSettings).length > 0 ? cleanedSettings : undefined;
 
@@ -206,7 +208,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 			settings: finalSettings,
 		};
 
-		onSave(contentToSave);
+		onSave(applyBackgroundToAll ? applyAnswerBackground(contentToSave, {
+			styleName: cleanedSettings.answerSpaceStyle ?? 'slate',
+			colorName: cleanedSettings.answerSpaceColor ?? '',
+		}) : contentToSave);
 	};
 
 	const handlePaperThemeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -221,7 +226,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
 	const currentSettings = editableContent.settings ?? {};
 	const selectedClass = currentSettings.className ?? '';
-		const selectedSchoolYear = currentSettings.schoolYear ?? computeDefaultSchoolYear();
+	const selectedSchoolYear = currentSettings.schoolYear ?? '';
+	const minimumHeight = resolveAnswerSpaceMinimum(currentSettings.answerSpaceMinHeight);
+	const previewStyle = currentSettings.answerSpaceStyle ?? 'slate';
+	const previewTheme = resolveAnswerSpaceTheme(previewStyle, currentSettings.answerSpaceColor);
 	const logoPreview = currentSettings.logoDataUrl;
 
 	return (
@@ -285,10 +293,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 									</select>
 								</label>
 								<label className="flex flex-col gap-1.5 text-[13px] font-bold text-[#435054]">
-									Année scolaire
+									Année scolaire (vide : configuration générale)
 									<input
 										type="text"
-										placeholder="2025-2026"
+										placeholder={defaultSchoolYear}
 										value={selectedSchoolYear}
 										onChange={(e) => handleSchoolYearChange(e.target.value)}
 										className="h-11 w-full rounded-xl border border-[#cbe0df] bg-white px-3 text-sm font-semibold text-[#172126] outline-none focus:ring-2 focus:ring-[#19788c]/20"
@@ -363,6 +371,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 							</div>
 							
 							<div className="grid gap-4">
+								<label className="flex items-start gap-4 rounded-xl border border-[#e5dcb8]/80 bg-white p-4 shadow-sm cursor-pointer">
+									<input type="checkbox" checked={editableContent.settings?.showSolutions === true} onChange={event => setEditableContent(prev => ({ ...prev, settings: { ...prev.settings, showSolutions: event.target.checked } }))} className="mt-1 h-4 w-4 accent-[#b88700]" />
+									<span className="flex flex-col gap-1">
+										<span className="text-[13px] font-bold text-[#172126]">Ouvrir les corrigés à l'ouverture de la fiche</span>
+										<span className="text-[11px] font-medium text-[#697478]">Ouvre les aides disponibles dans les zones de réponse. Le bouton de chaque zone permet ensuite de les masquer ou de les afficher.</span>
+									</span>
+								</label>
 								<label className="flex items-start gap-4 rounded-xl border border-[#e5dcb8]/80 bg-white p-4 shadow-sm cursor-pointer hover:bg-[#fbf4dc]/20 transition-colors">
 									<div className="flex h-5 items-center">
 										<input
@@ -395,7 +410,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 									</div>
 									<div className="flex flex-col gap-1">
 										<span className="text-[13px] font-bold text-[#172126]">Une question par page</span>
-										<span className="text-[11px] font-medium text-[#697478]">Ajoute un saut de page avant chaque question principale lors de l'impression.</span>
+										<span className="text-[11px] font-medium text-[#697478]">Réserve une page à chaque question et sous-question, avec le contexte de ses parents.</span>
 									</div>
 								</label>
 
@@ -413,7 +428,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 									</div>
 									<div className="flex flex-col gap-1">
 										<span className="text-[13px] font-bold text-[#172126]">Mode Diaporama</span>
-										<span className="text-[11px] font-medium text-[#697478]">Affiche l'énoncé de la question centré sur une page séparée si elle contient des sous-questions.</span>
+										<span className="text-[11px] font-medium text-[#697478]">Affiche une question ou sous-question à la fois, avec navigation entre les pages.</span>
 									</div>
 								</label>
 
@@ -481,19 +496,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 								</label>
 
 								<label className="sm:col-span-2 flex flex-col gap-1.5 text-[13px] font-bold text-[#435054]">
-									Hauteur minimale des zones de réponse : <span className="text-[#19788c]">{editableContent.settings?.answerSpaceMinHeight || 120} px</span>
+									Hauteur minimale des zones de réponse : <span className="text-[#19788c]">{minimumHeight} px</span>
 									<input
 										type="range"
-										min="60"
-										max="600"
+										min="40"
+										max={Math.max(600, minimumHeight)}
 										step="20"
-										value={editableContent.settings?.answerSpaceMinHeight || 120}
+										value={minimumHeight}
 										onChange={(e) => setEditableContent(prev => ({
 											...prev,
 											settings: { ...prev.settings, answerSpaceMinHeight: parseInt(e.target.value, 10) }
 										}))}
 										className="mt-2 w-full accent-[#19788c]"
 									/>
+									<span className="text-xs font-normal text-[#697478]">S'applique à toutes les zones, y compris celles déjà redimensionnées. Les zones plus grandes conservent leur hauteur.</span>
+								</label>
+								<label className="sm:col-span-2 flex items-start gap-3 text-[13px] font-semibold text-[#435054]">
+									<input type="checkbox" checked={applyBackgroundToAll} onChange={event => setApplyBackgroundToAll(event.target.checked)} className="mt-1 accent-[#19788c]" />
+									<span>Appliquer ce style et cette couleur à toutes les zones
+										<span className="mt-1 block text-xs font-normal text-[#697478]">Remplace les fonds personnalisés à l'enregistrement. Sans cette option, le style et la couleur de la fiche servent aux zones sans fond personnalisé.</span>
+									</span>
 								</label>
 							</div>
 
@@ -511,7 +533,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 											{selectedClass || 'Classe non spécifiée'}
 										</div>
 										<div className="text-[11px] font-medium text-[#697478]">
-											Année : {selectedSchoolYear}
+											Année : {selectedSchoolYear || defaultSchoolYear}
 										</div>
 									</div>
 									{logoPreview ? (
@@ -525,37 +547,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 								{editableContent.settings?.showCanvas !== false ? (
 									<div className="mt-3">
 										<div className="mb-1 text-[11px] font-semibold text-[#697478]">
-											Style de zone de réponse : <span className="text-[#172126] font-bold">{editableContent.settings?.answerSpaceStyle || 'slate'}</span> ({editableContent.settings?.answerSpaceMinHeight || 120}px)
+											Style de zone de réponse : <span className="text-[#172126] font-bold">{editableContent.settings?.answerSpaceStyle || 'slate'}</span> ({minimumHeight}px)
 										</div>
-										<div 
-											className="w-full rounded-lg border border-[#334155] relative overflow-hidden transition-all duration-200"
-											style={{
-												height: `${Math.min(100, Math.max(50, (editableContent.settings?.answerSpaceMinHeight || 120) * 0.4))}px`,
-												backgroundColor: 
-													editableContent.settings?.answerSpaceColor === 'black' ? '#0F172A' :
-													editableContent.settings?.answerSpaceColor === 'green' ? '#14532D' :
-													editableContent.settings?.answerSpaceColor === 'blue' ? '#1E3A8A' :
-													editableContent.settings?.answerSpaceColor === 'white' ? '#FFFFFF' :
-													editableContent.settings?.answerSpaceColor === 'cream' ? '#FEF3C7' : '#0F172A',
-											}}
-										>
-											{/* Simulation du quadrillage */}
-											{(editableContent.settings?.answerSpaceStyle === 'slate' || !editableContent.settings?.answerSpaceStyle) && (
-												<div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_23px,rgba(255,255,255,0.15)_24px)] bg-[size:100%_24px]" />
-											)}
-											{editableContent.settings?.answerSpaceStyle === 'seyes' && (
-												<div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(239,68,68,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(59,130,246,0.3)_1px,transparent_1px)] bg-[size:16px_16px]" />
-											)}
-											{editableContent.settings?.answerSpaceStyle === 'grid' && (
-												<div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.15)_1px,transparent_1px)] bg-[size:16px_16px]" />
-											)}
-											{editableContent.settings?.answerSpaceStyle === 'dotted' && (
-												<div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.3)_1px,transparent_1px)] bg-[size:12px_12px]" />
-											)}
-											<div className="absolute bottom-2 right-2 text-[10px] font-mono text-white/50 bg-black/30 px-1.5 py-0.5 rounded">
-												Zone de réponse ({editableContent.settings?.answerSpaceMinHeight || 120}px)
-											</div>
-										</div>
+                                        <div
+                                            data-answer-space-preview=""
+                                            className="w-full rounded-lg border relative overflow-hidden"
+                                            style={{ height: `${Math.min(100, Math.max(50, minimumHeight * 0.4))}px`, backgroundColor: previewTheme.screen.bg, borderColor: previewTheme.screen.border }}
+                                        >
+                                            <AnswerSpacePaper styleName={previewStyle} colorName={currentSettings.answerSpaceColor} height={100} />
+                                            <div className="absolute bottom-2 right-2 text-[10px] font-mono text-white bg-black/60 px-1.5 py-0.5 rounded">
+                                                Zone de réponse ({minimumHeight}px)
+                                            </div>
+                                        </div>
 									</div>
 								) : (
 									<div className="mt-3 rounded-lg border border-dashed border-[#dedbd2] p-3 text-center text-xs font-semibold text-[#697478] bg-[#fcfbfa]">

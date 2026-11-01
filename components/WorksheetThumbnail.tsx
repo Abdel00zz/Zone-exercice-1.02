@@ -96,7 +96,7 @@ const ThumbnailQuestion: React.FC<{
   level?: number;
 }> = ({ question, index, level = 0 }) => {
   const number = formatNumbering(index, level);
-  const label = `${number}.`;
+  const label = number;
 
   return (
     <li className={`relative grid grid-cols-[auto_1fr] gap-1 items-baseline ${level > 0 ? 'mt-0.5' : 'mt-1'}`}>
